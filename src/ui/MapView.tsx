@@ -53,6 +53,7 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   const settingsRef = useRef<OverlaySettings>(overlaySettings);
   const onShareRegionRef = useRef(onShareRegion);
   const onViewportChangeRef = useRef(onViewportChange);
+  const userVotePositionRef = useRef(userVotePosition);
 
   // Keep mutable refs for event handlers
   dominanceDataRef.current = dominanceData;
@@ -60,6 +61,7 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   settingsRef.current = overlaySettings;
   onShareRegionRef.current = onShareRegion;
   onViewportChangeRef.current = onViewportChange;
+  userVotePositionRef.current = userVotePosition;
 
   // Expose flyTo via ref
   useImperativeHandle(ref, () => ({
@@ -138,6 +140,26 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       offset: [0, -5],
       maxWidth: 260,
     });
+
+    // Home button control
+    const HomeControl = L.Control.extend({
+      options: { position: 'topleft' as L.ControlPosition },
+      onAdd() {
+        const btn = L.DomUtil.create('button', 'leaflet-home-btn');
+        btn.innerHTML = '🏠';
+        btn.title = 'Zum Home Vote';
+        btn.setAttribute('aria-label', 'Zum Home Vote');
+        L.DomEvent.disableClickPropagation(btn);
+        btn.addEventListener('click', () => {
+          const pos = userVotePositionRef.current;
+          if (pos) {
+            map.flyTo([pos.lat, pos.lon], 12, { duration: 0.8 });
+          }
+        });
+        return btn;
+      },
+    });
+    new HomeControl().addTo(map);
 
     mapRef.current = map;
 
