@@ -159,6 +159,31 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const userId = user.id;
   const userVotePosition = { lat: user.homeLat, lon: user.homeLon };
 
+  // Build friend locations for map markers (accepted friends only)
+  const friendLocations = useMemo(() => {
+    const accepted = friendships.filter((f) => f.status === 'accepted');
+    const locations: { userId: string; lat: number; lon: number; beerId: string; online: boolean }[] = [];
+
+    for (const fs of accepted) {
+      const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
+      const profile = remoteUsers.find((u) => u.userId === friendId);
+      if (!profile || (profile.homeLat === 0 && profile.homeLon === 0)) continue;
+
+      const presence = friendPresence.get(friendId);
+      const online = presence ? Date.now() - presence.lastSeen < GAME.PRESENCE_ONLINE_THRESHOLD_MS : false;
+
+      locations.push({
+        userId: friendId,
+        lat: profile.homeLat,
+        lon: profile.homeLon,
+        beerId: profile.beerId,
+        online,
+      });
+    }
+
+    return locations;
+  }, [friendships, remoteUsers, friendPresence, user.id]);
+
   // Extract regions whenever dominance data changes
   const regions: Region[] = useMemo(() => {
     if (!dominanceData) return [];
@@ -412,6 +437,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
           overlaySettings={overlaySettings}
           onViewportChange={handleViewportChange}
           onShareRegion={handleShareRegion}
+          friendLocations={friendLocations}
         />
 
         {sidebarOpen && (

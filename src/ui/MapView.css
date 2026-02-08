@@ -184,3 +184,62 @@
 .leaflet-home-btn:hover {
   background: #f4f4f4;
 }
+
+/* ── Friend map markers ─────────────────────────────── */
+.friend-map-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.friend-marker-inner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 2.5px solid #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+
+.friend-map-marker:hover .friend-marker-inner {
+  transform: scale(1.15);
+}
+
+.friend-marker-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.friend-marker-online,
+.friend-marker-offline {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #1e293b;
+}
+
+.friend-marker-online {
+  background: #22c55e;
+}
+
+.friend-marker-offline {
+  background: #64748b;
+}
+
+/* Friend marker tooltip */
+.friend-marker-tooltip {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}

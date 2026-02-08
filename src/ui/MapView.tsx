@@ -25,6 +25,14 @@ export interface MapViewHandle {
   flyTo: (lat: number, lon: number, zoom: number) => void;
 }
 
+export interface FriendLocation {
+  userId: string;
+  lat: number;
+  lon: number;
+  beerId: string;
+  online: boolean;
+}
+
 interface Props {
   votes: Vote[];
   dominanceData: DominanceResult | null;
@@ -35,10 +43,11 @@ interface Props {
   overlaySettings: OverlaySettings;
   onViewportChange?: (bounds: ViewportBounds, zoom: number) => void;
   onShareRegion?: (region: Region) => void;
+  friendLocations?: FriendLocation[];
 }
 
 export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
-  { votes, dominanceData, regions, gridSpec, userVotePosition, onMapClick, overlaySettings, onViewportChange, onShareRegion },
+  { votes, dominanceData, regions, gridSpec, userVotePosition, onMapClick, overlaySettings, onViewportChange, onShareRegion, friendLocations },
   ref
 ) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -46,6 +55,7 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   const canvasLayerRef = useRef<DominanceCanvasLayer | null>(null);
   const voteMarkersRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const friendMarkersRef = useRef<L.LayerGroup | null>(null);
   const hoverDivRef = useRef<HTMLDivElement | null>(null);
   const clickPopupRef = useRef<L.Popup | null>(null);
   const dominanceDataRef = useRef<DominanceResult | null>(null);
@@ -124,6 +134,10 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     // Vote markers layer
     const voteMarkers = L.layerGroup().addTo(map);
     voteMarkersRef.current = voteMarkers;
+
+    // Friend markers layer (above vote markers)
+    const friendMarkers = L.layerGroup().addTo(map);
+    friendMarkersRef.current = friendMarkers;
 
     // Hover tooltip as a plain DOM div (avoids Leaflet popup conflicts)
     const hoverDiv = document.createElement('div');
@@ -416,6 +430,49 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       userMarkerRef.current = marker;
     }
   }, [userVotePosition, onMapClick]);
+
+  // Update friend location markers
+  useEffect(() => {
+    const group = friendMarkersRef.current;
+    if (!group) return;
+    group.clearLayers();
+
+    if (!friendLocations || friendLocations.length === 0) return;
+
+    friendLocations.forEach((friend) => {
+      const beer = BEER_MAP.get(friend.beerId);
+      if (!beer) return;
+
+      const onlineDot = friend.online
+        ? '<span class="friend-marker-online"></span>'
+        : '<span class="friend-marker-offline"></span>';
+
+      const icon = L.divIcon({
+        className: 'friend-map-marker',
+        html: `
+          <div class="friend-marker-inner" style="border-color: ${beer.color}">
+            <img src="${beer.svgLogo}" alt="${beer.name}" class="friend-marker-logo" />
+            ${onlineDot}
+          </div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+
+      const marker = L.marker([friend.lat, friend.lon], {
+        icon,
+        zIndexOffset: 500,
+        interactive: true,
+      });
+
+      const statusText = friend.online ? '🟢 Online' : '⚫ Offline';
+      marker.bindTooltip(
+        `<strong>${beer.name}</strong><br/>${statusText}`,
+        { direction: 'top', offset: [0, -16], className: 'friend-marker-tooltip' }
+      );
+
+      marker.addTo(group);
+    });
+  }, [friendLocations]);
 
   // Suppress unused gridSpec lint
   void gridSpec;
