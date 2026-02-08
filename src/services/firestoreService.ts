@@ -6,6 +6,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   deleteDoc,
   addDoc,
@@ -21,6 +22,46 @@ import {
 import { getFirestoreDb } from '../config/firestore';
 import { GAME } from '../config/constants';
 import type { Friendship, ChatMessage, UserPresence } from '../domain/types';
+
+// ── User Profiles ───────────────────────────────────────
+
+/**
+ * Public user profile stored in Firestore.
+ * Only stores fields that other users need to see.
+ */
+export interface FirestoreUserProfile {
+  userId: string;
+  beerId: string;
+  createdAt: number;
+}
+
+/**
+ * Save or update a user's public profile in Firestore.
+ * Called during onboarding and when user changes their beer.
+ */
+export async function saveUserProfile(userId: string, beerId: string): Promise<void> {
+  const db = getFirestoreDb();
+  await setDoc(doc(db, 'users', userId), {
+    userId,
+    beerId,
+    createdAt: Date.now(),
+  }, { merge: true });
+}
+
+/**
+ * Fetch a user's public profile from Firestore.
+ */
+export async function getUserProfile(userId: string): Promise<FirestoreUserProfile | null> {
+  const db = getFirestoreDb();
+  const snap = await getDoc(doc(db, 'users', userId));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return {
+    userId: data.userId as string,
+    beerId: data.beerId as string,
+    createdAt: (data.createdAt as number) ?? 0,
+  };
+}
 
 // ── Helpers ──────────────────────────────────────────────
 

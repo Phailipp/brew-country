@@ -10,6 +10,7 @@ import {
   removeFriend,
   subscribeFriends,
   makeFriendshipId,
+  getUserProfile,
 } from '../services/firestoreService';
 import './FriendsPanel.css';
 
@@ -56,7 +57,7 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
     return () => unsub();
   }, [user.id]);
 
-  // Resolve friend user data from IndexedDB when friendships change
+  // Resolve friend user data from Firestore when friendships change
   useEffect(() => {
     const loadFriendUsers = async () => {
       const map = new Map<string, User>();
@@ -65,7 +66,27 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
       for (const fs of friendships) {
         const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
         friendIds.push(friendId);
-        const friendUser = await store.getUser(friendId);
+
+        // First try local IndexedDB, then fall back to Firestore
+        let friendUser = await store.getUser(friendId);
+        if (!friendUser) {
+          // Load public profile from Firestore
+          const profile = await getUserProfile(friendId);
+          if (profile) {
+            // Create a minimal User object from the Firestore profile
+            friendUser = {
+              id: profile.userId,
+              phone: null,
+              createdAt: profile.createdAt,
+              lastActiveAt: profile.createdAt,
+              homeLat: 0,
+              homeLon: 0,
+              beerId: profile.beerId,
+              standYourGroundEnabled: false,
+              ageVerified: true,
+            };
+          }
+        }
         if (friendUser) {
           map.set(friendId, friendUser);
         }

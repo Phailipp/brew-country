@@ -3,6 +3,8 @@ import type { User } from '../domain/types';
 import { useAuth } from './AuthProvider';
 import { BEERS } from '../domain/beers';
 import { GAME } from '../config/constants';
+import { isFirebaseConfigured } from '../config/firebase';
+import { saveUserProfile } from '../services/firestoreService';
 import './Auth.css';
 
 type OnboardingStep = 'age' | 'location' | 'beer' | 'confirm';
@@ -126,6 +128,13 @@ export function Onboarding() {
     };
 
     await completeOnboarding(user);
+
+    // Also save public profile to Firestore so other users can see us
+    if (isFirebaseConfigured()) {
+      saveUserProfile(userId, selectedBeerId).catch((e) =>
+        console.error('Failed to save profile to Firestore:', e)
+      );
+    }
   };
 
   return (

@@ -30,6 +30,7 @@ import { useQuests } from './hooks/useQuests';
 import { useFeed } from './hooks/useFeed';
 import { usePresence } from './hooks/usePresence';
 import { isFirebaseConfigured } from './config/firebase';
+import { saveUserProfile } from './services/firestoreService';
 import './App.css';
 
 // Legacy store for backward-compatible simulation
@@ -104,6 +105,13 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   // Presence hook (heartbeat + online count + friend presence)
   const { onlineCount, friendPresence, setFriendIds } = usePresence(user.id);
+
+  // Sync user profile to Firestore once (so other users can find us)
+  useEffect(() => {
+    if (isFirebaseConfigured() && user.id && user.beerId) {
+      saveUserProfile(user.id, user.beerId).catch(() => {});
+    }
+  }, [user.id, user.beerId]);
 
   const userId = user.id;
   const userVote = votes.find((v) => v.id === userId);
