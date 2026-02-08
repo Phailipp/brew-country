@@ -27,25 +27,40 @@ import type { Friendship, ChatMessage, UserPresence } from '../domain/types';
 
 /**
  * Public user profile stored in Firestore.
- * Only stores fields that other users need to see.
+ * Contains all fields needed for map dominance + friend display.
  */
 export interface FirestoreUserProfile {
   userId: string;
   beerId: string;
+  homeLat: number;
+  homeLon: number;
   createdAt: number;
+  lastActiveAt: number;
 }
 
 /**
  * Save or update a user's public profile in Firestore.
- * Called during onboarding and when user changes their beer.
+ * Called during onboarding and on each app load.
  */
-export async function saveUserProfile(userId: string, beerId: string): Promise<void> {
+export async function saveUserProfile(
+  userId: string,
+  beerId: string,
+  homeLat?: number,
+  homeLon?: number,
+): Promise<void> {
   const db = getFirestoreDb();
-  await setDoc(doc(db, 'users', userId), {
+  const data: Record<string, unknown> = {
     userId,
     beerId,
-    createdAt: Date.now(),
-  }, { merge: true });
+    lastActiveAt: Date.now(),
+  };
+  // Only set location + createdAt on first write (onboarding)
+  if (homeLat !== undefined && homeLon !== undefined) {
+    data.homeLat = homeLat;
+    data.homeLon = homeLon;
+    data.createdAt = Date.now();
+  }
+  await setDoc(doc(db, 'users', userId), data, { merge: true });
 }
 
 /**
@@ -59,8 +74,40 @@ export async function getUserProfile(userId: string): Promise<FirestoreUserProfi
   return {
     userId: data.userId as string,
     beerId: data.beerId as string,
+    homeLat: (data.homeLat as number) ?? 0,
+    homeLon: (data.homeLon as number) ?? 0,
     createdAt: (data.createdAt as number) ?? 0,
+    lastActiveAt: (data.lastActiveAt as number) ?? 0,
   };
+}
+
+/**
+ * Subscribe to ALL user profiles in real-time.
+ * Every client gets the full set of users for dominance calculation.
+ */
+export function subscribeAllUsers(
+  callback: (users: FirestoreUserProfile[]) => void,
+): Unsubscribe {
+  const db = getFirestoreDb();
+  const q = collection(db, 'users');
+
+  return onSnapshot(q, (snapshot) => {
+    const users: FirestoreUserProfile[] = snapshot.docs
+      .map((d) => {
+        const data = d.data();
+        return {
+          userId: data.userId as string,
+          beerId: data.beerId as string,
+          homeLat: (data.homeLat as number) ?? 0,
+          homeLon: (data.homeLon as number) ?? 0,
+          createdAt: (data.createdAt as number) ?? 0,
+          lastActiveAt: (data.lastActiveAt as number) ?? 0,
+        };
+      })
+      // Only include users with valid location
+      .filter((u) => u.homeLat !== 0 || u.homeLon !== 0);
+    callback(users);
+  });
 }
 
 // ── Helpers ──────────────────────────────────────────────

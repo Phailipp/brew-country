@@ -30,7 +30,7 @@ import { useQuests } from './hooks/useQuests';
 import { useFeed } from './hooks/useFeed';
 import { usePresence } from './hooks/usePresence';
 import { isFirebaseConfigured } from './config/firebase';
-import { saveUserProfile } from './services/firestoreService';
+import { saveUserProfile, subscribeAllUsers, type FirestoreUserProfile } from './services/firestoreService';
 import './App.css';
 
 // Legacy store for backward-compatible simulation
@@ -106,18 +106,27 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   // Presence hook (heartbeat + online count + friend presence)
   const { onlineCount, friendPresence, setFriendIds } = usePresence(user.id);
 
-  // Sync user profile to Firestore once (so other users can find us)
+  // All remote users from Firestore (for shared map)
+  const [remoteUsers, setRemoteUsers] = useState<FirestoreUserProfile[]>([]);
+
+  // Sync user profile to Firestore (with location) so other users see us on the map
   useEffect(() => {
     if (isFirebaseConfigured() && user.id && user.beerId) {
-      saveUserProfile(user.id, user.beerId).catch(() => {});
+      saveUserProfile(user.id, user.beerId, user.homeLat, user.homeLon).catch(() => {});
     }
-  }, [user.id, user.beerId]);
+  }, [user.id, user.beerId, user.homeLat, user.homeLon]);
+
+  // Subscribe to all users from Firestore for shared map
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    const unsub = subscribeAllUsers((users) => {
+      setRemoteUsers(users);
+    });
+    return () => unsub();
+  }, []);
 
   const userId = user.id;
-  const userVote = votes.find((v) => v.id === userId);
-  const userVotePosition = userVote
-    ? { lat: userVote.lat, lon: userVote.lon }
-    : { lat: user.homeLat, lon: user.homeLon };
+  const userVotePosition = { lat: user.homeLat, lon: user.homeLon };
 
   // Extract regions whenever dominance data changes
   const regions: Region[] = useMemo(() => {
@@ -136,9 +145,33 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     onActivity();
   }, [onActivity]);
 
-  // Load weighted votes
+  // Build weighted votes from Firestore users (shared map) + local data
   const loadWeightedVotes = useCallback(async () => {
-    const allUsers = await store.getAllUsers();
+    // Convert remote Firestore profiles to User objects for weight calculation
+    const firestoreUsers: User[] = remoteUsers.map((p) => ({
+      id: p.userId,
+      phone: null,
+      createdAt: p.createdAt,
+      lastActiveAt: p.lastActiveAt,
+      homeLat: p.homeLat,
+      homeLon: p.homeLon,
+      beerId: p.beerId,
+      standYourGroundEnabled: false,
+      ageVerified: true,
+    }));
+
+    // Merge: use Firestore users as base, overlay local user data for self
+    const localUsers = await store.getAllUsers();
+    const mergedMap = new Map<string, User>();
+    for (const u of firestoreUsers) {
+      mergedMap.set(u.id, u);
+    }
+    // Local user data takes priority for the current user (has more fields)
+    for (const u of localUsers) {
+      mergedMap.set(u.id, u);
+    }
+    const allUsers = Array.from(mergedMap.values());
+
     const allOTR = await store.getAllOTRVotes();
     const allTeams = await store.getAllTeams();
     const allDrink = await store.getAllDrinkVotes();
@@ -152,9 +185,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
     const wv = buildWeightedVotes(allUsers, allOTR, allTeams, outcomesMap, allDrink);
     setWeightedVotes(wv);
-  }, [store]);
+  }, [store, remoteUsers]);
 
-  // Load weighted votes on mount and when user changes
+  // Reload weighted votes when remote users or local user changes
   useEffect(() => {
     loadWeightedVotes();
   }, [loadWeightedVotes, user]);

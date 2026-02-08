@@ -129,9 +129,9 @@ export function Onboarding() {
 
     await completeOnboarding(user);
 
-    // Also save public profile to Firestore so other users can see us
-    if (isFirebaseConfigured()) {
-      saveUserProfile(userId, selectedBeerId).catch((e) =>
+    // Also save public profile to Firestore so other users can see us on the map
+    if (isFirebaseConfigured() && location) {
+      saveUserProfile(userId, selectedBeerId, location.lat, location.lon).catch((e) =>
         console.error('Failed to save profile to Firestore:', e)
       );
     }
