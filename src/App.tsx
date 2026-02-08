@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Vote, DominanceResult, GridSpec, OverlaySettings, ViewportBounds, Region, SharePayload, WeightedVote, User } from './domain/types';
+import type { Vote, DominanceResult, GridSpec, OverlaySettings, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship } from './domain/types';
 import { getDefaultBoundingBox, getViewportGridSpec } from './domain/geo';
 import { GAME } from './config/constants';
 import { LocalStorageVoteStore } from './storage/VoteStore';
@@ -26,11 +26,13 @@ import { DrinkVoteButton } from './ui/DrinkVoteButton';
 import { TeamPanel } from './ui/TeamPanel';
 import { FriendsPanel } from './ui/FriendsPanel';
 import { ChatPanel } from './ui/ChatPanel';
+import { useToast } from './ui/Toast';
 import { useQuests } from './hooks/useQuests';
 import { useFeed } from './hooks/useFeed';
 import { usePresence } from './hooks/usePresence';
+import { useChatNotifications } from './hooks/useChatNotifications';
 import { isFirebaseConfigured } from './config/firebase';
-import { saveUserProfile, subscribeAllUsers, type FirestoreUserProfile } from './services/firestoreService';
+import { saveUserProfile, subscribeAllUsers, subscribeFriends, type FirestoreUserProfile } from './services/firestoreService';
 import './App.css';
 
 // Legacy store for backward-compatible simulation
@@ -103,11 +105,40 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const mapRef = useRef<MapViewHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Toast system
+  const { showToast } = useToast();
+
   // Presence hook (heartbeat + online count + friend presence)
   const { onlineCount, friendPresence, setFriendIds } = usePresence(user.id);
 
   // All remote users from Firestore (for shared map)
   const [remoteUsers, setRemoteUsers] = useState<FirestoreUserProfile[]>([]);
+
+  // Friendships state (for chat notifications)
+  const [friendships, setFriendships] = useState<Friendship[]>([]);
+
+  // Subscribe to friendships for notification tracking
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    const unsub = subscribeFriends(user.id, (fs) => {
+      setFriendships(fs);
+    });
+    return () => unsub();
+  }, [user.id]);
+
+  // Chat notifications — toast on new message + unread badge
+  const { unreadCounts } = useChatNotifications({
+    userId: user.id,
+    friendships,
+    openChatFriendshipId: chatTarget?.friendshipId ?? null,
+    onNewMessage: useCallback((_friendshipId: string, message: { text: string }) => {
+      // Truncate long messages for the toast
+      const preview = message.text.length > 60
+        ? message.text.slice(0, 57) + '...'
+        : message.text;
+      showToast('💬', preview);
+    }, [showToast]),
+  });
 
   // Sync user profile to Firestore (with location) so other users see us on the map
   useEffect(() => {
@@ -418,6 +449,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                   onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
                   friendPresence={friendPresence}
                   onFriendIdsChange={setFriendIds}
+                  unreadCounts={unreadCounts}
                 />
                 <BeerPicker
                   selectedBeerId={selectedBeerId}

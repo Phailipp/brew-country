@@ -22,6 +22,7 @@ interface Props {
   onOpenChat: (friendshipId: string, friendUser: User) => void;
   friendPresence: Map<string, UserPresence>;
   onFriendIdsChange: (ids: string[]) => void;
+  unreadCounts?: Map<string, number>;
 }
 
 function formatLastActive(lastSeen: number): string {
@@ -32,7 +33,7 @@ function formatLastActive(lastSeen: number): string {
   return `Vor ${Math.floor(diff / 86400_000)} Tagen`;
 }
 
-export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriendIdsChange }: Props) {
+export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriendIdsChange, unreadCounts }: Props) {
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [friendUsers, setFriendUsers] = useState<Map<string, User>>(new Map());
   const [addInput, setAddInput] = useState('');
@@ -333,6 +334,13 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
                       title="Chat"
                     >
                       💬
+                      {(() => {
+                        const fsId = makeFriendshipId(user.id, friendId);
+                        const count = unreadCounts?.get(fsId) ?? 0;
+                        return count > 0 ? (
+                          <span className="friend-unread-badge">{count > 9 ? '9+' : count}</span>
+                        ) : null;
+                      })()}
                     </button>
                     {confirmRemove === friendId ? (
                       <button

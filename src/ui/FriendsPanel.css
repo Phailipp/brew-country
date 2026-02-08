@@ -295,3 +295,28 @@
   color: #64748b;
   margin-right: 0.25rem;
 }
+
+/* Unread message badge */
+.friend-chat-btn {
+  position: relative;
+}
+
+.friend-unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px #0f172a;
+}
