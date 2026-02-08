@@ -216,6 +216,8 @@ export interface DrinkVote {
 export interface Friendship {
   id: string;                     // deterministic: sorted "{userA}_{userB}"
   userIds: [string, string];      // alphabetically sorted
+  status: 'pending' | 'accepted'; // pending = request sent, accepted = mutual friends
+  requestedBy: string;            // userId of the person who sent the request
   createdAt: number;
 }
 

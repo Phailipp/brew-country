@@ -124,8 +124,8 @@ export function makeFriendshipId(userA: string, userB: string): string {
 // ── Friends ──────────────────────────────────────────────
 
 /**
- * Create a friendship between two users.
- * Writes to Firestore `friendships/{id}`.
+ * Send a friend request (status: 'pending').
+ * The other user must accept before the friendship is active.
  */
 export async function addFriend(myUserId: string, friendUserId: string): Promise<Friendship> {
   const db = getFirestoreDb();
@@ -135,11 +135,15 @@ export async function addFriend(myUserId: string, friendUserId: string): Promise
   const friendship: Friendship = {
     id,
     userIds: sorted,
+    status: 'pending',
+    requestedBy: myUserId,
     createdAt: Date.now(),
   };
 
   await setDoc(doc(db, 'friendships', id), {
     userIds: sorted,
+    status: 'pending',
+    requestedBy: myUserId,
     createdAt: friendship.createdAt,
   });
 
@@ -147,7 +151,26 @@ export async function addFriend(myUserId: string, friendUserId: string): Promise
 }
 
 /**
- * Remove a friendship.
+ * Accept a pending friend request.
+ */
+export async function acceptFriend(myUserId: string, friendUserId: string): Promise<void> {
+  const db = getFirestoreDb();
+  const id = makeFriendshipId(myUserId, friendUserId);
+  await setDoc(doc(db, 'friendships', id), { status: 'accepted' }, { merge: true });
+}
+
+/**
+ * Decline a pending friend request or withdraw a sent request.
+ * Deletes the Firestore document entirely.
+ */
+export async function declineFriend(myUserId: string, friendUserId: string): Promise<void> {
+  const db = getFirestoreDb();
+  const id = makeFriendshipId(myUserId, friendUserId);
+  await deleteDoc(doc(db, 'friendships', id));
+}
+
+/**
+ * Remove an accepted friendship.
  * Deletes the Firestore document. Subcollection messages remain (Firestore behavior).
  */
 export async function removeFriend(myUserId: string, friendUserId: string): Promise<void> {
@@ -158,7 +181,7 @@ export async function removeFriend(myUserId: string, friendUserId: string): Prom
 
 /**
  * Subscribe to all friendships for a user (real-time).
- * Uses `array-contains` on the `userIds` field.
+ * Includes both pending and accepted. UI filters by status.
  */
 export function subscribeFriends(
   userId: string,
@@ -176,6 +199,8 @@ export function subscribeFriends(
       return {
         id: d.id,
         userIds: data.userIds as [string, string],
+        status: (data.status as 'pending' | 'accepted') ?? 'accepted', // backward compat
+        requestedBy: (data.requestedBy as string) ?? '',
         createdAt: data.createdAt as number,
       };
     });

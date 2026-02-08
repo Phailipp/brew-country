@@ -8,6 +8,8 @@ import { appEvents } from '../domain/events';
 import {
   addFriend,
   removeFriend,
+  acceptFriend,
+  declineFriend,
   subscribeFriends,
   makeFriendshipId,
   getUserProfile,
@@ -67,13 +69,10 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
         const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
         friendIds.push(friendId);
 
-        // First try local IndexedDB, then fall back to Firestore
         let friendUser = await store.getUser(friendId);
         if (!friendUser) {
-          // Load public profile from Firestore
           const profile = await getUserProfile(friendId);
           if (profile) {
-            // Create a minimal User object from the Firestore profile
             friendUser = {
               id: profile.userId,
               phone: null,
@@ -94,7 +93,6 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
 
       setFriendUsers(map);
 
-      // Notify parent of friend IDs (for presence subscription)
       const idsStr = friendIds.sort().join(',');
       if (idsStr !== prevFriendIdsRef.current) {
         prevFriendIdsRef.current = idsStr;
@@ -104,6 +102,17 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
 
     loadFriendUsers();
   }, [friendships, user.id, store, onFriendIdsChange]);
+
+  // Split friendships into categories
+  const incomingRequests = friendships.filter(
+    (fs) => fs.status === 'pending' && fs.requestedBy !== user.id
+  );
+  const sentRequests = friendships.filter(
+    (fs) => fs.status === 'pending' && fs.requestedBy === user.id
+  );
+  const acceptedFriends = friendships.filter(
+    (fs) => fs.status === 'accepted'
+  );
 
   const handleAdd = useCallback(async () => {
     const friendId = addInput.trim();
@@ -122,10 +131,9 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
       return;
     }
 
-    // Check if already friends
     const existingId = makeFriendshipId(user.id, friendId);
     if (friendships.some(f => f.id === existingId)) {
-      setError('Ihr seid bereits Freunde');
+      setError('Anfrage existiert bereits');
       return;
     }
 
@@ -135,12 +143,28 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
       appEvents.emit({ type: 'friend:added', friendship });
       setAddInput('');
     } catch (e) {
-      setError('Fehler beim Hinzufügen');
+      setError('Fehler beim Senden der Anfrage');
       console.error('addFriend error:', e);
     } finally {
       setAdding(false);
     }
   }, [addInput, user.id, friendships]);
+
+  const handleAccept = useCallback(async (friendId: string) => {
+    try {
+      await acceptFriend(user.id, friendId);
+    } catch (e) {
+      console.error('acceptFriend error:', e);
+    }
+  }, [user.id]);
+
+  const handleDecline = useCallback(async (friendId: string) => {
+    try {
+      await declineFriend(user.id, friendId);
+    } catch (e) {
+      console.error('declineFriend error:', e);
+    }
+  }, [user.id]);
 
   const handleRemove = useCallback(async (friendId: string) => {
     try {
@@ -166,9 +190,27 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
     return Date.now() - p.lastSeen < GAME.PRESENCE_ONLINE_THRESHOLD_MS;
   };
 
+  const getFriendId = (fs: Friendship) =>
+    fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
+
+  const renderFriendLabel = (friendId: string) => {
+    const friendUser = friendUsers.get(friendId);
+    const beer = friendUser ? BEER_MAP.get(friendUser.beerId) : null;
+    return (
+      <div className="friend-info-label">
+        <div className="friend-avatar">
+          {beer && <img src={beer.svgLogo} alt={beer.name} className="friend-beer-logo" />}
+        </div>
+        <span className="friend-name">
+          {friendUser ? (beer?.name ?? friendUser.beerId) : friendId.substring(0, 12) + '...'}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="friends-panel">
-      <h3>Freunde <span className="friends-count">{friendships.length}/{GAME.MAX_FRIENDS}</span></h3>
+      <h3>Freunde <span className="friends-count">{acceptedFriends.length}/{GAME.MAX_FRIENDS}</span></h3>
 
       {/* Add friend form */}
       <div className="friends-add-form">
@@ -191,68 +233,129 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
       </div>
       {error && <p className="friends-error">{error}</p>}
 
-      {/* Friend list */}
-      {friendships.length === 0 ? (
-        <p className="friends-empty">Noch keine Freunde. Teile deine ID!</p>
-      ) : (
-        <div className="friends-list">
-          {friendships.map((fs) => {
-            const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
-            const friendUser = friendUsers.get(friendId);
-            const beer = friendUser ? BEER_MAP.get(friendUser.beerId) : null;
-            const online = isOnline(friendId);
-            const presence = friendPresence.get(friendId);
-
+      {/* Incoming requests */}
+      {incomingRequests.length > 0 && (
+        <div className="friends-section">
+          <h4 className="friends-section-title">Eingehende Anfragen</h4>
+          {incomingRequests.map((fs) => {
+            const friendId = getFriendId(fs);
             return (
-              <div key={fs.id} className="friend-item">
-                <div className="friend-info" onClick={() => handleOpenChat(friendId)}>
-                  <div className="friend-avatar">
-                    {beer && <img src={beer.svgLogo} alt={beer.name} className="friend-beer-logo" />}
-                    <span className={`friend-online-dot ${online ? 'online' : 'offline'}`} />
-                  </div>
-                  <div className="friend-details">
-                    <span className="friend-name">
-                      {friendUser ? (beer?.name ?? friendUser.beerId) : friendId.substring(0, 8) + '...'}
-                    </span>
-                    <span className="friend-status">
-                      {online
-                        ? 'Online'
-                        : presence
-                          ? formatLastActive(presence.lastSeen)
-                          : 'Unbekannt'}
-                    </span>
-                  </div>
-                </div>
-
+              <div key={fs.id} className="friend-item request-incoming">
+                {renderFriendLabel(friendId)}
                 <div className="friend-actions">
                   <button
-                    className="friend-chat-btn"
-                    onClick={() => handleOpenChat(friendId)}
-                    title="Chat"
+                    className="friend-accept-btn"
+                    onClick={() => handleAccept(friendId)}
+                    title="Annehmen"
                   >
-                    💬
+                    ✅
                   </button>
-                  {confirmRemove === friendId ? (
-                    <button
-                      className="friend-remove-btn confirm"
-                      onClick={() => handleRemove(friendId)}
-                      title="Wirklich entfernen?"
-                    >
-                      ✓
-                    </button>
-                  ) : (
-                    <button
-                      className="friend-remove-btn"
-                      onClick={() => setConfirmRemove(friendId)}
-                      title="Entfernen"
-                    >
-                      ✕
-                    </button>
-                  )}
+                  <button
+                    className="friend-decline-btn"
+                    onClick={() => handleDecline(friendId)}
+                    title="Ablehnen"
+                  >
+                    ❌
+                  </button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Sent requests (pending) */}
+      {sentRequests.length > 0 && (
+        <div className="friends-section">
+          <h4 className="friends-section-title">Gesendet</h4>
+          {sentRequests.map((fs) => {
+            const friendId = getFriendId(fs);
+            return (
+              <div key={fs.id} className="friend-item request-sent">
+                {renderFriendLabel(friendId)}
+                <div className="friend-actions">
+                  <span className="friend-pending-label">Warte...</span>
+                  <button
+                    className="friend-decline-btn"
+                    onClick={() => handleDecline(friendId)}
+                    title="Zurückziehen"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Accepted friends */}
+      {acceptedFriends.length === 0 && incomingRequests.length === 0 && sentRequests.length === 0 ? (
+        <p className="friends-empty">Noch keine Freunde. Teile deine ID!</p>
+      ) : acceptedFriends.length > 0 && (
+        <div className="friends-section">
+          {(incomingRequests.length > 0 || sentRequests.length > 0) && (
+            <h4 className="friends-section-title">Freunde</h4>
+          )}
+          <div className="friends-list">
+            {acceptedFriends.map((fs) => {
+              const friendId = getFriendId(fs);
+              const friendUser = friendUsers.get(friendId);
+              const beer = friendUser ? BEER_MAP.get(friendUser.beerId) : null;
+              const online = isOnline(friendId);
+              const presence = friendPresence.get(friendId);
+
+              return (
+                <div key={fs.id} className="friend-item">
+                  <div className="friend-info" onClick={() => handleOpenChat(friendId)}>
+                    <div className="friend-avatar">
+                      {beer && <img src={beer.svgLogo} alt={beer.name} className="friend-beer-logo" />}
+                      <span className={`friend-online-dot ${online ? 'online' : 'offline'}`} />
+                    </div>
+                    <div className="friend-details">
+                      <span className="friend-name">
+                        {friendUser ? (beer?.name ?? friendUser.beerId) : friendId.substring(0, 8) + '...'}
+                      </span>
+                      <span className="friend-status">
+                        {online
+                          ? 'Online'
+                          : presence
+                            ? formatLastActive(presence.lastSeen)
+                            : 'Unbekannt'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="friend-actions">
+                    <button
+                      className="friend-chat-btn"
+                      onClick={() => handleOpenChat(friendId)}
+                      title="Chat"
+                    >
+                      💬
+                    </button>
+                    {confirmRemove === friendId ? (
+                      <button
+                        className="friend-remove-btn confirm"
+                        onClick={() => handleRemove(friendId)}
+                        title="Wirklich entfernen?"
+                      >
+                        ✓
+                      </button>
+                    ) : (
+                      <button
+                        className="friend-remove-btn"
+                        onClick={() => setConfirmRemove(friendId)}
+                        title="Entfernen"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

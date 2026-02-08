@@ -215,3 +215,83 @@
 .friend-remove-btn.confirm:hover {
   background: #b91c1c;
 }
+
+/* ── Friendship request sections ────────────────────── */
+.friends-section {
+  margin-top: 0.5rem;
+}
+
+.friends-section-title {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+/* Incoming request items */
+.friend-item.request-incoming {
+  border-left: 2px solid #f59e0b;
+}
+
+/* Sent request items */
+.friend-item.request-sent {
+  opacity: 0.7;
+}
+
+/* Friend info label (for requests — no click) */
+.friend-info-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Accept button */
+.friend-accept-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+
+.friend-accept-btn:hover {
+  background: #166534;
+}
+
+/* Decline button */
+.friend-decline-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: #64748b;
+  transition: background 0.15s, color 0.15s;
+}
+
+.friend-decline-btn:hover {
+  background: #1e293b;
+  color: #f87171;
+}
+
+/* Pending label */
+.friend-pending-label {
+  font-size: 0.65rem;
+  color: #64748b;
+  margin-right: 0.25rem;
+}
