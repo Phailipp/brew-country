@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthState, User } from '../domain/types';
-import { isFirebaseConfigured } from '../config/firebase';
 import type { StorageInterface } from '../storage/StorageInterface';
 
 interface AuthContextValue {
@@ -22,8 +21,9 @@ interface Props {
 }
 
 /**
- * Auth provider that supports both Firebase Phone OTP (when configured)
- * and a local anonymous auth fallback for development.
+ * Auth provider using local anonymous auth.
+ * User ID is derived from the phone number and stored in localStorage.
+ * Firebase is used only for Firestore (friends, chat, presence).
  */
 export function AuthProvider({ children, store }: Props) {
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
@@ -31,11 +31,6 @@ export function AuthProvider({ children, store }: Props) {
   // Check for existing session on mount
   useEffect(() => {
     const init = async () => {
-      if (isFirebaseConfigured()) {
-        // Firebase auth would listen to onAuthStateChanged here
-        // For now, fall through to local
-      }
-
       // Local auth: check localStorage
       const savedId = localStorage.getItem(LOCAL_AUTH_KEY);
       if (savedId) {
