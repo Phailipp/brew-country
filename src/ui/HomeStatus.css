@@ -64,6 +64,30 @@
   color: #f87171;
 }
 
+.home-status-id {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.id-copy-btn {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  transition: all 0.15s;
+}
+
+.id-copy-btn:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
 .syg-toggle {
   display: flex;
   align-items: flex-start;

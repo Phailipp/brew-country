@@ -13,6 +13,27 @@ interface Props {
 
 export function HomeStatus({ user, store, onUserUpdate }: Props) {
   const [breakdown, setBreakdown] = useState<WeightBreakdown | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(user.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = user.id;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [user.id]);
 
   useEffect(() => {
     const load = async () => {
@@ -41,6 +62,14 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
       <div className="home-status-beer">
         {beer && <img src={beer.svgLogo} alt={beer.name} className="home-status-logo" />}
         <span className="home-status-beer-name">{beer?.name ?? user.beerId}</span>
+      </div>
+
+      <div className="home-status-id">
+        <span className="stat-label">Deine ID</span>
+        <button className="id-copy-btn" onClick={handleCopyId} title="ID kopieren">
+          {user.id.length > 12 ? `${user.id.substring(0, 8)}...` : user.id}
+          {' '}{copied ? '✓' : '📋'}
+        </button>
       </div>
 
       {breakdown && (

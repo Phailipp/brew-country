@@ -212,6 +212,27 @@ export interface DrinkVote {
   proofType: 'gps' | 'gps+photo';
 }
 
+// ── Friendship ───────────────────────────────────────────
+export interface Friendship {
+  id: string;                     // deterministic: sorted "{userA}_{userB}"
+  userIds: [string, string];      // alphabetically sorted
+  createdAt: number;
+}
+
+// ── Chat Message ─────────────────────────────────────────
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  text: string;
+  createdAt: number;
+}
+
+// ── Presence ─────────────────────────────────────────────
+export interface UserPresence {
+  userId: string;
+  lastSeen: number;               // epoch ms
+}
+
 // ── Events ───────────────────────────────────────────────
 export type AppEvent =
   | { type: 'vote:saved'; vote: Vote }
@@ -223,7 +244,10 @@ export type AppEvent =
   | { type: 'otr:created'; vote: OnTheRoadVote }
   | { type: 'otr:expired'; voteId: string }
   | { type: 'drink:created'; vote: DrinkVote }
-  | { type: 'drink:expired'; voteId: string };
+  | { type: 'drink:expired'; voteId: string }
+  | { type: 'friend:added'; friendship: Friendship }
+  | { type: 'friend:removed'; friendshipId: string }
+  | { type: 'chat:message'; message: ChatMessage; friendshipId: string };
 
 // ── Quests ───────────────────────────────────────────────
 export interface QuestDefinition {

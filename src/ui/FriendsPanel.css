@@ -1,0 +1,217 @@
+.friends-panel {
+  padding: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.friends-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.friends-count {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.friends-disabled {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Add friend form */
+.friends-add-form {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.friends-add-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.friends-add-input:focus {
+  border-color: #3b82f6;
+}
+
+.friends-add-input::placeholder {
+  color: #475569;
+}
+
+.friends-add-btn {
+  width: 32px;
+  height: 32px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.friends-add-btn:hover {
+  background: #2563eb;
+}
+
+.friends-add-btn:disabled {
+  background: #475569;
+  cursor: not-allowed;
+}
+
+.friends-error {
+  font-size: 0.7rem;
+  color: #f87171;
+  margin: 0 0 0.4rem;
+}
+
+.friends-empty {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+  text-align: center;
+  padding: 0.75rem 0;
+}
+
+/* Friend list */
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.friend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  background: #0f172a;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.friend-item:hover {
+  background: #1e293b;
+}
+
+.friend-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.friend-avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.friend-beer-logo {
+  width: 24px;
+  height: 24px;
+}
+
+.friend-online-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #0f172a;
+}
+
+.friend-online-dot.online {
+  background: #22c55e;
+}
+
+.friend-online-dot.offline {
+  background: #475569;
+}
+
+.friend-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.friend-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-status {
+  font-size: 0.65rem;
+  color: #64748b;
+}
+
+/* Friend actions */
+.friend-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.friend-chat-btn,
+.friend-remove-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+
+.friend-chat-btn:hover {
+  background: #1e293b;
+}
+
+.friend-remove-btn {
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.friend-remove-btn:hover {
+  background: #1e293b;
+  color: #f87171;
+}
+
+.friend-remove-btn.confirm {
+  background: #dc2626;
+  color: #fff;
+}
+
+.friend-remove-btn.confirm:hover {
+  background: #b91c1c;
+}

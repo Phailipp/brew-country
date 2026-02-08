@@ -24,8 +24,12 @@ import { DuelPanel } from './ui/DuelPanel';
 import { OnTheRoadButton } from './ui/OnTheRoadButton';
 import { DrinkVoteButton } from './ui/DrinkVoteButton';
 import { TeamPanel } from './ui/TeamPanel';
+import { FriendsPanel } from './ui/FriendsPanel';
+import { ChatPanel } from './ui/ChatPanel';
 import { useQuests } from './hooks/useQuests';
 import { useFeed } from './hooks/useFeed';
+import { usePresence } from './hooks/usePresence';
+import { isFirebaseConfigured } from './config/firebase';
 import './App.css';
 
 // Legacy store for backward-compatible simulation
@@ -93,9 +97,13 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
   const [gridSpec, setGridSpec] = useState<GridSpec>(fallbackGridSpec);
   const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
+  const [chatTarget, setChatTarget] = useState<{ friendshipId: string; friendUser: User } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const mapRef = useRef<MapViewHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Presence hook (heartbeat + online count + friend presence)
+  const { onlineCount, friendPresence, setFriendIds } = usePresence(user.id);
 
   const userId = user.id;
   const userVote = votes.find((v) => v.id === userId);
@@ -301,6 +309,12 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         <h1>Brew Country</h1>
         <span className="app-subtitle">Bier-Dominanz-Karte</span>
         {computing && <span className="computing-badge">Berechne...</span>}
+        {isFirebaseConfigured() && onlineCount > 0 && (
+          <span className="online-badge">
+            <span className="online-dot" />
+            {onlineCount} online
+          </span>
+        )}
         <button
           className="sidebar-toggle"
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -325,45 +339,62 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
         {sidebarOpen && (
           <aside className="sidebar">
-            <div className="sidebar-scroll">
-              <HomeStatus
+            {chatTarget ? (
+              <ChatPanel
                 user={user}
-                store={store}
-                onUserUpdate={handleUserUpdate}
+                friendshipId={chatTarget.friendshipId}
+                friendUser={chatTarget.friendUser}
+                friendPresence={friendPresence.get(chatTarget.friendUser.id)}
+                onBack={() => setChatTarget(null)}
               />
-              <DuelPanel user={user} store={store} />
-              <OnTheRoadButton
-                user={user}
-                store={store}
-                onVoteCreated={handleOTRCreated}
-              />
-              <DrinkVoteButton
-                user={user}
-                store={store}
-                onVoteCreated={handleDrinkVoteCreated}
-              />
-              <TeamPanel user={user} store={store} />
-              <BeerPicker
-                selectedBeerId={selectedBeerId}
-                onSelect={setSelectedBeerId}
-              />
-              <Legend
-                voteCount={votes.length}
-                showSwords={overlaySettings.showSwords}
-              />
-              <QuestsPanel
-                questState={questState}
-                catalog={catalog}
-              />
-              <ExploreFeed
-                items={feedItems}
-                onNavigate={handleFeedNavigate}
-              />
-              <SimulationPanel
-                onAddVotes={handleAddVotes}
-                onClearVotes={handleClearVotes}
-              />
-            </div>
+            ) : (
+              <div className="sidebar-scroll">
+                <HomeStatus
+                  user={user}
+                  store={store}
+                  onUserUpdate={handleUserUpdate}
+                />
+                <DuelPanel user={user} store={store} />
+                <OnTheRoadButton
+                  user={user}
+                  store={store}
+                  onVoteCreated={handleOTRCreated}
+                />
+                <DrinkVoteButton
+                  user={user}
+                  store={store}
+                  onVoteCreated={handleDrinkVoteCreated}
+                />
+                <TeamPanel user={user} store={store} />
+                <FriendsPanel
+                  user={user}
+                  store={store}
+                  onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
+                  friendPresence={friendPresence}
+                  onFriendIdsChange={setFriendIds}
+                />
+                <BeerPicker
+                  selectedBeerId={selectedBeerId}
+                  onSelect={setSelectedBeerId}
+                />
+                <Legend
+                  voteCount={votes.length}
+                  showSwords={overlaySettings.showSwords}
+                />
+                <QuestsPanel
+                  questState={questState}
+                  catalog={catalog}
+                />
+                <ExploreFeed
+                  items={feedItems}
+                  onNavigate={handleFeedNavigate}
+                />
+                <SimulationPanel
+                  onAddVotes={handleAddVotes}
+                  onClearVotes={handleClearVotes}
+                />
+              </div>
+            )}
           </aside>
         )}
       </div>

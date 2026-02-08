@@ -88,4 +88,11 @@ export const GAME = {
 
   // ── Photo / Duel TTL ──────────────────────────────────
   PHOTO_TTL_DAYS: 30,
+
+  // ── Friends & Chat ──────────────────────────────────────
+  MAX_FRIENDS: 50,
+  MAX_CHAT_MESSAGE_LENGTH: 500,
+  CHAT_PAGE_SIZE: 50,
+  PRESENCE_HEARTBEAT_MS: 60_000,          // 1 min
+  PRESENCE_ONLINE_THRESHOLD_MS: 300_000,  // 5 min
 } as const;
