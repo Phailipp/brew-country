@@ -9,12 +9,12 @@
  * 4. Copy your web app config here
  */
 export const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT.firebaseapp.com',
-  projectId: 'YOUR_PROJECT',
-  storageBucket: 'YOUR_PROJECT.appspot.com',
-  messagingSenderId: '000000000000',
-  appId: '1:000000000000:web:0000000000000000000000',
+  apiKey: 'AIzaSyCfUwX7qFRv1r7017beAaEj6yeooieG9xw',
+  authDomain: 'brew-country.firebaseapp.com',
+  projectId: 'brew-country',
+  storageBucket: 'brew-country.firebasestorage.app',
+  messagingSenderId: '60569944098',
+  appId: '1:60569944098:web:727b01bea7522485b18a7b',
 };
 
 /**
