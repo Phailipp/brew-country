@@ -276,8 +276,11 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     }
   }, []);
 
+  // Map click is disabled in production — home location is fixed via GPS onboarding.
+  // Only in DEV mode can you click to place simulation votes.
   const handleMapClick = useCallback(
     (lat: number, lon: number) => {
+      if (!import.meta.env.DEV) return; // Production: no click-to-vote
       if (!selectedBeerId) return;
 
       const vote: Vote = {
@@ -296,6 +299,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   );
 
   const handleAddVotes = useCallback((newVotes: Vote[]) => {
+    if (!import.meta.env.DEV) return;
     newVotes.forEach((v) => legacyStore.save(v));
     setVotes(legacyStore.getAll());
 
@@ -305,6 +309,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   }, []);
 
   const handleClearVotes = useCallback(() => {
+    if (!import.meta.env.DEV) return;
     legacyStore.clear();
     setVotes([]);
     setDominanceData(null);
@@ -430,10 +435,12 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                   items={feedItems}
                   onNavigate={handleFeedNavigate}
                 />
-                <SimulationPanel
-                  onAddVotes={handleAddVotes}
-                  onClearVotes={handleClearVotes}
-                />
+                {import.meta.env.DEV && (
+                  <SimulationPanel
+                    onAddVotes={handleAddVotes}
+                    onClearVotes={handleClearVotes}
+                  />
+                )}
               </div>
             )}
           </aside>
