@@ -141,22 +141,26 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       maxWidth: 260,
     });
 
-    // Home button control
+    // Home button control — wrapped in leaflet-bar for consistent styling
     const HomeControl = L.Control.extend({
       options: { position: 'topleft' as L.ControlPosition },
       onAdd() {
-        const btn = L.DomUtil.create('button', 'leaflet-home-btn');
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+        const btn = L.DomUtil.create('a', 'leaflet-home-btn', container) as HTMLAnchorElement;
+        btn.href = '#';
         btn.innerHTML = '🏠';
         btn.title = 'Zum Home Vote';
+        btn.setAttribute('role', 'button');
         btn.setAttribute('aria-label', 'Zum Home Vote');
-        L.DomEvent.disableClickPropagation(btn);
-        btn.addEventListener('click', () => {
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.on(btn, 'click', (e) => {
+          L.DomEvent.preventDefault(e);
           const pos = userVotePositionRef.current;
           if (pos) {
             map.flyTo([pos.lat, pos.lon], 12, { duration: 0.8 });
           }
         });
-        return btn;
+        return container;
       },
     });
     new HomeControl().addTo(map);

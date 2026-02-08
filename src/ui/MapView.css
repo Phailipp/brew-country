@@ -168,23 +168,19 @@
   background: #2563eb;
 }
 
-/* Home button on map */
+/* Home button on map (inside leaflet-bar) */
 .leaflet-home-btn {
-  width: 34px;
-  height: 34px;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
-  background: #fff;
-  border: 2px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 20px;
+  line-height: 34px !important;
+  text-decoration: none !important;
   cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
-  transition: background 0.15s;
 }
 
 .leaflet-home-btn:hover {
-  background: #f0f0f0;
+  background: #f4f4f4;
 }
