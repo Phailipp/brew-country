@@ -8,10 +8,10 @@ import { IndexedDBStore } from './storage/IndexedDBStore.ts'
 
 const store = new IndexedDBStore();
 
-const isAdmin = import.meta.env.DEV && window.location.hash === '#admin';
+const isAdmin = window.location.hash === '#admin';
 
 if (isAdmin) {
-  // Lazy-load admin panel (DEV only)
+  // Lazy-load admin panel
   import('./admin/AdminPanel.tsx').then(({ AdminPanel }) => {
     createRoot(document.getElementById('root')!).render(
       <StrictMode>
