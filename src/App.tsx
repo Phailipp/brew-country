@@ -476,6 +476,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                   friendPresence={friendPresence}
                   onFriendIdsChange={setFriendIds}
                   unreadCounts={unreadCounts}
+                  onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
                 />
                 <BeerPicker
                   selectedBeerId={selectedBeerId}

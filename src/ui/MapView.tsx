@@ -415,17 +415,20 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     }
 
     if (userVotePosition) {
+      const isDev = import.meta.env.DEV;
       const marker = L.marker([userVotePosition.lat, userVotePosition.lon], {
-        draggable: true,
+        draggable: isDev,
         zIndexOffset: 1000,
       });
 
-      marker.on('dragend', () => {
-        const pos = marker.getLatLng();
-        onMapClick(pos.lat, pos.lng);
-      });
+      if (isDev) {
+        marker.on('dragend', () => {
+          const pos = marker.getLatLng();
+          onMapClick(pos.lat, pos.lng);
+        });
+      }
 
-      marker.bindTooltip('Dein Vote (ziehbar)', { direction: 'top', offset: [0, -20] });
+      marker.bindTooltip(isDev ? 'Dein Vote (ziehbar)' : 'Dein Standort', { direction: 'top', offset: [0, -20] });
       marker.addTo(map);
       userMarkerRef.current = marker;
     }
