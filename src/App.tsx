@@ -12,6 +12,7 @@ import { decodeShareLink, clearShareParams } from './domain/shareLink';
 import { useAuth } from './auth/AuthProvider';
 import { PhoneLogin } from './auth/PhoneLogin';
 import { Onboarding } from './auth/Onboarding';
+import { ResetLocation } from './auth/ResetLocation';
 import { MapView, type MapViewHandle } from './ui/MapView';
 import { BeerPicker } from './ui/BeerPicker';
 import { SimulationPanel } from './ui/SimulationPanel';
@@ -55,7 +56,7 @@ interface AppProps {
 }
 
 export default function App({ store }: AppProps) {
-  const { auth, updateLastActive } = useAuth();
+  const { auth, updateUser, updateLastActive } = useAuth();
 
   // Show auth screens if not authenticated
   if (auth.status === 'loading') {
@@ -75,6 +76,18 @@ export default function App({ store }: AppProps) {
 
   if (auth.status === 'onboarding') {
     return <Onboarding />;
+  }
+
+  // User authenticated but home location missing (e.g. admin wiped data)
+  if (auth.user.homeLat === 0 && auth.user.homeLon === 0) {
+    return (
+      <ResetLocation
+        user={auth.user}
+        onLocationSet={async (updatedUser) => {
+          await updateUser(updatedUser);
+        }}
+      />
+    );
   }
 
   return <GameApp user={auth.user} store={store} onActivity={updateLastActive} />;

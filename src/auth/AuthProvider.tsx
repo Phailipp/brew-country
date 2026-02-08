@@ -7,6 +7,7 @@ interface AuthContextValue {
   auth: AuthState;
   login: (userId: string, phone: string) => void;
   completeOnboarding: (user: User) => Promise<void>;
+  updateUser: (user: User) => Promise<void>;
   logout: () => void;
   updateLastActive: () => Promise<void>;
 }
@@ -68,6 +69,11 @@ export function AuthProvider({ children, store }: Props) {
     setAuth({ status: 'authenticated', userId: user.id, user });
   }, [store]);
 
+  const updateUser = useCallback(async (user: User) => {
+    await store.saveUser(user);
+    setAuth({ status: 'authenticated', userId: user.id, user });
+  }, [store]);
+
   const logout = useCallback(() => {
     localStorage.removeItem(LOCAL_AUTH_KEY);
     setAuth({ status: 'unauthenticated' });
@@ -85,7 +91,7 @@ export function AuthProvider({ children, store }: Props) {
   }, [auth, store]);
 
   return (
-    <AuthContext.Provider value={{ auth, login, completeOnboarding, logout, updateLastActive }}>
+    <AuthContext.Provider value={{ auth, login, completeOnboarding, updateUser, logout, updateLastActive }}>
       {children}
     </AuthContext.Provider>
   );
