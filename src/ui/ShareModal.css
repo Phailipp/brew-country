@@ -1,0 +1,121 @@
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: share-fade-in 0.2s ease-out;
+}
+
+@keyframes share-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.share-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: share-slide-up 0.25s ease-out;
+}
+
+@keyframes share-slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.share-modal h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.share-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+.share-preview {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.share-link-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.share-link-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #334155;
+  background: #f8fafc;
+  outline: none;
+  font-family: monospace;
+}
+
+.share-link-input:focus {
+  border-color: #3b82f6;
+}
+
+.share-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.share-btn-copy {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.share-btn-copy:hover {
+  background: #2563eb;
+}
+
+.share-btn-copy.copied {
+  background: #16a34a;
+}
+
+.share-btn-download {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.share-btn-download:hover {
+  background: #e2e8f0;
+}
+
+.share-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.share-btn-close {
+  background: none;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.share-btn-close:hover {
+  background: #f1f5f9;
+  color: #334155;
+}

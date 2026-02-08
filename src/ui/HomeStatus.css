@@ -1,0 +1,98 @@
+.home-status {
+  padding: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.home-status h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.home-status-beer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-status-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.home-status-beer-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.home-status-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.stat-label {
+  color: #94a3b8;
+}
+
+.stat-value {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.stat-value.team-boost {
+  color: #22c55e;
+}
+
+.stat-value.positive {
+  color: #22c55e;
+}
+
+.stat-value.negative {
+  color: #f87171;
+}
+
+.syg-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  background: #0f172a;
+  border-radius: 8px;
+  margin-top: 0.25rem;
+}
+
+.syg-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #f59e0b;
+}
+
+.syg-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.syg-desc {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 400;
+  margin-top: 2px;
+}

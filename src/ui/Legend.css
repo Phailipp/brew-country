@@ -1,0 +1,68 @@
+.legend {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.legend h3 {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.legend-logo {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  color: #475569;
+}
+
+.legend-item.close-call-item {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.legend-label.no-data {
+  color: #94a3b8;
+  font-style: italic;
+  margin-left: 22px;
+}
+
+.legend-label.close-call {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.legend-stats {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}

@@ -1,0 +1,123 @@
+.duel-panel {
+  padding: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.duel-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.duel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.duel-item {
+  background: #0f172a;
+  border-radius: 8px;
+  padding: 0.6rem;
+  border-left: 3px solid #475569;
+}
+
+.duel-item.duel-pending {
+  border-left-color: #f59e0b;
+}
+
+.duel-item.duel-active {
+  border-left-color: #ef4444;
+}
+
+.duel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.duel-vs {
+  font-size: 0.8rem;
+  color: #e2e8f0;
+}
+
+.duel-beer {
+  font-weight: 600;
+}
+
+.duel-timer {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.duel-timer.expired {
+  color: #ef4444;
+}
+
+.duel-info {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.duel-status-badge {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  background: #334155;
+  color: #94a3b8;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.duel-rounds {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.duel-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.duel-accept {
+  flex: 1;
+  padding: 0.4rem;
+  border: none;
+  border-radius: 6px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.duel-accept:hover {
+  background: #16a34a;
+}
+
+.duel-decline {
+  flex: 1;
+  padding: 0.4rem;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.duel-decline:hover {
+  background: #1e293b;
+}
+
+.duel-waiting {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin: 0.25rem 0 0;
+  font-style: italic;
+}

@@ -1,0 +1,71 @@
+.drink-section {
+  padding: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.drink-section h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.drink-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0 0 0.5rem;
+  line-height: 1.4;
+}
+
+.drink-select {
+  width: 100%;
+  padding: 0.4rem;
+  margin-bottom: 0.4rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+}
+
+.drink-btn {
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  background: #b45309;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.drink-btn:hover {
+  background: #d97706;
+}
+
+.drink-btn:disabled {
+  background: #475569;
+  cursor: not-allowed;
+}
+
+.drink-count {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-align: center;
+  margin: 0.25rem 0 0;
+}
+
+.drink-success {
+  font-size: 0.7rem;
+  color: #4ade80;
+  margin: 0.25rem 0 0;
+}
+
+.drink-error {
+  font-size: 0.7rem;
+  color: #f87171;
+  margin: 0.25rem 0 0;
+}

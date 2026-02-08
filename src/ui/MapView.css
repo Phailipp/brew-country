@@ -1,0 +1,169 @@
+.map-container {
+  flex: 1;
+  min-height: 400px;
+}
+
+/* Desaturate map tiles for a modern, minimal feel */
+.map-container .leaflet-tile-pane {
+  filter: saturate(0.3) brightness(1.03);
+}
+
+.dominance-canvas {
+  pointer-events: none;
+}
+
+.vote-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Hover tooltip (plain DOM div, not a Leaflet popup — avoids popup conflicts) */
+.hover-tooltip-div {
+  position: absolute;
+  z-index: 800;
+  pointer-events: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.06);
+  background: rgba(255,255,255,0.97);
+  max-width: 250px;
+}
+
+.cell-tooltip {
+  font-size: 12px;
+  min-width: 170px;
+  padding: 8px 10px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.tooltip-header {
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 5px;
+  font-weight: 500;
+}
+
+.tooltip-close-call {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 0;
+  font-size: 11px;
+  color: #d97706;
+  font-weight: 600;
+}
+
+.tooltip-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  padding: 1px 0;
+}
+
+.tooltip-row.winner {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.tooltip-name {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.tooltip-count {
+  min-width: 18px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip-pct {
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.tooltip-row.winner .tooltip-pct {
+  color: #475569;
+}
+
+/* Click popup (fixed in place, has share button) */
+.click-popup .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  padding: 0;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+}
+
+.click-popup .leaflet-popup-content {
+  margin: 0;
+}
+
+.click-popup-content {
+  padding: 10px 14px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.click-popup-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.click-popup-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.click-popup-stats {
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.click-popup-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.click-popup-share-btn:hover {
+  background: #2563eb;
+}

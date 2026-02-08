@@ -1,0 +1,94 @@
+.simulation-panel {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.simulation-panel h3 {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.sim-controls label {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+}
+
+.sim-controls input[type="number"] {
+  width: 60px;
+  padding: 3px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #f8fafc;
+}
+
+.sim-controls input[type="number"]:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+}
+
+.sim-checkbox {
+  cursor: pointer;
+}
+
+.sim-checkbox input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.sim-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sim-btn {
+  padding: 5px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  background: #f8fafc;
+  color: #475569;
+  transition: all 0.15s;
+}
+
+.sim-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.sim-btn.primary {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.sim-btn.primary:hover {
+  background: #2563eb;
+}
+
+.sim-btn.danger {
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.sim-btn.danger:hover {
+  background: #fef2f2;
+}

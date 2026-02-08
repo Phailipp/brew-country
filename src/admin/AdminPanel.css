@@ -1,0 +1,153 @@
+.admin-panel {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: system-ui, sans-serif;
+  color: #e2e8f0;
+  background: #0f172a;
+  min-height: 100vh;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.admin-header h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.admin-back {
+  color: #60a5fa;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.admin-tab {
+  padding: 0.5rem 1rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.admin-tab.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+.admin-content {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.admin-section {
+  margin-bottom: 1rem;
+}
+
+.admin-section h3 {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  width: 120px;
+}
+
+.admin-btn {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.admin-btn:hover {
+  background: #2563eb;
+}
+
+.admin-btn.danger {
+  background: #dc2626;
+}
+
+.admin-btn.danger:hover {
+  background: #b91c1c;
+}
+
+.admin-btn.warning {
+  background: #d97706;
+}
+
+.admin-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #0f172a;
+  font-size: 0.85rem;
+}
+
+.admin-stat-label {
+  color: #94a3b8;
+}
+
+.admin-stat-value {
+  font-weight: 600;
+}
+
+.admin-warning {
+  background: #78350f;
+  color: #fbbf24;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-success {
+  color: #4ade80;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.admin-select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}

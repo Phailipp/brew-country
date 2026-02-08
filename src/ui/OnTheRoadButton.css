@@ -1,0 +1,54 @@
+.otr-section {
+  padding: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.otr-section h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.otr-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0 0 0.5rem;
+  line-height: 1.4;
+}
+
+.otr-btn {
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  background: #1e40af;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.otr-btn:hover {
+  background: #1d4ed8;
+}
+
+.otr-btn:disabled {
+  background: #475569;
+  cursor: not-allowed;
+}
+
+.otr-count {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  text-align: center;
+  margin: 0.25rem 0 0;
+}
+
+.otr-error {
+  font-size: 0.7rem;
+  color: #f87171;
+  margin: 0.25rem 0 0;
+}
