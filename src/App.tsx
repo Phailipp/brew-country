@@ -86,6 +86,7 @@ export default function App({ store }: AppProps) {
 
   if (auth.status === 'unauthenticated') {
     if (hash === '#google-login-start') {
+    if (window.location.hash === '#google-login-start') {
       return <GoogleRedirectStart />;
     }
     return <GoogleLogin />;
