@@ -15,6 +15,12 @@ interface GpsSample {
   accuracy: number;
 }
 
+interface ImpreciseLocationCandidate {
+  lat: number;
+  lon: number;
+  accuracy: number;
+}
+
 export function Onboarding() {
   const { auth, completeOnboarding } = useAuth();
   const userId = auth.status === 'onboarding' ? auth.userId : '';
@@ -25,6 +31,7 @@ export function Onboarding() {
   const [selectedBeerId, setSelectedBeerId] = useState<string>('augustiner');
   const [error, setError] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [impreciseCandidate, setImpreciseCandidate] = useState<ImpreciseLocationCandidate | null>(null);
 
   const handleAgeNext = () => {
     if (!ageVerified) {
@@ -43,6 +50,7 @@ export function Onboarding() {
 
     setGpsLoading(true);
     setError('');
+    setImpreciseCandidate(null);
 
     try {
       const samples: GpsSample[] = [];
@@ -73,6 +81,10 @@ export function Onboarding() {
       // Validate accuracy
       for (const s of samples) {
         if (s.accuracy > GAME.GPS_MAX_ACCURACY_METERS) {
+          const avgLat = (s1.lat + s2.lat) / 2;
+          const avgLon = (s1.lon + s2.lon) / 2;
+          const worstAccuracy = Math.max(s1.accuracy, s2.accuracy);
+          setImpreciseCandidate({ lat: avgLat, lon: avgLon, accuracy: worstAccuracy });
           setError(
             `GPS-Genauigkeit zu gering (${Math.round(s.accuracy)}m). ` +
             `Bitte gehe nach draußen und versuche es erneut.`
@@ -100,6 +112,7 @@ export function Onboarding() {
       const avgLon = (s1.lon + s2.lon) / 2;
 
       setLocation({ lat: avgLat, lon: avgLon });
+      setImpreciseCandidate(null);
       setGpsLoading(false);
       setStep('beer');
     } catch (err) {
@@ -110,6 +123,13 @@ export function Onboarding() {
       );
     }
   }, []);
+
+  const handleUseImpreciseLocation = useCallback(() => {
+    if (!impreciseCandidate) return;
+    setLocation({ lat: impreciseCandidate.lat, lon: impreciseCandidate.lon });
+    setError('');
+    setStep('beer');
+  }, [impreciseCandidate]);
 
   const handleConfirm = async () => {
     if (!location || !selectedBeerId) return;
@@ -196,6 +216,11 @@ export function Onboarding() {
               </button>
             )}
             {error && <p className="auth-error">{error}</p>}
+            {impreciseCandidate && !location && (
+              <button className="auth-btn-secondary" onClick={handleUseImpreciseLocation}>
+                Ungenaues GPS-Signal trotzdem verwenden
+              </button>
+            )}
             {location && (
               <button className="auth-btn" onClick={() => setStep('beer')}>
                 Weiter

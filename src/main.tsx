@@ -4,9 +4,9 @@ import './index.css'
 import App from './App.tsx'
 import { ToastProvider } from './ui/Toast.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
-import { IndexedDBStore } from './storage/IndexedDBStore.ts'
+import { FirestoreStore } from './storage/FirestoreStore.ts'
 
-const store = new IndexedDBStore();
+const store = new FirestoreStore();
 
 const isAdmin = window.location.hash === '#admin';
 
