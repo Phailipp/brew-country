@@ -10,7 +10,6 @@ import { buildWeightedVotes } from './domain/weights';
 import { decodeShareLink, clearShareParams } from './domain/shareLink';
 import { useAuth } from './auth/AuthProvider';
 import { GoogleLogin } from './auth/GoogleLogin';
-import { GoogleRedirectStart } from './auth/GoogleRedirectStart';
 import { Onboarding } from './auth/Onboarding';
 import { ResetLocation } from './auth/ResetLocation';
 import { MapView, type MapViewHandle } from './ui/MapView';
@@ -62,21 +61,8 @@ interface AppProps {
   store: StorageInterface;
 }
 
-function getCurrentHash(): string {
-  if (typeof window === 'undefined') return '';
-  return window.location.hash;
-}
-
 export default function App({ store }: AppProps) {
   const { auth, updateUser, updateLastActive } = useAuth();
-  const [hash, setHash] = useState<string>(getCurrentHash);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onHashChange = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
 
   // Show auth screens if not authenticated
   if (auth.status === 'loading') {
@@ -91,9 +77,6 @@ export default function App({ store }: AppProps) {
   }
 
   if (auth.status === 'unauthenticated') {
-    if (hash === '#google-login-start') {
-      return <GoogleRedirectStart />;
-    }
     return <GoogleLogin />;
   }
 
