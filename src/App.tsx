@@ -64,6 +64,13 @@ interface AppProps {
 
 export default function App({ store }: AppProps) {
   const { auth, updateUser, updateLastActive } = useAuth();
+  const [hash, setHash] = useState<string>(() => window.location.hash);
+
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   // Show auth screens if not authenticated
   if (auth.status === 'loading') {
@@ -78,6 +85,7 @@ export default function App({ store }: AppProps) {
   }
 
   if (auth.status === 'unauthenticated') {
+    if (hash === '#google-login-start') {
     if (window.location.hash === '#google-login-start') {
       return <GoogleRedirectStart />;
     }
