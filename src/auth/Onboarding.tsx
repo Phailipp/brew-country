@@ -4,6 +4,7 @@ import { useAuth } from './AuthProvider';
 import { BEERS } from '../domain/beers';
 import { GAME } from '../config/constants';
 import { isFirebaseConfigured } from '../config/firebase';
+import { getFirebaseAuth } from '../config/firebaseAuth';
 import { saveUserProfile } from '../services/firestoreService';
 import './Auth.css';
 
@@ -134,10 +135,14 @@ export function Onboarding() {
   const handleConfirm = async () => {
     if (!location || !selectedBeerId) return;
 
+    const firebaseUser = isFirebaseConfigured() ? getFirebaseAuth().currentUser : null;
+
     const now = Date.now();
     const user: User = {
       id: userId,
       phone: null,
+      email: firebaseUser?.email ?? null,
+      nickname: firebaseUser?.displayName ?? null,
       createdAt: now,
       lastActiveAt: now,
       homeLat: location.lat,
