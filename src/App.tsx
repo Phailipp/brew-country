@@ -9,7 +9,7 @@ import { appEvents } from './domain/events';
 import { buildWeightedVotes } from './domain/weights';
 import { decodeShareLink, clearShareParams } from './domain/shareLink';
 import { useAuth } from './auth/AuthProvider';
-import { PhoneLogin } from './auth/PhoneLogin';
+import { GoogleLogin } from './auth/GoogleLogin';
 import { Onboarding } from './auth/Onboarding';
 import { ResetLocation } from './auth/ResetLocation';
 import { MapView, type MapViewHandle } from './ui/MapView';
@@ -77,7 +77,7 @@ export default function App({ store }: AppProps) {
   }
 
   if (auth.status === 'unauthenticated') {
-    return <PhoneLogin />;
+    return <GoogleLogin />;
   }
 
   if (auth.status === 'onboarding') {
