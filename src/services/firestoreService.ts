@@ -7,6 +7,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   deleteDoc,
   addDoc,
@@ -22,6 +23,7 @@ import {
 import { getFirestoreDb } from '../config/firestore';
 import { GAME } from '../config/constants';
 import type { Friendship, ChatMessage, UserPresence } from '../domain/types';
+import type { QuestState, Vote } from '../domain/types';
 
 // ── User Profiles ───────────────────────────────────────
 
@@ -344,4 +346,46 @@ export function subscribePresenceForUsers(
   return () => {
     unsubscribers.forEach((unsub) => unsub());
   };
+}
+
+// ── Legacy Votes (Dev Simulation) ───────────────────────
+
+export function subscribeLegacyVotes(callback: (votes: Vote[]) => void): Unsubscribe {
+  const db = getFirestoreDb();
+  const q = collection(db, 'legacyVotes');
+
+  return onSnapshot(q, (snapshot) => {
+    const votes = snapshot.docs.map((d) => d.data() as Vote);
+    callback(votes);
+  });
+}
+
+export async function saveLegacyVote(vote: Vote): Promise<void> {
+  const db = getFirestoreDb();
+  await setDoc(doc(db, 'legacyVotes', vote.id), vote);
+}
+
+export async function saveLegacyVotes(votes: Vote[]): Promise<void> {
+  await Promise.all(votes.map((v) => saveLegacyVote(v)));
+}
+
+export async function clearLegacyVotes(): Promise<void> {
+  const db = getFirestoreDb();
+  const snapshot = await getDocs(collection(db, 'legacyVotes'));
+  await Promise.all(snapshot.docs.map((d) => deleteDoc(d.ref)));
+}
+
+// ── Quest State ──────────────────────────────────────────
+
+export async function getQuestStateForUser(userId: string): Promise<QuestState> {
+  const db = getFirestoreDb();
+  const snap = await getDoc(doc(db, 'questStates', userId));
+  if (!snap.exists()) return { progress: {} };
+  const data = snap.data();
+  return (data.state as QuestState) ?? { progress: {} };
+}
+
+export async function saveQuestStateForUser(userId: string, state: QuestState): Promise<void> {
+  const db = getFirestoreDb();
+  await setDoc(doc(db, 'questStates', userId), { state, updatedAt: Date.now() }, { merge: true });
 }

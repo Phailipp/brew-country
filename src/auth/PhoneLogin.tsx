@@ -21,7 +21,7 @@ export function PhoneLogin() {
 
     // Generate a deterministic userId from the phone number
     const userId = 'user_' + phone.replace(/\D/g, '').slice(-8);
-    login(userId, phone);
+    login(userId);
   };
 
   return (

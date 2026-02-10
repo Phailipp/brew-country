@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import type { AuthState, User } from '../domain/types';
 import type { StorageInterface } from '../storage/StorageInterface';
+import { isFirebaseConfigured } from '../config/firebase';
+import { getFirebaseAuth } from '../config/firebaseAuth';
 
 interface AuthContextValue {
   auth: AuthState;
-  login: (userId: string, phone: string) => void;
+  login: (userId: string) => void;
   completeOnboarding: (user: User) => Promise<void>;
   updateUser: (user: User) => Promise<void>;
   logout: () => void;
@@ -22,36 +25,53 @@ interface Props {
 }
 
 /**
- * Auth provider using local anonymous auth.
- * User ID is derived from the phone number and stored in localStorage.
- * Firebase is used only for Firestore (friends, chat, presence).
+ * Auth provider using Google login (Firebase Auth).
+ * Keeps localStorage user id for backward-compatible session restoration.
  */
 export function AuthProvider({ children, store }: Props) {
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
 
   // Check for existing session on mount
   useEffect(() => {
-    const init = async () => {
-      // Local auth: check localStorage
-      const savedId = localStorage.getItem(LOCAL_AUTH_KEY);
-      if (savedId) {
-        const user = await store.getUser(savedId);
-        if (user) {
-          setAuth({ status: 'authenticated', userId: user.id, user });
+    if (isFirebaseConfigured()) {
+      const auth = getFirebaseAuth();
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (!firebaseUser) {
+          localStorage.removeItem(LOCAL_AUTH_KEY);
+          setAuth({ status: 'unauthenticated' });
           return;
         }
-        // User ID saved but no user record — needs onboarding
-        setAuth({ status: 'onboarding', userId: savedId });
-        return;
-      }
 
+        const uid = firebaseUser.uid;
+        localStorage.setItem(LOCAL_AUTH_KEY, uid);
+        store.getUser(uid).then((user) => {
+          if (user) {
+            setAuth({ status: 'authenticated', userId: user.id, user });
+          } else {
+            setAuth({ status: 'onboarding', userId: uid });
+          }
+        });
+      });
+
+      return () => unsubscribe();
+    }
+
+    const savedId = localStorage.getItem(LOCAL_AUTH_KEY);
+    if (!savedId) {
       setAuth({ status: 'unauthenticated' });
-    };
+      return;
+    }
 
-    init();
+    store.getUser(savedId).then((user) => {
+      if (user) {
+        setAuth({ status: 'authenticated', userId: user.id, user });
+      } else {
+        setAuth({ status: 'onboarding', userId: savedId });
+      }
+    });
   }, [store]);
 
-  const login = useCallback((userId: string, _phone: string) => {
+  const login = useCallback((userId: string) => {
     localStorage.setItem(LOCAL_AUTH_KEY, userId);
     // Check if user has completed onboarding
     store.getUser(userId).then(user => {
@@ -76,6 +96,9 @@ export function AuthProvider({ children, store }: Props) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(LOCAL_AUTH_KEY);
+    if (isFirebaseConfigured()) {
+      signOut(getFirebaseAuth()).catch(() => {});
+    }
     setAuth({ status: 'unauthenticated' });
   }, []);
 
