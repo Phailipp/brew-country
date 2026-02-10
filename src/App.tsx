@@ -10,6 +10,7 @@ import { buildWeightedVotes } from './domain/weights';
 import { decodeShareLink, clearShareParams } from './domain/shareLink';
 import { useAuth } from './auth/AuthProvider';
 import { GoogleLogin } from './auth/GoogleLogin';
+import { GoogleRedirectStart } from './auth/GoogleRedirectStart';
 import { Onboarding } from './auth/Onboarding';
 import { ResetLocation } from './auth/ResetLocation';
 import { MapView, type MapViewHandle } from './ui/MapView';
@@ -77,6 +78,9 @@ export default function App({ store }: AppProps) {
   }
 
   if (auth.status === 'unauthenticated') {
+    if (window.location.hash === '#google-login-start') {
+      return <GoogleRedirectStart />;
+    }
     return <GoogleLogin />;
   }
 
