@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Vote, DominanceResult, GridSpec, OverlaySettings, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship } from './domain/types';
 import { getDefaultBoundingBox, getViewportGridSpec } from './domain/geo';
 import { GAME } from './config/constants';
-import { LocalStorageVoteStore } from './storage/VoteStore';
 import type { StorageInterface } from './storage/StorageInterface';
 import { BEER_MAP } from './domain/beers';
 import { extractRegions } from './domain/regions';
@@ -33,11 +32,18 @@ import { useFeed } from './hooks/useFeed';
 import { usePresence } from './hooks/usePresence';
 import { useChatNotifications } from './hooks/useChatNotifications';
 import { isFirebaseConfigured } from './config/firebase';
-import { saveUserProfile, subscribeAllUsers, subscribeFriends, type FirestoreUserProfile } from './services/firestoreService';
+import {
+  clearLegacyVotes,
+  saveLegacyVote,
+  saveLegacyVotes,
+  saveUserProfile,
+  subscribeAllUsers,
+  subscribeFriends,
+  subscribeLegacyVotes,
+  type FirestoreUserProfile,
+} from './services/firestoreService';
 import './App.css';
 
-// Legacy store for backward-compatible simulation
-const legacyStore = new LocalStorageVoteStore();
 const fallbackGridSpec: GridSpec = getDefaultBoundingBox();
 const RADIUS_KM = GAME.HOME_RADIUS_KM;
 
@@ -103,7 +109,7 @@ interface GameAppProps {
 
 function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const [user, setUser] = useState<User>(initialUser);
-  const [votes, setVotes] = useState<Vote[]>(() => legacyStore.getAll());
+  const [votes, setVotes] = useState<Vote[]>([]);
   const [weightedVotes, setWeightedVotes] = useState<WeightedVote[]>([]);
   const [selectedBeerId, setSelectedBeerId] = useState<string | null>(user.beerId);
   const [dominanceData, setDominanceData] = useState<DominanceResult | null>(null);
@@ -169,6 +175,15 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     return () => unsub();
   }, []);
 
+  // Subscribe to legacy simulation votes in Firestore
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    const unsub = subscribeLegacyVotes((serverVotes) => {
+      setVotes(serverVotes);
+    });
+    return () => unsub();
+  }, []);
+
   const userId = user.id;
   const userVotePosition = { lat: user.homeLat, lon: user.homeLon };
 
@@ -204,7 +219,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   }, [dominanceData]);
 
   // Quests hook
-  const { questState, catalog } = useQuests(overlaySettings);
+  const { questState, catalog } = useQuests(user.id, overlaySettings);
 
   // Feed hook
   const feedItems = useFeed(dominanceData, regions, votes, viewportBounds);
@@ -360,8 +375,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         timestamp: Date.now(),
       };
 
-      legacyStore.save(vote);
-      setVotes(legacyStore.getAll());
+      saveLegacyVote(vote).catch(() => {});
       appEvents.emit({ type: 'vote:saved', vote });
     },
     [selectedBeerId, userId]
@@ -369,8 +383,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   const handleAddVotes = useCallback((newVotes: Vote[]) => {
     if (!import.meta.env.DEV) return;
-    newVotes.forEach((v) => legacyStore.save(v));
-    setVotes(legacyStore.getAll());
+    saveLegacyVotes(newVotes).catch(() => {});
 
     for (const v of newVotes) {
       appEvents.emit({ type: 'vote:saved', vote: v });
@@ -379,7 +392,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   const handleClearVotes = useCallback(() => {
     if (!import.meta.env.DEV) return;
-    legacyStore.clear();
+    clearLegacyVotes().catch(() => {});
     setVotes([]);
     setDominanceData(null);
   }, []);
