@@ -104,6 +104,8 @@ export interface ViewportBounds {
 export interface User {
   id: string;
   phone: string | null;
+  email?: string | null;
+  nickname?: string | null;
   createdAt: number;
   lastActiveAt: number;
   homeLat: number;
@@ -307,5 +309,6 @@ export interface SharePayload {
 export type AuthState =
   | { status: 'loading' }
   | { status: 'unauthenticated' }
+  | { status: 'verify-email'; userId: string; email: string; nickname: string }
   | { status: 'onboarding'; userId: string }
   | { status: 'authenticated'; userId: string; user: User };

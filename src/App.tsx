@@ -76,7 +76,7 @@ export default function App({ store }: AppProps) {
     );
   }
 
-  if (auth.status === 'unauthenticated') {
+  if (auth.status === 'unauthenticated' || auth.status === 'verify-email') {
     return <GoogleLogin />;
   }
 
