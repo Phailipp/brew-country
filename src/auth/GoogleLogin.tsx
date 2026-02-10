@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { useAuth } from './AuthProvider';
 import { isFirebaseConfigured } from '../config/firebase';
 import { getFirebaseAuth } from '../config/firebaseAuth';
 import './Auth.css';
@@ -8,6 +9,7 @@ import './Auth.css';
  * Google OAuth login screen.
  */
 export function GoogleLogin() {
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,10 +25,10 @@ export function GoogleLogin() {
     try {
       const auth = getFirebaseAuth();
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-      // Redirect leaves the page; login is completed via onAuthStateChanged in AuthProvider.
+      const result = await signInWithPopup(auth, provider);
+      login(result.user.uid);
     } catch {
-      setError('Google-Login fehlgeschlagen. Bitte versuche es erneut.');
+      setError('Google-Login fehlgeschlagen. Bitte Popup erlauben und erneut versuchen.');
     } finally {
       setLoading(false);
     }
@@ -39,8 +41,7 @@ export function GoogleLogin() {
         <p className="auth-subtitle">Bier-Dominanz-Karte</p>
 
         <p className="auth-instruction">
-          Melde dich mit deinem Google-Konto an. Der Login öffnet keinen Popup-Dialog,
-          sondern leitet dich kurz zu Google weiter.
+          Melde dich mit deinem Google-Konto an.
         </p>
 
         {error && <p className="auth-error">{error}</p>}
