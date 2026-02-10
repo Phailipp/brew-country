@@ -62,11 +62,17 @@ interface AppProps {
   store: StorageInterface;
 }
 
+function getCurrentHash(): string {
+  if (typeof window === 'undefined') return '';
+  return window.location.hash;
+}
+
 export default function App({ store }: AppProps) {
   const { auth, updateUser, updateLastActive } = useAuth();
-  const [hash, setHash] = useState<string>(() => window.location.hash);
+  const [hash, setHash] = useState<string>(getCurrentHash);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const onHashChange = () => setHash(window.location.hash);
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -86,7 +92,6 @@ export default function App({ store }: AppProps) {
 
   if (auth.status === 'unauthenticated') {
     if (hash === '#google-login-start') {
-    if (window.location.hash === '#google-login-start') {
       return <GoogleRedirectStart />;
     }
     return <GoogleLogin />;
