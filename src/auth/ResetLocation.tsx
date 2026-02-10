@@ -11,6 +11,12 @@ interface GpsSample {
   accuracy: number;
 }
 
+interface ImpreciseLocationCandidate {
+  lat: number;
+  lon: number;
+  accuracy: number;
+}
+
 interface Props {
   user: User;
   onLocationSet: (updatedUser: User) => void;
@@ -25,6 +31,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
   const [error, setError] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [impreciseCandidate, setImpreciseCandidate] = useState<ImpreciseLocationCandidate | null>(null);
 
   const handleGetLocation = useCallback(async () => {
     if (!navigator.geolocation) {
@@ -34,6 +41,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
 
     setGpsLoading(true);
     setError('');
+    setImpreciseCandidate(null);
 
     try {
       const samples: GpsSample[] = [];
@@ -64,6 +72,10 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       // Validate accuracy
       for (const s of samples) {
         if (s.accuracy > GAME.GPS_MAX_ACCURACY_METERS) {
+          const avgLat = (s1.lat + s2.lat) / 2;
+          const avgLon = (s1.lon + s2.lon) / 2;
+          const worstAccuracy = Math.max(s1.accuracy, s2.accuracy);
+          setImpreciseCandidate({ lat: avgLat, lon: avgLon, accuracy: worstAccuracy });
           setError(
             `GPS-Genauigkeit zu gering (${Math.round(s.accuracy)}m). ` +
             `Bitte gehe nach draussen und versuche es erneut.`
@@ -91,6 +103,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       const avgLon = (s1.lon + s2.lon) / 2;
 
       setLocation({ lat: avgLat, lon: avgLon });
+      setImpreciseCandidate(null);
       setGpsLoading(false);
     } catch (err) {
       setGpsLoading(false);
@@ -100,6 +113,12 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       );
     }
   }, []);
+
+  const handleUseImpreciseLocation = useCallback(() => {
+    if (!impreciseCandidate) return;
+    setLocation({ lat: impreciseCandidate.lat, lon: impreciseCandidate.lon });
+    setError('');
+  }, [impreciseCandidate]);
 
   const handleConfirm = useCallback(async () => {
     if (!location) return;
@@ -174,6 +193,15 @@ export function ResetLocation({ user, onLocationSet }: Props) {
           )}
 
           {error && <p className="auth-error">{error}</p>}
+          {impreciseCandidate && !location && (
+            <button
+              className="auth-btn-secondary"
+              onClick={handleUseImpreciseLocation}
+              disabled={gpsLoading}
+            >
+              Ungenaues GPS-Signal trotzdem verwenden
+            </button>
+          )}
         </div>
       </div>
     </div>

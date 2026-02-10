@@ -4,7 +4,7 @@
  *
  * To set up:
  * 1. Create a Firebase project at https://console.firebase.google.com
- * 2. Enable Phone Authentication
+ * 2. Enable Google Authentication
  * 3. Enable Firestore and Storage
  * 4. Copy your web app config here
  */

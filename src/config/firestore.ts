@@ -2,7 +2,7 @@
  * Lazy Firestore singleton.
  * Only initializes Firebase when isFirebaseConfigured() returns true.
  */
-import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { firebaseConfig, isFirebaseConfigured } from './firebase';
 
@@ -17,7 +17,7 @@ export function getFirestoreDb(): Firestore {
     throw new Error('Firebase is not configured — cannot use Firestore');
   }
   if (!db) {
-    app = initializeApp(firebaseConfig);
+    app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
     db = getFirestore(app);
   }
   return db;
