@@ -1,14 +1,15 @@
+/* ─── Beer Picker ───────────────────────────────────── */
 .beer-picker {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .beer-picker h3 {
-  margin: 0 0 6px 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #94a3b8;
+  margin: 0 0 8px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-400);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .beer-list {
@@ -21,40 +22,55 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  background: #f8fafc;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
   font-size: 12px;
   text-align: left;
+  width: 100%;
+  color: var(--text-200);
 }
 
 .beer-item:hover {
-  background: #f1f5f9;
+  background: var(--bg-hover);
+  color: var(--text-100);
 }
 
 .beer-item.selected {
-  background: #eff6ff;
+  background: var(--amber-dim);
+  border-color: var(--amber-border);
+  color: var(--amber);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.1);
+}
+
+.beer-item.selected .beer-name {
   font-weight: 600;
+  color: var(--amber);
 }
 
 .beer-logo {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
+  border-radius: 50%;
 }
 
 .beer-name {
   flex: 1;
-  color: #334155;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .beer-color-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.08);
+  opacity: 0.8;
+  box-shadow: 0 0 4px currentColor;
 }

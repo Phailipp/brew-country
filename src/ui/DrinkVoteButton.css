@@ -1,71 +1,87 @@
+/* ─── Drink Vote Section ────────────────────────────── */
 .drink-section {
-  padding: 0.75rem;
-  border-bottom: 1px solid #1e293b;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .drink-section h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.85rem;
-  color: #94a3b8;
+  margin: 0 0 4px;
+  font-size: 10px;
+  color: var(--text-400);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.8px;
+  font-weight: 700;
 }
 
 .drink-desc {
-  font-size: 0.75rem;
-  color: #64748b;
-  margin: 0 0 0.5rem;
-  line-height: 1.4;
+  font-size: 0.7rem;
+  color: var(--text-300);
+  margin: 0 0 8px;
+  line-height: 1.5;
 }
 
 .drink-select {
   width: 100%;
-  padding: 0.4rem;
-  margin-bottom: 0.4rem;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  background: #1e293b;
-  color: #e2e8f0;
-  font-size: 0.8rem;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  color: var(--text-100);
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.drink-select:focus {
+  border-color: var(--amber-border);
 }
 
 .drink-btn {
   width: 100%;
-  padding: 0.6rem;
+  padding: 8px 0;
   border: none;
-  border-radius: 8px;
-  background: #b45309;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
   color: #fff;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all var(--transition-base);
+  box-shadow: 0 2px 10px rgba(180, 83, 9, 0.3);
+  letter-spacing: 0.2px;
 }
 
 .drink-btn:hover {
-  background: #d97706;
+  background: linear-gradient(135deg, var(--amber) 0%, #d97706 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(217, 119, 6, 0.4);
 }
 
 .drink-btn:disabled {
-  background: #475569;
+  background: var(--bg-active);
+  color: var(--text-400);
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .drink-count {
-  font-size: 0.7rem;
-  color: #94a3b8;
+  font-size: 0.67rem;
+  color: var(--text-400);
   text-align: center;
-  margin: 0.25rem 0 0;
+  margin: 5px 0 0;
 }
 
 .drink-success {
-  font-size: 0.7rem;
-  color: #4ade80;
-  margin: 0.25rem 0 0;
+  font-size: 0.67rem;
+  color: var(--green);
+  margin: 5px 0 0;
+  font-weight: 500;
 }
 
 .drink-error {
-  font-size: 0.7rem;
-  color: #f87171;
-  margin: 0.25rem 0 0;
+  font-size: 0.67rem;
+  color: var(--red);
+  margin: 5px 0 0;
 }

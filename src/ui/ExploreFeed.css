@@ -1,19 +1,20 @@
+/* ─── Explore Feed ──────────────────────────────────── */
 .explore-feed {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .explore-feed h3 {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: #64748b;
-  margin: 0 0 6px;
+  letter-spacing: 0.8px;
+  color: var(--text-400);
+  margin: 0 0 8px;
 }
 
 .feed-empty {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--text-400);
   font-style: italic;
   padding: 4px 0;
 }
@@ -22,11 +23,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 4px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 7px 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
+  transition: all var(--transition-fast);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .feed-item:last-child {
@@ -34,11 +35,11 @@
 }
 
 .feed-item:hover {
-  background: #f8fafc;
+  background: var(--bg-hover);
 }
 
 .feed-icon {
-  font-size: 16px;
+  font-size: 15px;
   flex-shrink: 0;
   width: 22px;
   text-align: center;
@@ -50,9 +51,9 @@
 }
 
 .feed-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-100);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -60,7 +61,7 @@
 
 .feed-subtitle {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--text-400);
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
@@ -68,32 +69,35 @@
 }
 
 .feed-chevron {
-  color: #cbd5e1;
-  font-size: 12px;
+  color: var(--text-400);
+  font-size: 10px;
   flex-shrink: 0;
 }
 
 .feed-type-badge {
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  padding: 1px 4px;
-  border-radius: 3px;
+  letter-spacing: 0.4px;
+  padding: 2px 5px;
+  border-radius: 4px;
   flex-shrink: 0;
 }
 
 .feed-type-badge.battlefront {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: var(--red-dim);
+  color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .feed-type-badge.flip-watch {
-  background: rgba(168, 85, 247, 0.1);
-  color: #a855f7;
+  background: var(--purple-dim);
+  color: var(--purple);
+  border: 1px solid rgba(168, 85, 247, 0.2);
 }
 
 .feed-type-badge.trending {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--amber-dim);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
 }
