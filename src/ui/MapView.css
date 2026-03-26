@@ -11,10 +11,7 @@
   position: relative;
 }
 
-/* Deep dark desaturation for a moody, cinematic look */
-.map-container .leaflet-tile-pane {
-  filter: saturate(0.15) brightness(0.85) hue-rotate(200deg);
-}
+/* CartoDB Dark Matter tiles are already styled — no filter needed */
 
 .dominance-canvas {
   pointer-events: none;

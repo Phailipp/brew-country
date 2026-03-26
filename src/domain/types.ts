@@ -61,6 +61,7 @@ export interface OverlaySettings {
   showSwords: boolean;
   borderWidth: number;
   closeMarginThreshold: number;
+  closeMarginMinWeight: number;
   smoothingIterations: number;
   mergeIslandSize: number;
 }

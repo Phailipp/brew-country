@@ -8,9 +8,10 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   showLogos: true,
   showSwords: true,
   borderWidth: 2.5,
-  closeMarginThreshold: 0.10,
-  smoothingIterations: 2,
-  mergeIslandSize: 8,
+  closeMarginThreshold: 0.08,
+  closeMarginMinWeight: 4.0,
+  smoothingIterations: 3,
+  mergeIslandSize: 10,
 };
 
 function createSwordsDataUri(): string {
@@ -136,10 +137,12 @@ export class DominanceCanvasLayer extends L.Layer {
     // ── Build winner grid ────────────────────────────────────
     const grid: (string | null)[] = new Array(rows * cols).fill(null);
     const marginArr: Float32Array = new Float32Array(rows * cols).fill(1);
+    const totalArr: Float32Array = new Float32Array(rows * cols).fill(0);
     for (const cell of data.cells) {
       const idx = cell.row * cols + cell.col;
       grid[idx] = cell.winnerBeerId;
       marginArr[idx] = cell.margin;
+      totalArr[idx] = cell.totalCount;
     }
 
     // ── Precompute vertex grid (rows+1 × cols+1) ────────────
@@ -319,7 +322,22 @@ export class DominanceCanvasLayer extends L.Layer {
     if (settings.showSwords) {
       const swordsImg = this._swordsImg;
       const thresh = settings.closeMarginThreshold;
+      // A border is only "contested" when BOTH adjacent cells have:
+      //   1. Enough total weight (genuine presence on both sides)
+      //   2. A close margin (neither side is dominant in that cell)
+      // This prevents ALL borders from being contested just because
+      // they lie at the mathematical midpoint of overlapping circles.
+      const minWeight = settings.closeMarginMinWeight ?? 3.0;
       const useSvg = swordsImg && swordsImg.complete && swordsImg.naturalWidth > 0;
+
+      const isContested = (idx: number, nIdx: number): boolean => {
+        return (
+          marginArr[idx] <= thresh &&
+          marginArr[nIdx] <= thresh &&
+          totalArr[idx] >= minWeight &&
+          totalArr[nIdx] >= minWeight
+        );
+      };
 
       // 3a — Draw a coloured highlight line along all contested edges
       ctx.globalAlpha = 0.6;
@@ -336,14 +354,14 @@ export class DominanceCanvasLayer extends L.Layer {
         for (let c = cMinDefault; c <= cMaxDefault; c++) {
           const myBeer = grid[r * cols + c];
           if (myBeer === null) continue;
-          const myMargin = marginArr[r * cols + c];
+          const myIdx = r * cols + c;
 
           // Right edge
           if (c + 1 < cols) {
             const rightBeer = grid[r * cols + c + 1];
             if (rightBeer !== null && rightBeer !== myBeer) {
-              const nMargin = marginArr[r * cols + c + 1];
-              if (myMargin <= thresh || nMargin <= thresh) {
+              const nIdx = r * cols + c + 1;
+              if (isContested(myIdx, nIdx)) {
                 const v0 = vIdx(r, c + 1);
                 const v1 = vIdx(r + 1, c + 1);
                 ctx.moveTo(vx[v0], vy[v0]);
@@ -357,8 +375,8 @@ export class DominanceCanvasLayer extends L.Layer {
           if (r > 0) {
             const belowBeer = grid[(r - 1) * cols + c];
             if (belowBeer !== null && belowBeer !== myBeer) {
-              const nMargin = marginArr[(r - 1) * cols + c];
-              if (myMargin <= thresh || nMargin <= thresh) {
+              const nIdx = (r - 1) * cols + c;
+              if (isContested(myIdx, nIdx)) {
                 const v0 = vIdx(r, c);
                 const v1 = vIdx(r, c + 1);
                 ctx.moveTo(vx[v0], vy[v0]);

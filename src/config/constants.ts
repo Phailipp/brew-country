@@ -64,10 +64,14 @@ export const GAME = {
   WEIGHT_MIN: 0.2,
 
   // ── Display ───────────────────────────────────────────
-  CLOSE_MARGIN_THRESHOLD: 0.10,
-  CLOSE_MARGIN_MIN_WEIGHT: 5.0,
-  SMOOTHING_ITERATIONS: 2,
-  MERGE_ISLAND_SIZE: 8,
+  // Border is only "contested" (swords) when BOTH adjacent cells have
+  // low margin AND significant total weight. This prevents the common case
+  // where every single border is contested just because it lies at the
+  // overlap midpoint of two circular home zones.
+  CLOSE_MARGIN_THRESHOLD: 0.08,     // winner needs < 54% to count as close
+  CLOSE_MARGIN_MIN_WEIGHT: 4.0,     // both cells need ≥ this weight
+  SMOOTHING_ITERATIONS: 3,          // more passes = smoother territory edges
+  MERGE_ISLAND_SIZE: 10,
   BORDER_WIDTH: 2.5,
 
   // ── GPS ───────────────────────────────────────────────

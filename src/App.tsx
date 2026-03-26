@@ -53,6 +53,7 @@ const FIXED_OVERLAY_SETTINGS: OverlaySettings = {
   showSwords: true,
   borderWidth: GAME.BORDER_WIDTH,
   closeMarginThreshold: GAME.CLOSE_MARGIN_THRESHOLD,
+  closeMarginMinWeight: GAME.CLOSE_MARGIN_MIN_WEIGHT,
   smoothingIterations: GAME.SMOOTHING_ITERATIONS,
   mergeIslandSize: GAME.MERGE_ISLAND_SIZE,
 };
