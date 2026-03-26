@@ -284,6 +284,38 @@
   font-size: 1.2rem;
 }
 
+/* ─── Manual location ───────────────────────────────── */
+.manual-location {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.manual-location-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.manual-location-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.manual-location-row label {
+  font-size: 0.72rem;
+  color: var(--text-300);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 /* ─── Beer grid ─────────────────────────────────────── */
 .onboarding-beer-grid {
   display: grid;

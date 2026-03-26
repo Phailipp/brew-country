@@ -33,6 +33,9 @@ export function Onboarding() {
   const [error, setError] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [impreciseCandidate, setImpreciseCandidate] = useState<ImpreciseLocationCandidate | null>(null);
+  const [manualLat, setManualLat] = useState('48.1374');
+  const [manualLon, setManualLon] = useState('11.5755');
+  const [showManual, setShowManual] = useState(false);
 
   const handleAgeNext = () => {
     if (!ageVerified) {
@@ -230,6 +233,56 @@ export function Onboarding() {
               <button className="auth-btn" onClick={() => setStep('beer')}>
                 Weiter
               </button>
+            )}
+            {!location && (
+              <div className="manual-location">
+                <button
+                  className="auth-btn-secondary"
+                  onClick={() => setShowManual((v) => !v)}
+                >
+                  {showManual ? 'Manuell ausblenden' : '✏️ Koordinaten manuell eingeben'}
+                </button>
+                {showManual && (
+                  <div className="manual-location-inputs">
+                    <div className="manual-location-row">
+                      <label>Breitengrad</label>
+                      <input
+                        className="auth-input"
+                        type="number"
+                        step="0.0001"
+                        value={manualLat}
+                        onChange={(e) => setManualLat(e.target.value)}
+                      />
+                    </div>
+                    <div className="manual-location-row">
+                      <label>Längengrad</label>
+                      <input
+                        className="auth-input"
+                        type="number"
+                        step="0.0001"
+                        value={manualLon}
+                        onChange={(e) => setManualLon(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="auth-btn"
+                      onClick={() => {
+                        const lat = parseFloat(manualLat);
+                        const lon = parseFloat(manualLon);
+                        if (isNaN(lat) || isNaN(lon)) {
+                          setError('Ungültige Koordinaten.');
+                          return;
+                        }
+                        setError('');
+                        setLocation({ lat, lon });
+                        setStep('beer');
+                      }}
+                    >
+                      Standort übernehmen
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
