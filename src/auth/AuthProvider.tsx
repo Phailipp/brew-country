@@ -161,7 +161,11 @@ export function AuthProvider({ children, store }: Props) {
   }, [store]);
 
   const completeOnboarding = useCallback(async (user: User) => {
-    await store.saveUser(user);
+    try {
+      await store.saveUser(user);
+    } catch {
+      // Firestore unreachable (dev mode) — continue anyway
+    }
     localStorage.setItem(LOCAL_AUTH_KEY, user.id);
     setAuth({ status: 'authenticated', userId: user.id, user });
   }, [store]);
