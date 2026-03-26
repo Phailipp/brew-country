@@ -186,35 +186,32 @@
   margin-top: 1.25rem;
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  border: 1px dashed rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.06);
+  border: 2px solid #f59e0b;
+  background: #1a1200;
 }
 
 .auth-dev-bypass-label {
   font-size: 0.72rem;
-  color: var(--amber);
+  color: #f59e0b;
   margin-bottom: 8px;
-  font-weight: 600;
-  opacity: 0.85;
+  font-weight: 700;
 }
 
 .auth-dev-bypass-btn {
   width: 100%;
-  padding: 7px;
-  border: 1px solid var(--amber-border);
+  padding: 10px;
+  border: none;
   border-radius: var(--radius-sm);
-  background: var(--amber-dim);
-  color: var(--amber);
-  font-size: 0.82rem;
-  font-weight: 600;
+  background: #f59e0b;
+  color: #000;
+  font-size: 0.9rem;
+  font-weight: 800;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
 }
 
 .auth-dev-bypass-btn:hover {
-  background: rgba(245, 158, 11, 0.18);
-  box-shadow: var(--amber-glow);
+  background: #fbbf24;
 }
 
 /* ─── Onboarding steps ──────────────────────────────── */
