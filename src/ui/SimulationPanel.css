@@ -1,46 +1,49 @@
+/* ─── Simulation Panel ──────────────────────────────── */
 .simulation-panel {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #e2e8f0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .simulation-panel h3 {
-  margin: 0 0 6px 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #94a3b8;
+  margin: 0 0 8px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-400);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .sim-controls {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .sim-controls label {
-  font-size: 12px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #475569;
+  color: var(--text-200);
 }
 
 .sim-controls input[type="number"] {
   width: 60px;
   padding: 3px 6px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 12px;
-  background: #f8fafc;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  background: var(--bg-raised);
+  color: var(--text-100);
+  outline: none;
+  transition: border-color var(--transition-fast);
 }
 
 .sim-controls input[type="number"]:focus {
-  outline: none;
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+  border-color: var(--blue-border);
+  box-shadow: 0 0 0 2px var(--blue-dim);
 }
 
 .sim-checkbox {
@@ -49,6 +52,7 @@
 
 .sim-checkbox input[type="checkbox"] {
   cursor: pointer;
+  accent-color: var(--amber);
 }
 
 .sim-buttons {
@@ -59,25 +63,27 @@
 
 .sim-btn {
   padding: 5px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 5px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 11px;
   font-weight: 500;
-  background: #f8fafc;
-  color: #475569;
-  transition: all 0.15s;
+  background: var(--bg-raised);
+  color: var(--text-200);
+  transition: all var(--transition-fast);
 }
 
 .sim-btn:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
+  background: var(--bg-hover);
+  color: var(--text-100);
+  border-color: var(--border-strong);
 }
 
 .sim-btn.primary {
-  background: #3b82f6;
+  background: var(--blue);
   color: #fff;
-  border-color: #2563eb;
+  border-color: var(--blue);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
 .sim-btn.primary:hover {
@@ -85,10 +91,10 @@
 }
 
 .sim-btn.danger {
-  color: #dc2626;
-  border-color: #fca5a5;
+  color: var(--red);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .sim-btn.danger:hover {
-  background: #fef2f2;
+  background: var(--red-dim);
 }

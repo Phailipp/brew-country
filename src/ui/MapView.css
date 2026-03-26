@@ -1,11 +1,13 @@
+/* ─── Map container ─────────────────────────────────── */
 .map-container {
   flex: 1;
   min-height: 400px;
+  position: relative;
 }
 
-/* Desaturate map tiles for a modern, minimal feel */
+/* Deep dark desaturation for a moody, cinematic look */
 .map-container .leaflet-tile-pane {
-  filter: saturate(0.3) brightness(1.03);
+  filter: saturate(0.15) brightness(0.85) hue-rotate(200deg);
 }
 
 .dominance-canvas {
@@ -17,63 +19,74 @@
   border: none !important;
 }
 
-/* Hover tooltip (plain DOM div, not a Leaflet popup — avoids popup conflicts) */
+/* ─── Hover tooltip ─────────────────────────────────── */
 .hover-tooltip-div {
   position: absolute;
   z-index: 800;
   pointer-events: none;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  border: 1px solid rgba(0,0,0,0.06);
-  background: rgba(255,255,255,0.97);
-  max-width: 250px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--border-subtle),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  max-width: 240px;
 }
 
 .cell-tooltip {
   font-size: 12px;
   min-width: 170px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-100);
 }
 
 .tooltip-header {
-  margin-bottom: 6px;
-  font-size: 11px;
-  color: #64748b;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 5px;
-  font-weight: 500;
+  margin-bottom: 7px;
+  font-size: 10px;
+  color: var(--text-400);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .tooltip-close-call {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
-  padding: 3px 0;
-  font-size: 11px;
-  color: #d97706;
+  margin-top: 5px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  font-size: 10px;
+  color: var(--amber);
   font-weight: 600;
 }
 
 .tooltip-breakdown {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .tooltip-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: #64748b;
+  font-size: 11px;
+  color: var(--text-300);
   padding: 1px 0;
 }
 
 .tooltip-row.winner {
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 700;
+  color: var(--text-100);
 }
 
 .tooltip-dot {
@@ -81,7 +94,7 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 0 4px currentColor;
 }
 
 .tooltip-name {
@@ -93,45 +106,57 @@
   min-width: 18px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .tooltip-pct {
-  min-width: 28px;
+  min-width: 30px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: #94a3b8;
-  font-size: 11px;
+  color: var(--text-400);
+  font-size: 10px;
 }
 
 .tooltip-row.winner .tooltip-pct {
-  color: #475569;
+  color: var(--text-300);
 }
 
-/* Click popup (fixed in place, has share button) */
+/* ─── Click popup ───────────────────────────────────── */
 .click-popup .leaflet-popup-content-wrapper {
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 0;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
-  border: 1px solid rgba(0,0,0,0.08);
-  background: #fff;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px var(--border-default);
+  background: var(--bg-surface);
+  border: none;
 }
 
 .click-popup .leaflet-popup-content {
   margin: 0;
+  color: var(--text-100);
+}
+
+.click-popup .leaflet-popup-tip-container {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.click-popup .leaflet-popup-tip {
+  background: var(--bg-surface);
 }
 
 .click-popup-content {
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .click-popup-title {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: 7px;
+  font-size: 13px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-100);
   margin-bottom: 4px;
 }
 
@@ -140,73 +165,109 @@
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 0 6px currentColor;
 }
 
 .click-popup-stats {
   font-size: 11px;
-  color: #64748b;
-  margin-bottom: 8px;
+  color: var(--text-300);
+  margin-bottom: 10px;
 }
 
 .click-popup-share-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 5px 12px;
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
+  background: var(--amber-dim);
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .click-popup-share-btn:hover {
-  background: #2563eb;
+  background: rgba(245, 158, 11, 0.2);
+  box-shadow: var(--amber-glow);
 }
 
-/* Home button on map (inside leaflet-bar) */
+/* ─── Home button ───────────────────────────────────── */
 .leaflet-home-btn {
   display: flex !important;
   align-items: center;
   justify-content: center;
   width: 34px !important;
   height: 34px !important;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 34px !important;
   text-decoration: none !important;
   cursor: pointer;
+  background: var(--bg-surface) !important;
+  color: var(--text-200);
+  border: none;
+  transition: all var(--transition-fast);
 }
 
 .leaflet-home-btn:hover {
-  background: #f4f4f4;
+  background: var(--bg-hover) !important;
+  color: var(--amber);
 }
 
-/* ── Friend map markers ─────────────────────────────── */
+/* ─── Leaflet control overrides ─────────────────────── */
+.leaflet-bar {
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background: var(--bg-surface) !important;
+  color: var(--text-200) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.leaflet-bar a:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text-100) !important;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+/* ─── Friend markers ────────────────────────────────── */
 .friend-map-marker {
   background: transparent !important;
   border: none !important;
 }
 
 .friend-marker-inner {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: #1e293b;
-  border: 2.5px solid #94a3b8;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: transform 0.15s;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--border-subtle);
+  transition: transform var(--transition-fast);
 }
 
 .friend-map-marker:hover .friend-marker-inner {
   transform: scale(1.15);
+  border-color: var(--amber-border);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    var(--amber-glow);
 }
 
 .friend-marker-logo {
@@ -224,22 +285,26 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid #1e293b;
+  border: 2px solid var(--bg-surface);
 }
 
 .friend-marker-online {
-  background: #22c55e;
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
 }
 
 .friend-marker-offline {
-  background: #64748b;
+  background: var(--text-400);
 }
 
-/* Friend marker tooltip */
+/* ─── Friend tooltip ────────────────────────────────── */
 .friend-marker-tooltip {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   padding: 4px 8px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface) !important;
+  color: var(--text-100) !important;
+  border: 1px solid var(--border-default) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }

@@ -1,7 +1,10 @@
+/* ─── Share overlay ─────────────────────────────────── */
 .share-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 10000;
   display: flex;
   align-items: center;
@@ -11,111 +14,140 @@
 
 @keyframes share-fade-in {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
+/* ─── Share modal ───────────────────────────────────── */
 .share-modal {
-  background: #ffffff;
-  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
   padding: 24px;
   width: 420px;
   max-width: 90vw;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: share-slide-up 0.25s ease-out;
+  box-shadow:
+    0 0 0 1px var(--border-subtle),
+    0 24px 64px rgba(0, 0, 0, 0.7),
+    0 0 60px rgba(245, 158, 11, 0.04);
+  animation: share-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+.share-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, transparent 50%);
+  pointer-events: none;
 }
 
 @keyframes share-slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateY(24px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 .share-modal h2 {
   margin: 0 0 4px;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-100);
+  letter-spacing: -0.3px;
 }
 
 .share-subtitle {
-  font-size: 12px;
-  color: #64748b;
+  font-size: 11px;
+  color: var(--text-300);
   margin-bottom: 16px;
 }
 
 .share-preview {
   width: 100%;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
   margin-bottom: 16px;
+  display: block;
 }
 
+/* ─── Link row ──────────────────────────────────────── */
 .share-link-row {
   display: flex;
-  gap: 8px;
+  gap: 7px;
   margin-bottom: 12px;
 }
 
 .share-link-input {
   flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #334155;
-  background: #f8fafc;
+  padding: 7px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-200);
+  background: var(--bg-raised);
   outline: none;
-  font-family: monospace;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  transition: border-color var(--transition-fast);
 }
 
 .share-link-input:focus {
-  border-color: #3b82f6;
+  border-color: var(--amber-border);
 }
 
+/* ─── Buttons ───────────────────────────────────────── */
 .share-btn {
-  padding: 8px 16px;
+  padding: 7px 14px;
   border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-base);
+  letter-spacing: 0.2px;
 }
 
 .share-btn-copy {
-  background: #3b82f6;
-  color: #fff;
+  background: linear-gradient(135deg, var(--amber) 0%, #e08a00 100%);
+  color: #000;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.25);
 }
 
 .share-btn-copy:hover {
-  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
 }
 
 .share-btn-copy.copied {
-  background: #16a34a;
+  background: linear-gradient(135deg, var(--green) 0%, #16a34a 100%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.25);
 }
 
 .share-btn-download {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--bg-raised);
+  color: var(--text-200);
+  border: 1px solid var(--border-default);
 }
 
 .share-btn-download:hover {
-  background: #e2e8f0;
+  background: var(--bg-hover);
+  color: var(--text-100);
+  border-color: var(--border-strong);
 }
 
 .share-actions {
   display: flex;
-  gap: 8px;
+  gap: 7px;
   justify-content: flex-end;
 }
 
 .share-btn-close {
-  background: none;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: transparent;
+  color: var(--text-300);
+  border: 1px solid var(--border-default);
 }
 
 .share-btn-close:hover {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--bg-hover);
+  color: var(--text-100);
+  border-color: var(--border-strong);
 }

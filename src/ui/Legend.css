@@ -1,29 +1,31 @@
+/* ─── Legend ────────────────────────────────────────── */
 .legend {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #e2e8f0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .legend h3 {
-  margin: 0 0 6px 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #94a3b8;
+  margin: 0 0 8px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-400);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .legend-items {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: 11px;
+  padding: 1px 0;
 }
 
 .legend-swatch {
@@ -31,7 +33,8 @@
   height: 12px;
   border-radius: 3px;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 4px currentColor;
 }
 
 .legend-logo {
@@ -41,28 +44,30 @@
 }
 
 .legend-label {
-  color: #475569;
+  color: var(--text-200);
+  font-size: 11px;
 }
 
 .legend-item.close-call-item {
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid #f1f5f9;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .legend-label.no-data {
-  color: #94a3b8;
+  color: var(--text-400);
   font-style: italic;
-  margin-left: 22px;
+  margin-left: 19px;
 }
 
 .legend-label.close-call {
-  color: #d97706;
-  font-weight: 500;
+  color: var(--amber);
+  font-weight: 600;
 }
 
 .legend-stats {
   margin-top: 6px;
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 10px;
+  color: var(--text-400);
+  font-variant-numeric: tabular-nums;
 }

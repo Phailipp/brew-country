@@ -1,4 +1,68 @@
-* {
+/* ═══════════════════════════════════════════════════════
+   BREW COUNTRY — Design System
+   Dark theme, amber accents, glassmorphism
+═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Backgrounds ─────────────────────────────────── */
+  --bg-void:    #04070f;
+  --bg-base:    #07111e;
+  --bg-surface: #0b1828;
+  --bg-raised:  #0f2035;
+  --bg-hover:   #152840;
+  --bg-active:  #1a3050;
+
+  /* ── Amber / Beer primary ─────────────────────────── */
+  --amber:       #f59e0b;
+  --amber-light: #fbbf24;
+  --amber-dim:   rgba(245, 158, 11, 0.12);
+  --amber-glow:  0 0 24px rgba(245, 158, 11, 0.22);
+  --amber-border: rgba(245, 158, 11, 0.35);
+
+  /* ── Blue secondary ───────────────────────────────── */
+  --blue:        #3b82f6;
+  --blue-light:  #60a5fa;
+  --blue-dim:    rgba(59, 130, 246, 0.12);
+  --blue-border: rgba(59, 130, 246, 0.35);
+
+  /* ── Status ───────────────────────────────────────── */
+  --green:       #22c55e;
+  --green-dim:   rgba(34, 197, 94, 0.12);
+  --red:         #ef4444;
+  --red-dim:     rgba(239, 68, 68, 0.12);
+  --purple:      #a855f7;
+  --purple-dim:  rgba(168, 85, 247, 0.12);
+  --orange:      #f97316;
+
+  /* ── Text ─────────────────────────────────────────── */
+  --text-100:    #eef4ff;
+  --text-200:    #b8cce0;
+  --text-300:    #6e88a8;
+  --text-400:    #3d5269;
+
+  /* ── Borders ──────────────────────────────────────── */
+  --border-subtle:  rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.09);
+  --border-strong:  rgba(255, 255, 255, 0.14);
+
+  /* ── Glass ────────────────────────────────────────── */
+  --glass-bg:   rgba(7, 17, 30, 0.82);
+  --glass-blur: blur(20px);
+
+  /* ── Transitions ──────────────────────────────────── */
+  --transition-fast:   0.12s ease;
+  --transition-base:   0.2s ease;
+  --transition-slow:   0.35s ease;
+
+  /* ── Radius ───────────────────────────────────────── */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+}
+
+/* ── Reset ─────────────────────────────────────────── */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -10,8 +74,23 @@ html, body, #root {
   overflow: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
-  color: #2d3748;
-  background: #f7f8fa;
+  color: var(--text-100);
+  background: var(--bg-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar styling ─────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
 }

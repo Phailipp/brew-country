@@ -1,123 +1,134 @@
+/* ─── Friends Panel ─────────────────────────────────── */
 .friends-panel {
-  padding: 0.75rem;
-  border-bottom: 1px solid #1e293b;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .friends-panel h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: #94a3b8;
+  margin: 0 0 8px;
+  font-size: 10px;
+  color: var(--text-400);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.8px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 6px;
 }
 
 .friends-count {
-  font-size: 0.7rem;
-  color: #64748b;
+  font-size: 0.65rem;
+  color: var(--text-400);
   font-weight: 400;
+  background: var(--bg-raised);
+  padding: 1px 5px;
+  border-radius: 8px;
 }
 
 .friends-disabled {
-  font-size: 0.8rem;
-  color: #64748b;
+  font-size: 0.75rem;
+  color: var(--text-400);
   margin: 0;
 }
 
-/* Add friend form */
+/* ─── Add friend form ───────────────────────────────── */
 .friends-add-form {
   display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
+  gap: 5px;
+  margin-bottom: 8px;
 }
 
 .friends-add-input {
   flex: 1;
-  padding: 0.4rem 0.6rem;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  color: #f8fafc;
-  font-size: 0.8rem;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  padding: 6px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-100);
+  font-size: 0.75rem;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition-fast);
 }
 
 .friends-add-input:focus {
-  border-color: #3b82f6;
+  border-color: var(--blue-border);
+  box-shadow: 0 0 0 2px var(--blue-dim);
 }
 
 .friends-add-input::placeholder {
-  color: #475569;
+  color: var(--text-400);
 }
 
 .friends-add-btn {
-  width: 32px;
-  height: 32px;
-  background: #3b82f6;
+  width: 30px;
+  height: 30px;
+  background: var(--blue);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  font-size: 1.1rem;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .friends-add-btn:hover {
   background: #2563eb;
+  transform: scale(1.05);
 }
 
 .friends-add-btn:disabled {
-  background: #475569;
+  background: var(--bg-active);
   cursor: not-allowed;
+  transform: none;
 }
 
 .friends-error {
-  font-size: 0.7rem;
-  color: #f87171;
-  margin: 0 0 0.4rem;
+  font-size: 0.68rem;
+  color: var(--red);
+  margin: 0 0 5px;
 }
 
 .friends-empty {
-  font-size: 0.8rem;
-  color: #64748b;
+  font-size: 0.75rem;
+  color: var(--text-400);
   margin: 0;
   text-align: center;
   padding: 0.75rem 0;
 }
 
-/* Friend list */
+/* ─── Friend list ───────────────────────────────────── */
 .friends-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 3px;
 }
 
 .friend-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem;
-  background: #0f172a;
-  border-radius: 8px;
-  transition: background 0.15s;
+  padding: 6px 8px;
+  background: var(--bg-raised);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--transition-fast);
 }
 
 .friend-item:hover {
-  background: #1e293b;
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 .friend-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   flex: 1;
   cursor: pointer;
   min-width: 0;
@@ -129,8 +140,8 @@
 }
 
 .friend-beer-logo {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 .friend-online-dot {
@@ -140,15 +151,16 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1.5px solid #0f172a;
+  border: 1.5px solid var(--bg-raised);
 }
 
 .friend-online-dot.online {
-  background: #22c55e;
+  background: var(--green);
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
 }
 
 .friend-online-dot.offline {
-  background: #475569;
+  background: var(--text-400);
 }
 
 .friend-details {
@@ -158,150 +170,146 @@
 }
 
 .friend-name {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--text-100);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .friend-status {
-  font-size: 0.65rem;
-  color: #64748b;
+  font-size: 0.62rem;
+  color: var(--text-400);
 }
 
-/* Friend actions */
+/* ─── Friend actions ────────────────────────────────── */
 .friend-actions {
   display: flex;
-  gap: 0.25rem;
+  gap: 3px;
   flex-shrink: 0;
 }
 
 .friend-locate-btn,
 .friend-chat-btn,
 .friend-remove-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  transition: background 0.15s;
+  font-size: 0.78rem;
+  transition: all var(--transition-fast);
+  color: var(--text-300);
 }
 
-.friend-locate-btn:hover {
-  background: #1e293b;
-}
-
+.friend-locate-btn:hover,
 .friend-chat-btn:hover {
-  background: #1e293b;
+  background: var(--bg-hover);
+  color: var(--text-100);
 }
 
 .friend-remove-btn {
-  color: #64748b;
-  font-size: 0.7rem;
+  color: var(--text-400);
+  font-size: 0.65rem;
 }
 
 .friend-remove-btn:hover {
-  background: #1e293b;
-  color: #f87171;
+  background: var(--red-dim);
+  color: var(--red);
 }
 
 .friend-remove-btn.confirm {
-  background: #dc2626;
+  background: var(--red);
   color: #fff;
 }
 
 .friend-remove-btn.confirm:hover {
-  background: #b91c1c;
+  background: #dc2626;
 }
 
-/* ── Friendship request sections ────────────────────── */
+/* ─── Request sections ──────────────────────────────── */
 .friends-section {
-  margin-top: 0.5rem;
+  margin-top: 6px;
 }
 
 .friends-section-title {
-  font-size: 0.7rem;
-  color: #94a3b8;
+  font-size: 0.65rem;
+  color: var(--text-400);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 0.35rem;
-  font-weight: 600;
+  letter-spacing: 0.6px;
+  margin: 0 0 4px;
+  font-weight: 700;
 }
 
-/* Incoming request items */
 .friend-item.request-incoming {
-  border-left: 2px solid #f59e0b;
+  border-left: 2px solid var(--amber);
+  background: rgba(245, 158, 11, 0.04);
 }
 
-/* Sent request items */
 .friend-item.request-sent {
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
-/* Friend info label (for requests — no click) */
 .friend-info-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   flex: 1;
   min-width: 0;
 }
 
-/* Accept button */
+/* ─── Accept / decline ──────────────────────────────── */
 .friend-accept-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  transition: background 0.15s;
+  font-size: 0.82rem;
+  transition: all var(--transition-fast);
+  color: var(--green);
 }
 
 .friend-accept-btn:hover {
-  background: #166534;
+  background: var(--green-dim);
 }
 
-/* Decline button */
 .friend-decline-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  color: #64748b;
-  transition: background 0.15s, color 0.15s;
+  font-size: 0.82rem;
+  color: var(--text-400);
+  transition: all var(--transition-fast);
 }
 
 .friend-decline-btn:hover {
-  background: #1e293b;
-  color: #f87171;
+  background: var(--red-dim);
+  color: var(--red);
 }
 
-/* Pending label */
 .friend-pending-label {
-  font-size: 0.65rem;
-  color: #64748b;
-  margin-right: 0.25rem;
+  font-size: 0.62rem;
+  color: var(--text-400);
+  margin-right: 4px;
 }
 
-/* Unread message badge */
+/* ─── Unread badge ──────────────────────────────────── */
 .friend-chat-btn {
   position: relative;
 }
@@ -310,12 +318,12 @@
   position: absolute;
   top: -4px;
   right: -4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  background: #ef4444;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  background: var(--red);
   color: #fff;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 700;
   border-radius: 8px;
   display: flex;
@@ -323,5 +331,5 @@
   justify-content: center;
   line-height: 1;
   pointer-events: none;
-  box-shadow: 0 0 0 2px #0f172a;
+  box-shadow: 0 0 0 2px var(--bg-raised);
 }
