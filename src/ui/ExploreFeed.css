@@ -1,41 +1,44 @@
 /* ─── Explore Feed ──────────────────────────────────── */
 .explore-feed {
-  margin-top: 4px;
+  background: rgba(13, 21, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .explore-feed h3 {
-  font-size: 10px;
-  font-weight: 700;
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-400);
-  margin: 0 0 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .feed-empty {
   font-size: 11px;
   color: var(--text-400);
   font-style: italic;
-  padding: 4px 0;
+  padding: 12px 14px;
 }
 
 .feed-item {
+  margin: 0 6px 1px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 6px;
-  border-radius: var(--radius-sm);
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.feed-item:last-child {
-  border-bottom: none;
+  border: 1px solid transparent;
 }
 
 .feed-item:hover {
-  background: var(--bg-hover);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .feed-icon {
@@ -60,7 +63,7 @@
 }
 
 .feed-subtitle {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-400);
   margin-top: 1px;
   white-space: nowrap;
@@ -70,28 +73,28 @@
 
 .feed-chevron {
   color: var(--text-400);
-  font-size: 10px;
+  font-size: 9px;
   flex-shrink: 0;
 }
 
 .feed-type-badge {
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 8px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  padding: 2px 5px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  border-radius: 20px;
   flex-shrink: 0;
 }
 
 .feed-type-badge.battlefront {
-  background: var(--red-dim);
+  background: rgba(239, 68, 68, 0.12);
   color: var(--red);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .feed-type-badge.flip-watch {
-  background: var(--purple-dim);
+  background: rgba(168, 85, 247, 0.12);
   color: var(--purple);
   border: 1px solid rgba(168, 85, 247, 0.2);
 }

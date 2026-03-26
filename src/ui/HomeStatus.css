@@ -1,46 +1,69 @@
 /* ─── Home Status ───────────────────────────────────── */
 .home-status {
-  padding: 10px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, transparent 60%);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: rgba(13, 21, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  overflow: hidden;
 }
 
-.home-status h3 {
-  margin: 0 0 8px;
-  font-size: 10px;
+.home-status-inner {
+  padding: 14px;
+}
+
+.home-status-section-label {
+  font-size: 9px;
+  font-weight: 800;
   color: var(--text-400);
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  font-weight: 700;
+  margin-bottom: 10px;
 }
 
+/* ─── Beer identity row */
 .home-status-beer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.14);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
 }
 
 .home-status-logo {
-  width: 28px;
-  height: 28px;
-  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.3));
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.35));
+  flex-shrink: 0;
+}
+
+.home-status-beer-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .home-status-beer-name {
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: 700;
   color: var(--amber-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   letter-spacing: -0.2px;
 }
 
-/* ─── Stats ─────────────────────────────────────────── */
+/* ─── Stats */
 .home-status-stats {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
 }
 
 .stat-row {
@@ -52,12 +75,14 @@
 }
 
 .stat-label {
+  font-size: 11px;
   color: var(--text-300);
 }
 
 .stat-value {
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-100);
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -70,56 +95,58 @@
   color: var(--red);
 }
 
-/* ─── ID / copy ─────────────────────────────────────── */
+/* ─── ID row */
 .home-status-id {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  gap: 8px;
 }
 
 .id-copy-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--border-default);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   color: var(--text-300);
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 0.7rem;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 10px;
   cursor: pointer;
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-family: 'SF Mono', 'Fira Code', monospace;
   transition: all var(--transition-fast);
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .id-copy-btn:hover {
-  background: var(--bg-active);
-  color: var(--text-100);
-  border-color: var(--border-strong);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--amber-border);
+  color: var(--amber);
 }
 
-/* ─── Stand Your Ground toggle ──────────────────────── */
+/* ─── SYG toggle */
 .syg-toggle {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  padding: 8px 10px;
-  background: var(--bg-raised);
-  border: 1px solid var(--border-subtle);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-md);
-  margin-top: 4px;
   transition: all var(--transition-fast);
 }
 
 .syg-toggle:hover {
-  background: var(--bg-hover);
-  border-color: var(--amber-border);
+  background: rgba(245, 158, 11, 0.06);
+  border-color: rgba(245, 158, 11, 0.18);
 }
 
 .syg-toggle input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
   accent-color: var(--amber);
   flex-shrink: 0;
 }
@@ -127,13 +154,13 @@
 .syg-label {
   display: flex;
   flex-direction: column;
-  font-size: 0.8rem;
+  font-size: 12px;
   color: var(--text-100);
   font-weight: 600;
 }
 
 .syg-desc {
-  font-size: 0.65rem;
+  font-size: 10px;
   color: var(--text-300);
   font-weight: 400;
   margin-top: 2px;

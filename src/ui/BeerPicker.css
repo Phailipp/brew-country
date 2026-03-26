@@ -1,12 +1,21 @@
 /* ─── Beer Picker ───────────────────────────────────── */
 .beer-picker {
+  background: rgba(13, 21, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
   margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.beer-picker-header {
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .beer-picker h3 {
-  margin: 0 0 8px 0;
-  font-size: 10px;
-  font-weight: 700;
+  margin: 0;
+  font-size: 9px;
+  font-weight: 800;
   color: var(--text-400);
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -15,16 +24,17 @@
 .beer-list {
   display: flex;
   flex-direction: column;
+  padding: 6px;
   gap: 2px;
 }
 
 .beer-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 9px;
+  padding: 7px 9px;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -35,42 +45,43 @@
 }
 
 .beer-item:hover {
-  background: var(--bg-hover);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-100);
 }
 
 .beer-item.selected {
-  background: var(--amber-dim);
-  border-color: var(--amber-border);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
   color: var(--amber);
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.1);
-}
-
-.beer-item.selected .beer-name {
-  font-weight: 600;
-  color: var(--amber);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.08);
 }
 
 .beer-logo {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
 .beer-name {
   flex: 1;
-  color: inherit;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.beer-item.selected .beer-name {
+  font-weight: 700;
+}
+
 .beer-color-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  opacity: 0.8;
-  box-shadow: 0 0 4px currentColor;
+  opacity: 0.85;
+  box-shadow: 0 0 5px currentColor;
 }

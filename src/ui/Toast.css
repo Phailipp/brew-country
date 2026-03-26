@@ -1,8 +1,8 @@
 /* ─── Toast notifications ───────────────────────────── */
 .toast-container {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
+  bottom: max(90px, calc(env(safe-area-inset-bottom) + 78px));
+  left: 16px;
   z-index: 9999;
   display: flex;
   flex-direction: column-reverse;

@@ -1,36 +1,55 @@
 /* ─── Quests Panel ──────────────────────────────────── */
 .quests-panel {
-  margin-top: 4px;
+  background: rgba(13, 21, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .quests-panel h3 {
-  font-size: 10px;
-  font-weight: 700;
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-400);
-  margin: 0 0 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.quests-list {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .quest-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border-subtle);
-  transition: opacity var(--transition-fast);
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
 }
 
-.quest-row:last-child {
-  border-bottom: none;
+.quest-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.quest-row.completed {
+  background: rgba(74, 222, 128, 0.05);
+  border-color: rgba(74, 222, 128, 0.12);
 }
 
 .quest-icon {
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
-  width: 24px;
+  width: 26px;
   text-align: center;
-  filter: grayscale(0.3);
+  filter: grayscale(0.4);
 }
 
 .quest-row.completed .quest-icon {
@@ -43,12 +62,13 @@
 }
 
 .quest-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-200);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 4px;
 }
 
 .quest-row.completed .quest-title {
@@ -58,29 +78,28 @@
 /* Progress bar */
 .quest-bar-wrap {
   height: 3px;
-  background: var(--bg-raised);
+  background: rgba(255, 255, 255, 0.07);
   border-radius: 2px;
-  margin-top: 4px;
   overflow: hidden;
 }
 
 .quest-bar-fill {
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, var(--blue) 0%, var(--blue-light) 100%);
-  transition: width var(--transition-slow);
+  background: linear-gradient(90deg, var(--blue) 0%, #60a5fa 100%);
+  transition: width 0.4s var(--ease-out);
   box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
 }
 
 .quest-row.completed .quest-bar-fill {
-  background: linear-gradient(90deg, var(--green) 0%, #4ade80 100%);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+  background: linear-gradient(90deg, var(--green) 0%, #86efac 100%);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
 }
 
 .quest-count {
   font-size: 10px;
   color: var(--text-300);
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
   min-width: 30px;
   text-align: right;
@@ -94,6 +113,6 @@
 .quest-check {
   color: var(--green);
   font-size: 14px;
-  font-weight: 700;
-  text-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  font-weight: 800;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
 }

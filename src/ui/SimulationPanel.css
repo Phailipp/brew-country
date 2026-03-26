@@ -1,49 +1,62 @@
 /* ─── Simulation Panel ──────────────────────────────── */
 .simulation-panel {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-subtle);
+  background: rgba(168, 85, 247, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.simulation-panel-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.12);
+  background: rgba(168, 85, 247, 0.05);
 }
 
 .simulation-panel h3 {
-  margin: 0 0 8px 0;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-400);
+  margin: 0;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--purple);
   text-transform: uppercase;
   letter-spacing: 0.8px;
+}
+
+.simulation-panel-body {
+  padding: 12px 14px;
 }
 
 .sim-controls {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .sim-controls label {
   font-size: 11px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--text-200);
 }
 
 .sim-controls input[type="number"] {
-  width: 60px;
-  padding: 3px 6px;
-  border: 1px solid var(--border-default);
+  width: 70px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
   font-size: 11px;
-  background: var(--bg-raised);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-100);
   outline: none;
+  font-family: inherit;
   transition: border-color var(--transition-fast);
 }
 
 .sim-controls input[type="number"]:focus {
-  border-color: var(--blue-border);
-  box-shadow: 0 0 0 2px var(--blue-dim);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.1);
 }
 
 .sim-checkbox {
@@ -52,49 +65,55 @@
 
 .sim-checkbox input[type="checkbox"] {
   cursor: pointer;
-  accent-color: var(--amber);
+  accent-color: var(--purple);
 }
 
 .sim-buttons {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .sim-btn {
-  padding: 5px 10px;
-  border: 1px solid var(--border-default);
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 11px;
-  font-weight: 500;
-  background: var(--bg-raised);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-200);
   transition: all var(--transition-fast);
+  text-align: left;
+  font-family: inherit;
+  letter-spacing: 0.2px;
 }
 
 .sim-btn:hover {
-  background: var(--bg-hover);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-100);
-  border-color: var(--border-strong);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .sim-btn.primary {
-  background: var(--blue);
-  color: #fff;
-  border-color: var(--blue);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
 }
 
 .sim-btn.primary:hover {
-  background: #2563eb;
+  background: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
 }
 
 .sim-btn.danger {
-  color: var(--red);
-  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .sim-btn.danger:hover {
-  background: var(--red-dim);
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
 }
