@@ -122,6 +122,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const [gridSpec, setGridSpec] = useState<GridSpec>(fallbackGridSpec);
   const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
   const [chatTarget, setChatTarget] = useState<{ friendshipId: string; friendUser: User } | null>(null);
+  const [activeTab, setActiveTab] = useState<'map' | 'actions' | 'social' | 'quests' | 'dev'>('actions');
   const workerRef = useRef<Worker | null>(null);
   const mapRef = useRef<MapViewHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -362,42 +363,53 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     }
   }, []);
 
-  // Map click is disabled in production — home location is fixed via GPS onboarding.
-  // Only in DEV mode can you click to place simulation votes.
+  // Map click: DEV build can click anywhere; prod dev-bypass users can also place votes (local only)
   const handleMapClick = useCallback(
     (lat: number, lon: number) => {
-      if (!import.meta.env.DEV) return; // Production: no click-to-vote
+      const devAllowed = import.meta.env.DEV || isDevUser(userId);
+      if (!devAllowed) return;
       if (!selectedBeerId) return;
 
       const vote: Vote = {
-        id: userId,
+        id: `${userId}_${Date.now()}`,
         lat,
         lon,
         beerId: selectedBeerId,
         timestamp: Date.now(),
       };
 
-      saveLegacyVote(vote).catch(() => {});
+      if (!isDevUser(userId)) {
+        saveLegacyVote(vote).catch(() => {});
+      }
+      setVotes((prev) => [...prev, vote]);
       appEvents.emit({ type: 'vote:saved', vote });
     },
     [selectedBeerId, userId]
   );
 
   const handleAddVotes = useCallback((newVotes: Vote[]) => {
-    if (!import.meta.env.DEV) return;
-    saveLegacyVotes(newVotes).catch(() => {});
+    const devAllowed = import.meta.env.DEV || isDevUser(userId);
+    if (!devAllowed) return;
+
+    if (!isDevUser(userId)) {
+      saveLegacyVotes(newVotes).catch(() => {});
+    }
+    setVotes((prev) => [...prev, ...newVotes]);
 
     for (const v of newVotes) {
       appEvents.emit({ type: 'vote:saved', vote: v });
     }
-  }, []);
+  }, [userId]);
 
   const handleClearVotes = useCallback(() => {
-    if (!import.meta.env.DEV) return;
-    clearLegacyVotes().catch(() => {});
+    const devAllowed = import.meta.env.DEV || isDevUser(userId);
+    if (!devAllowed) return;
+    if (!isDevUser(userId)) {
+      clearLegacyVotes().catch(() => {});
+    }
     setVotes([]);
     setDominanceData(null);
-  }, []);
+  }, [userId]);
 
   const handleFeedNavigate = useCallback((lat: number, lon: number, zoom: number) => {
     mapRef.current?.flyTo(lat, lon, zoom);
@@ -479,56 +491,122 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                 onBack={() => setChatTarget(null)}
               />
             ) : (
-              <div className="sidebar-scroll">
-                <HomeStatus
-                  user={user}
-                  store={store}
-                  onUserUpdate={handleUserUpdate}
-                />
-                <DuelPanel user={user} store={store} />
-                <OnTheRoadButton
-                  user={user}
-                  store={store}
-                  onVoteCreated={handleOTRCreated}
-                />
-                <DrinkVoteButton
-                  user={user}
-                  store={store}
-                  onVoteCreated={handleDrinkVoteCreated}
-                />
-                <TeamPanel user={user} store={store} />
-                <FriendsPanel
-                  user={user}
-                  store={store}
-                  onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
-                  friendPresence={friendPresence}
-                  onFriendIdsChange={setFriendIds}
-                  unreadCounts={unreadCounts}
-                  onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
-                />
-                <BeerPicker
-                  selectedBeerId={selectedBeerId}
-                  onSelect={setSelectedBeerId}
-                />
-                <Legend
-                  voteCount={votes.length}
-                  showSwords={overlaySettings.showSwords}
-                />
-                <QuestsPanel
-                  questState={questState}
-                  catalog={catalog}
-                />
-                <ExploreFeed
-                  items={feedItems}
-                  onNavigate={handleFeedNavigate}
-                />
-                {import.meta.env.DEV && (
-                  <SimulationPanel
-                    onAddVotes={handleAddVotes}
-                    onClearVotes={handleClearVotes}
-                  />
-                )}
-              </div>
+              <>
+                {/* Tab rail */}
+                <nav className="sidebar-tabs">
+                  <button
+                    className={`sidebar-tab${activeTab === 'actions' ? ' active' : ''}`}
+                    onClick={() => setActiveTab('actions')}
+                    title="Aktionen"
+                  >
+                    <span className="sidebar-tab-icon">⚡</span>
+                    <span className="sidebar-tab-label">Aktionen</span>
+                  </button>
+                  <button
+                    className={`sidebar-tab${activeTab === 'map' ? ' active' : ''}`}
+                    onClick={() => setActiveTab('map')}
+                    title="Karte"
+                  >
+                    <span className="sidebar-tab-icon">🗺️</span>
+                    <span className="sidebar-tab-label">Karte</span>
+                  </button>
+                  <button
+                    className={`sidebar-tab${activeTab === 'social' ? ' active' : ''}`}
+                    onClick={() => setActiveTab('social')}
+                    title="Sozial"
+                  >
+                    <span className="sidebar-tab-icon">👥</span>
+                    <span className="sidebar-tab-label">Sozial</span>
+                    {Object.values(unreadCounts).some((c) => c > 0) && (
+                      <span className="sidebar-tab-badge" />
+                    )}
+                  </button>
+                  <button
+                    className={`sidebar-tab${activeTab === 'quests' ? ' active' : ''}`}
+                    onClick={() => setActiveTab('quests')}
+                    title="Quests"
+                  >
+                    <span className="sidebar-tab-icon">🏆</span>
+                    <span className="sidebar-tab-label">Quests</span>
+                  </button>
+                  {(import.meta.env.DEV || isDevUser(user.id)) && (
+                    <button
+                      className={`sidebar-tab${activeTab === 'dev' ? ' active' : ''}`}
+                      onClick={() => setActiveTab('dev')}
+                      title="Dev"
+                    >
+                      <span className="sidebar-tab-icon">🔧</span>
+                      <span className="sidebar-tab-label">Dev</span>
+                    </button>
+                  )}
+                </nav>
+
+                {/* Tab content */}
+                <div className="sidebar-scroll">
+                  {activeTab === 'actions' && (
+                    <>
+                      <HomeStatus
+                        user={user}
+                        store={store}
+                        onUserUpdate={handleUserUpdate}
+                      />
+                      <OnTheRoadButton
+                        user={user}
+                        store={store}
+                        onVoteCreated={handleOTRCreated}
+                      />
+                      <DrinkVoteButton
+                        user={user}
+                        store={store}
+                        onVoteCreated={handleDrinkVoteCreated}
+                      />
+                      <DuelPanel user={user} store={store} />
+                    </>
+                  )}
+                  {activeTab === 'map' && (
+                    <>
+                      <BeerPicker
+                        selectedBeerId={selectedBeerId}
+                        onSelect={setSelectedBeerId}
+                      />
+                      <Legend
+                        voteCount={votes.length}
+                        showSwords={overlaySettings.showSwords}
+                      />
+                      <ExploreFeed
+                        items={feedItems}
+                        onNavigate={handleFeedNavigate}
+                      />
+                    </>
+                  )}
+                  {activeTab === 'social' && (
+                    <>
+                      <FriendsPanel
+                        user={user}
+                        store={store}
+                        onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
+                        friendPresence={friendPresence}
+                        onFriendIdsChange={setFriendIds}
+                        unreadCounts={unreadCounts}
+                        onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
+                      />
+                      <TeamPanel user={user} store={store} />
+                    </>
+                  )}
+                  {activeTab === 'quests' && (
+                    <QuestsPanel
+                      questState={questState}
+                      catalog={catalog}
+                    />
+                  )}
+                  {activeTab === 'dev' && (import.meta.env.DEV || isDevUser(user.id)) && (
+                    <SimulationPanel
+                      onAddVotes={handleAddVotes}
+                      onClearVotes={handleClearVotes}
+                    />
+                  )}
+                </div>
+              </>
             )}
           </aside>
         )}

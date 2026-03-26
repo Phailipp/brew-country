@@ -159,6 +159,74 @@
   margin-bottom: 2px;
 }
 
+/* ─── Sidebar tabs ──────────────────────────────────── */
+.sidebar-tabs {
+  display: flex;
+  flex-direction: row;
+  background: var(--bg-void);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.sidebar-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-tab {
+  flex: 1;
+  min-width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+  font-family: inherit;
+}
+
+.sidebar-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-200);
+}
+
+.sidebar-tab.active {
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+  background: var(--bg-surface);
+}
+
+.sidebar-tab-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.sidebar-tab-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.sidebar-tab-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
 /* ─── Hint text ─────────────────────────────────────── */
 .hint {
   margin: 0;
