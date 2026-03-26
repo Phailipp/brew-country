@@ -205,14 +205,12 @@ export function GoogleLogin() {
         {info && <p className="auth-instruction">{info}</p>}
         {error && <p className="auth-error">{error}</p>}
 
-        {(showDevBypass || !firebaseReady) && (
-          <div className="auth-dev-bypass">
-            <p className="auth-dev-bypass-label">⚠️ Firebase nicht konfiguriert</p>
-            <button className="auth-dev-bypass-btn" onClick={handleDevBypass}>
-              Dev-Bypass: Als Testnutzer anmelden
-            </button>
-          </div>
-        )}
+        <div className="auth-dev-bypass">
+          <p className="auth-dev-bypass-label">🔧 Dev-Modus</p>
+          <button className="auth-dev-bypass-btn" onClick={handleDevBypass}>
+            Ohne Login testen (Dev-Bypass)
+          </button>
+        </div>
       </div>
     </div>
   );
