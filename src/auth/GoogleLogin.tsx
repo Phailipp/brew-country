@@ -41,7 +41,6 @@ export function GoogleLogin() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showDevBypass, setShowDevBypass] = useState(false);
 
   const firebaseReady = isFirebaseConfigured();
   const isVerifyMode = auth.status === 'verify-email';
@@ -87,12 +86,7 @@ export function GoogleLogin() {
         await loginWithEmail(email.trim(), password);
       }
     } catch (e) {
-      const msg = mapFirebaseError(e);
-      if (msg === null) {
-        setShowDevBypass(true);
-      } else {
-        setError(msg);
-      }
+      setError(mapFirebaseError(e) ?? '');
     } finally {
       setLoading(false);
     }
@@ -106,7 +100,7 @@ export function GoogleLogin() {
       await resendVerificationEmail();
       setInfo('Bestätigungs-E-Mail wurde erneut gesendet.');
     } catch (e) {
-      setError(mapFirebaseError(e));
+      setError(mapFirebaseError(e) ?? '');
     } finally {
       setLoading(false);
     }
@@ -119,7 +113,7 @@ export function GoogleLogin() {
     try {
       await refreshVerificationStatus();
     } catch (e) {
-      setError(mapFirebaseError(e));
+      setError(mapFirebaseError(e) ?? '');
     } finally {
       setLoading(false);
     }
