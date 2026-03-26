@@ -5,13 +5,16 @@ import App from './App.tsx'
 import { ToastProvider } from './ui/Toast.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { FirestoreStore } from './storage/FirestoreStore.ts'
+import { IndexedDBStore } from './storage/IndexedDBStore.ts'
 
-const store = new FirestoreStore();
+// Dev-bypass users (id starts with "dev_") use local IndexedDB — no Firebase needed
+const savedUserId = localStorage.getItem('brewcountry_auth');
+const isDevUser = savedUserId?.startsWith('dev_') ?? false;
+const store = isDevUser ? new IndexedDBStore() : new FirestoreStore();
 
 const isAdmin = window.location.hash === '#admin';
 
 if (isAdmin) {
-  // Lazy-load admin panel
   import('./admin/AdminPanel.tsx').then(({ AdminPanel }) => {
     createRoot(document.getElementById('root')!).render(
       <StrictMode>
@@ -20,7 +23,6 @@ if (isAdmin) {
     );
   });
 
-  // Reload on hash change to switch between admin/app
   window.addEventListener('hashchange', () => location.reload());
 } else {
   createRoot(document.getElementById('root')!).render(

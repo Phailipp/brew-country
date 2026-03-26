@@ -30,7 +30,7 @@ export function usePresence(userId: string | null): UsePresenceReturn {
 
   // Heartbeat + online count subscription
   useEffect(() => {
-    if (!isFirebaseConfigured() || !userId) return;
+    if (!isFirebaseConfigured() || !userId || userId.startsWith('dev_')) return;
 
     // Initial heartbeat
     updatePresence(userId).catch(() => {});
@@ -53,7 +53,7 @@ export function usePresence(userId: string | null): UsePresenceReturn {
 
   // Subscribe to friend presence when friendIds change
   const resubscribeFriends = useCallback(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isFirebaseConfigured() || (userId && userId.startsWith('dev_'))) return;
 
     // Clean up previous subscription
     if (friendUnsubRef.current) {

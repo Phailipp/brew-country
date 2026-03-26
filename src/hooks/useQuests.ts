@@ -17,6 +17,9 @@ export function useQuests(userId: string, overlaySettings: OverlaySettings) {
   showToastRef.current = showToast;
 
   useEffect(() => {
+    // Dev-bypass users: skip Firestore, start with empty state immediately
+    if (userId.startsWith('dev_')) return;
+
     let mounted = true;
     getQuestStateForUser(userId)
       .then((state) => {
@@ -48,7 +51,7 @@ export function useQuests(userId: string, overlaySettings: OverlaySettings) {
       if (newState !== stateRef.current && JSON.stringify(newState) !== JSON.stringify(stateRef.current)) {
         stateRef.current = newState;
         setQuestState(newState);
-        saveQuestStateForUser(userId, newState).catch(() => {});
+        if (!userId.startsWith('dev_')) saveQuestStateForUser(userId, newState).catch(() => {});
       }
 
       // Fire toasts for completed quests

@@ -61,6 +61,8 @@ interface AppProps {
   store: StorageInterface;
 }
 
+const isDevUser = (id: string) => id.startsWith('dev_');
+
 export default function App({ store }: AppProps) {
   const { auth, updateUser, updateLastActive } = useAuth();
 
@@ -138,7 +140,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   // Subscribe to friendships for notification tracking
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isFirebaseConfigured() || isDevUser(user.id)) return;
     const unsub = subscribeFriends(user.id, (fs) => {
       setFriendships(fs);
     });
@@ -161,28 +163,28 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   // Sync user profile to Firestore (with location) so other users see us on the map
   useEffect(() => {
-    if (isFirebaseConfigured() && user.id && user.beerId) {
+    if (isFirebaseConfigured() && !isDevUser(user.id) && user.beerId) {
       saveUserProfile(user.id, user.beerId, user.homeLat, user.homeLon).catch(() => {});
     }
   }, [user.id, user.beerId, user.homeLat, user.homeLon]);
 
   // Subscribe to all users from Firestore for shared map
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isFirebaseConfigured() || isDevUser(user.id)) return;
     const unsub = subscribeAllUsers((users) => {
       setRemoteUsers(users);
     });
     return () => unsub();
-  }, []);
+  }, [user.id]);
 
   // Subscribe to legacy simulation votes in Firestore
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isFirebaseConfigured() || isDevUser(user.id)) return;
     const unsub = subscribeLegacyVotes((serverVotes) => {
       setVotes(serverVotes);
     });
     return () => unsub();
-  }, []);
+  }, [user.id]);
 
   const userId = user.id;
   const userVotePosition = { lat: user.homeLat, lon: user.homeLon };
