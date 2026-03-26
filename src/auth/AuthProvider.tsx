@@ -109,6 +109,9 @@ export function AuthProvider({ children, store }: Props) {
       } else {
         setAuth({ status: 'onboarding', userId });
       }
+    }).catch(() => {
+      // Firestore unreachable (e.g. dev bypass without Firebase) → go to onboarding
+      setAuth({ status: 'onboarding', userId });
     });
   }, [store]);
 
