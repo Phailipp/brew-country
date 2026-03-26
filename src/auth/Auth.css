@@ -181,6 +181,42 @@
   opacity: 0.7;
 }
 
+/* ─── Dev bypass section ────────────────────────────── */
+.auth-dev-bypass {
+  margin-top: 1.25rem;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.auth-dev-bypass-label {
+  font-size: 0.72rem;
+  color: var(--amber);
+  margin-bottom: 8px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.auth-dev-bypass-btn {
+  width: 100%;
+  padding: 7px;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  background: var(--amber-dim);
+  color: var(--amber);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  letter-spacing: 0.2px;
+}
+
+.auth-dev-bypass-btn:hover {
+  background: rgba(245, 158, 11, 0.18);
+  box-shadow: var(--amber-glow);
+}
+
 /* ─── Onboarding steps ──────────────────────────────── */
 .onboarding-steps {
   display: flex;

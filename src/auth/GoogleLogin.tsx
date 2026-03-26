@@ -6,7 +6,7 @@ import './Auth.css';
 
 type Mode = 'login' | 'register';
 
-function mapFirebaseError(error: unknown): string {
+function mapFirebaseError(error: unknown): string | null {
   if (!(error instanceof FirebaseError)) return 'Unbekannter Fehler. Bitte erneut versuchen.';
 
   switch (error.code) {
@@ -22,6 +22,8 @@ function mapFirebaseError(error: unknown): string {
       return 'E-Mail oder Passwort ist falsch.';
     case 'auth/too-many-requests':
       return 'Zu viele Versuche. Bitte warte kurz und versuche es erneut.';
+    case 'auth/configuration-not-found':
+      return null; // handled separately via dev bypass
     default:
       return `Login fehlgeschlagen (${error.code}).`;
   }
@@ -31,7 +33,7 @@ function mapFirebaseError(error: unknown): string {
  * E-Mail Login / Registrierung (ersetzt Google Login).
  */
 export function GoogleLogin() {
-  const { register, loginWithEmail, resendVerificationEmail, refreshVerificationStatus, auth, logout } = useAuth();
+  const { register, loginWithEmail, resendVerificationEmail, refreshVerificationStatus, auth, logout, login } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +41,7 @@ export function GoogleLogin() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDevBypass, setShowDevBypass] = useState(false);
 
   const firebaseReady = isFirebaseConfigured();
   const isVerifyMode = auth.status === 'verify-email';
@@ -48,6 +51,10 @@ export function GoogleLogin() {
     if (loading) return 'Bitte warten…';
     return mode === 'login' ? 'Anmelden' : 'Registrieren';
   }, [loading, mode]);
+
+  const handleDevBypass = () => {
+    login('dev_' + Math.random().toString(36).slice(2, 8));
+  };
 
   const handleSubmit = async () => {
     if (!firebaseReady) {
@@ -80,7 +87,12 @@ export function GoogleLogin() {
         await loginWithEmail(email.trim(), password);
       }
     } catch (e) {
-      setError(mapFirebaseError(e));
+      const msg = mapFirebaseError(e);
+      if (msg === null) {
+        setShowDevBypass(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -192,6 +204,15 @@ export function GoogleLogin() {
 
         {info && <p className="auth-instruction">{info}</p>}
         {error && <p className="auth-error">{error}</p>}
+
+        {(showDevBypass || !firebaseReady) && (
+          <div className="auth-dev-bypass">
+            <p className="auth-dev-bypass-label">⚠️ Firebase nicht konfiguriert</p>
+            <button className="auth-dev-bypass-btn" onClick={handleDevBypass}>
+              Dev-Bypass: Als Testnutzer anmelden
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
