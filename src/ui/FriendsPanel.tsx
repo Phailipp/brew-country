@@ -47,8 +47,12 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
   if (!isFirebaseConfigured()) {
     return (
       <div className="friends-panel">
-        <h3>Freunde</h3>
-        <p className="friends-disabled">Firebase nicht konfiguriert</p>
+        <div className="friends-panel-header">
+          <h3>Freunde</h3>
+        </div>
+        <div className="friends-panel-body">
+          <p className="friends-disabled">Firebase nicht konfiguriert</p>
+        </div>
       </div>
     );
   }
@@ -212,8 +216,12 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
 
   return (
     <div className="friends-panel">
-      <h3>Freunde <span className="friends-count">{acceptedFriends.length}/{GAME.MAX_FRIENDS}</span></h3>
+      <div className="friends-panel-header">
+        <h3>Freunde</h3>
+        <span className="friends-count">{acceptedFriends.length}/{GAME.MAX_FRIENDS}</span>
+      </div>
 
+      <div className="friends-panel-body">
       {/* Add friend form */}
       <div className="friends-add-form">
         <input
@@ -376,6 +384,7 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

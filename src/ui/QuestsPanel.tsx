@@ -10,6 +10,7 @@ export function QuestsPanel({ questState, catalog }: Props) {
   return (
     <div className="quests-panel">
       <h3>Brew Quests</h3>
+      <div className="quests-list">
       {catalog.map((quest) => {
         const progress = questState.progress[quest.id];
         const current = progress?.currentCount ?? 0;
@@ -35,6 +36,7 @@ export function QuestsPanel({ questState, catalog }: Props) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

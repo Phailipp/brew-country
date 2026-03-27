@@ -30,7 +30,7 @@ function getDuelTimeoutMs(duel: Duel): number {
 
 export function DuelPanel({ user, store }: Props) {
   const [duels, setDuels] = useState<Duel[]>([]);
-  const [_, setTick] = useState(0);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -74,8 +74,6 @@ export function DuelPanel({ user, store }: Props) {
     setDuels(prev => prev.map(d => d.id === duelId ? updated : d));
   }, [store]);
 
-  // Suppress unused _ warning
-  void _;
 
   if (duels.length === 0) return null;
 

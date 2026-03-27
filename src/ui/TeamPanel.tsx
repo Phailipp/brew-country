@@ -69,7 +69,10 @@ export function TeamPanel({ user, store }: Props) {
 
   return (
     <div className="team-panel">
-      <h3>Biergemeinschaft</h3>
+      <div className="team-panel-header">
+        <h3>Biergemeinschaft</h3>
+      </div>
+      <div className="team-panel-body">
       <div className="team-info">
         {beer && <img src={beer.svgLogo} alt={beer.name} className="team-logo" />}
         <span className="team-name">{beer?.name ?? user.beerId}</span>
@@ -94,6 +97,7 @@ export function TeamPanel({ user, store }: Props) {
       <p className="team-desc">
         +{(GAME.TEAM_BOOST_PER_OVERLAP * 100).toFixed(0)}% pro Teammitglied mit überlappendem Radius
       </p>
+      </div>
     </div>
   );
 }

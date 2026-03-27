@@ -47,8 +47,8 @@ export function useQuests(userId: string, overlaySettings: OverlaySettings) {
         settingsRef.current
       );
 
-      // Only update if something changed
-      if (newState !== stateRef.current && JSON.stringify(newState) !== JSON.stringify(stateRef.current)) {
+      // Only update if something changed (reference check is sufficient — evaluateEvent returns same ref if unchanged)
+      if (newState !== stateRef.current) {
         stateRef.current = newState;
         setQuestState(newState);
         if (!userId.startsWith('dev_')) saveQuestStateForUser(userId, newState).catch(() => {});
