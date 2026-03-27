@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { User, WeightBreakdown } from '../domain/types';
 import { computeWeightBreakdown } from '../domain/weights';
 import type { StorageInterface } from '../storage/StorageInterface';
@@ -11,7 +11,7 @@ interface Props {
   onUserUpdate: (user: User) => void;
 }
 
-export function HomeStatus({ user, store, onUserUpdate }: Props) {
+export const HomeStatus = memo(function HomeStatus({ user, store, onUserUpdate }: Props) {
   const [breakdown, setBreakdown] = useState<WeightBreakdown | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -120,4 +120,4 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
       </label>
     </div>
   );
-}
+});

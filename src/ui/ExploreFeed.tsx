@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { FeedItem } from '../domain/types';
 import './ExploreFeed.css';
 
@@ -6,7 +7,7 @@ interface Props {
   onNavigate: (lat: number, lon: number, zoom: number) => void;
 }
 
-export function ExploreFeed({ items, onNavigate }: Props) {
+export const ExploreFeed = memo(function ExploreFeed({ items, onNavigate }: Props) {
   if (items.length === 0) return null;
 
   return (
@@ -31,4 +32,4 @@ export function ExploreFeed({ items, onNavigate }: Props) {
       ))}
     </div>
   );
-}
+});

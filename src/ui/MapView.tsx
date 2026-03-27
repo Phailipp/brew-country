@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, memo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Vote, DominanceResult, GridSpec, OverlaySettings, ViewportBounds, Region } from '../domain/types';
@@ -46,7 +46,7 @@ interface Props {
   friendLocations?: FriendLocation[];
 }
 
-export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
+export const MapView = memo(forwardRef<MapViewHandle, Props>(function MapView(
   { votes, dominanceData, regions, gridSpec, userVotePosition, onMapClick, overlaySettings, onViewportChange, onShareRegion, friendLocations },
   ref
 ) {
@@ -483,4 +483,4 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   void gridSpec;
 
   return <div ref={mapContainerRef} className="map-container" />;
-});
+}));

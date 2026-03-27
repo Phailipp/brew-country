@@ -37,8 +37,10 @@ export function evaluateEvent(
     let updated = { ...prev };
 
     switch (quest.id) {
-      case 'cartographer': {
-        // Track unique vote placements by GPS location (~11 m resolution)
+      // ── Mapping ───────────────────────────────────────────────────────────
+      case 'cartographer':
+      case 'veteran': {
+        // Track unique vote placements by GPS grid (~11m resolution)
         if (event.type === 'vote:saved') {
           const key = `${event.vote.lat.toFixed(4)},${event.vote.lon.toFixed(4)}`;
           if (!updated.trackedIds.includes(key)) {
@@ -52,9 +54,10 @@ export function evaluateEvent(
         break;
       }
 
+      // ── Exploration ───────────────────────────────────────────────────────
       case 'explorer':
       case 'globetrotter': {
-        // Track unique beer regions visited (hovered or clicked)
+        // Track unique beer regions by ID (hovered or clicked)
         if (event.type === 'region:hovered' || event.type === 'region:clicked') {
           const regionId = event.region.id;
           if (!updated.trackedIds.includes(regionId)) {
@@ -69,7 +72,7 @@ export function evaluateEvent(
       }
 
       case 'border-patrol': {
-        // Track close-margin (contested) regions visited
+        // Track contested regions (low margin) — hovered or clicked
         if (event.type === 'region:hovered' || event.type === 'region:clicked') {
           const region = event.region;
           if (region.avgMargin <= settings.closeMarginThreshold) {
@@ -86,8 +89,25 @@ export function evaluateEvent(
         break;
       }
 
-      case 'regular': {
-        // Track unique drink check-ins by placeKey (one place = one location grid cell ~100m)
+      // ── On The Road ───────────────────────────────────────────────────────
+      case 'wanderer': {
+        if (event.type === 'otr:created') {
+          const voteId = event.vote.id;
+          if (!updated.trackedIds.includes(voteId)) {
+            updated = {
+              ...updated,
+              trackedIds: [...updated.trackedIds, voteId],
+              currentCount: updated.currentCount + 1,
+            };
+          }
+        }
+        break;
+      }
+
+      // ── Drink check-ins ───────────────────────────────────────────────────
+      case 'regular':
+      case 'bar-legend': {
+        // Track unique drink check-ins by placeKey (~100m grid cell)
         if (event.type === 'drink:created') {
           const key = event.vote.placeKey;
           if (!updated.trackedIds.includes(key)) {
@@ -101,14 +121,56 @@ export function evaluateEvent(
         break;
       }
 
-      case 'networker': {
-        // Track unique friendships added
+      // ── Social ────────────────────────────────────────────────────────────
+      case 'networker':
+      case 'socialite': {
         if (event.type === 'friend:added') {
           const fsId = event.friendship.id;
           if (!updated.trackedIds.includes(fsId)) {
             updated = {
               ...updated,
               trackedIds: [...updated.trackedIds, fsId],
+              currentCount: updated.currentCount + 1,
+            };
+          }
+        }
+        break;
+      }
+
+      case 'chatterbox': {
+        // Count outgoing chat messages (event only emitted on send, not receive)
+        if (event.type === 'chat:message') {
+          const msgId = event.message.id;
+          if (!updated.trackedIds.includes(msgId)) {
+            updated = {
+              ...updated,
+              trackedIds: [...updated.trackedIds, msgId],
+              currentCount: updated.currentCount + 1,
+            };
+          }
+        }
+        break;
+      }
+
+      // ── Teams & Duels ─────────────────────────────────────────────────────
+      case 'team-player': {
+        if (event.type === 'team:joined') {
+          // One-shot: just reaching count 1 completes it
+          if (updated.currentCount === 0) {
+            updated = { ...updated, currentCount: 1 };
+          }
+        }
+        break;
+      }
+
+      case 'duelist': {
+        // Count accepted duels (status flips to 'active')
+        if (event.type === 'duel:updated' && event.duel.status === 'active') {
+          const duelId = event.duel.id;
+          if (!updated.trackedIds.includes(duelId)) {
+            updated = {
+              ...updated,
+              trackedIds: [...updated.trackedIds, duelId],
               currentCount: updated.currentCount + 1,
             };
           }

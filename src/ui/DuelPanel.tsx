@@ -3,6 +3,7 @@ import type { Duel, User } from '../domain/types';
 import type { StorageInterface } from '../storage/StorageInterface';
 import { BEER_MAP } from '../domain/beers';
 import { GAME } from '../config/constants';
+import { appEvents } from '../domain/events';
 import './DuelPanel.css';
 
 interface Props {
@@ -66,6 +67,7 @@ export function DuelPanel({ user, store }: Props) {
     };
     await store.saveDuel(updated);
     setDuels(prev => prev.map(d => d.id === duelId ? updated : d));
+    appEvents.emit({ type: 'duel:updated', duel: updated });
   }, [store]);
 
 

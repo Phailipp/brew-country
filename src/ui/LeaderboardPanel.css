@@ -1,0 +1,141 @@
+/* ─── Leaderboard Panel ─────────────────────────────── */
+.leaderboard-panel {
+  padding: 10px;
+}
+
+.leaderboard-title {
+  margin: 0 0 8px;
+  font-size: 10px;
+  color: var(--text-400);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+}
+
+.leaderboard-subtitle {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 9px;
+}
+
+.leaderboard-empty {
+  font-size: 0.75rem;
+  color: var(--text-400);
+  text-align: center;
+  padding: 1rem 0;
+  margin: 0;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ─── Row ───────────────────────────────────────────── */
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+}
+
+.leaderboard-row:hover {
+  border-color: var(--border-default);
+}
+
+.leaderboard-row.leader {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.04);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.06);
+}
+
+/* ─── Rank ──────────────────────────────────────────── */
+.lb-rank {
+  font-size: 1rem;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.lb-rank-num {
+  font-size: 0.7rem;
+  color: var(--text-400);
+  font-weight: 700;
+}
+
+/* ─── Beer info ─────────────────────────────────────── */
+.lb-beer-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 90px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.lb-logo {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.lb-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Stats ─────────────────────────────────────────── */
+.lb-stats {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lb-bar-wrap {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.lb-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--transition-base);
+  opacity: 0.85;
+}
+
+.lb-numbers {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.lb-pct {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-100);
+  min-width: 36px;
+}
+
+.lb-cells {
+  font-size: 0.62rem;
+  color: var(--text-400);
+}
+
+.lb-regions {
+  font-size: 0.62rem;
+  color: var(--text-400);
+  margin-left: auto;
+}

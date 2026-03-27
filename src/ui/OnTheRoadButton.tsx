@@ -4,6 +4,7 @@ import type { StorageInterface } from '../storage/StorageInterface';
 import { haversineDistanceKm } from '../domain/geo';
 import { GAME } from '../config/constants';
 import { getNow } from '../domain/clock';
+import { appEvents } from '../domain/events';
 import './OnTheRoadButton.css';
 
 interface Props {
@@ -78,6 +79,7 @@ export function OnTheRoadButton({ user, store, onVoteCreated }: Props) {
 
       await store.saveOTRVote(vote);
       setActiveCount(active.length + 1);
+      appEvents.emit({ type: 'otr:created', vote });
       onVoteCreated();
     } catch (err) {
       setError(

@@ -251,7 +251,8 @@ export type AppEvent =
   | { type: 'drink:expired'; voteId: string }
   | { type: 'friend:added'; friendship: Friendship }
   | { type: 'friend:removed'; friendshipId: string }
-  | { type: 'chat:message'; message: ChatMessage; friendshipId: string };
+  | { type: 'chat:message'; message: ChatMessage; friendshipId: string }
+  | { type: 'team:joined'; team: Team };
 
 // ── Quests ───────────────────────────────────────────────
 export interface QuestDefinition {

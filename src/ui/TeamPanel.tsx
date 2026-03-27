@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import type { User, Team } from '../domain/types';
 import type { StorageInterface } from '../storage/StorageInterface';
 import { BEER_MAP } from '../domain/beers';
 import { GAME } from '../config/constants';
+import { appEvents } from '../domain/events';
 import './TeamPanel.css';
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
   store: StorageInterface;
 }
 
-export function TeamPanel({ user, store }: Props) {
+export const TeamPanel = memo(function TeamPanel({ user, store }: Props) {
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,6 +49,7 @@ export function TeamPanel({ user, store }: Props) {
 
     await store.saveTeam(t);
     setTeam(t);
+    appEvents.emit({ type: 'team:joined', team: t });
     setLoading(false);
   }, [user, store]);
 
@@ -100,4 +102,4 @@ export function TeamPanel({ user, store }: Props) {
       </div>
     </div>
   );
-}
+});

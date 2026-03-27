@@ -44,6 +44,21 @@ export function ShareModal({ payload, onClose }: Props) {
     downloadShareCard(payload);
   }, [payload]);
 
+  const canNativeShare = typeof navigator.share === 'function';
+
+  const handleNativeShare = useCallback(async () => {
+    if (!canNativeShare) return;
+    try {
+      await navigator.share({
+        title: `Brew Country – ${payload.beerName}`,
+        text: `${payload.beerName} kontrolliert ${payload.cellCount} Zellen!`,
+        url: link,
+      });
+    } catch {
+      // User cancelled or share failed — no-op
+    }
+  }, [canNativeShare, payload, link]);
+
   // Close on Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -78,6 +93,11 @@ export function ShareModal({ payload, onClose }: Props) {
         </div>
 
         <div className="share-actions">
+          {canNativeShare && (
+            <button className="share-btn share-btn-native" onClick={handleNativeShare}>
+              Teilen
+            </button>
+          )}
           <button className="share-btn share-btn-download" onClick={handleDownload}>
             Bild speichern
           </button>

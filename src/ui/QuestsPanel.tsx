@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { QuestDefinition, QuestState } from '../domain/types';
 import './QuestsPanel.css';
 
@@ -6,37 +7,70 @@ interface Props {
   catalog: QuestDefinition[];
 }
 
-export function QuestsPanel({ questState, catalog }: Props) {
+function formatCompletedAt(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+}
+
+export const QuestsPanel = memo(function QuestsPanel({ questState, catalog }: Props) {
+  const completedQuests = catalog.filter(q => questState.progress[q.id]?.completed);
+  const activeQuests = catalog.filter(q => !questState.progress[q.id]?.completed);
+
   return (
     <div className="quests-panel">
-      <h3>Brew Quests</h3>
-      <div className="quests-list">
-      {catalog.map((quest) => {
-        const progress = questState.progress[quest.id];
-        const current = progress?.currentCount ?? 0;
-        const completed = progress?.completed ?? false;
-        const pct = Math.min(100, Math.round((current / quest.targetCount) * 100));
+      <div className="quests-header">
+        <h3>Brew Quests</h3>
+        <span className="quests-progress-badge">
+          {completedQuests.length}/{catalog.length}
+        </span>
+      </div>
 
-        return (
-          <div key={quest.id} className={`quest-row${completed ? ' completed' : ''}`}>
-            <span className="quest-icon">{quest.icon}</span>
-            <div className="quest-info">
-              <div className="quest-title" title={quest.description}>{quest.title}</div>
-              <div className="quest-bar-wrap">
-                <div className="quest-bar-fill" style={{ width: `${pct}%` }} />
+      <div className="quests-list">
+        {/* Active quests first */}
+        {activeQuests.map((quest) => {
+          const progress = questState.progress[quest.id];
+          const current = progress?.currentCount ?? 0;
+          const pct = Math.min(100, Math.round((current / quest.targetCount) * 100));
+
+          return (
+            <div key={quest.id} className="quest-row">
+              <span className="quest-icon">{quest.icon}</span>
+              <div className="quest-info">
+                <div className="quest-title">{quest.title}</div>
+                <div className="quest-desc">{quest.description}</div>
+                <div className="quest-bar-wrap">
+                  <div className="quest-bar-fill" style={{ width: `${pct}%` }} />
+                </div>
               </div>
+              <span className="quest-count">{current}/{quest.targetCount}</span>
             </div>
-            <span className="quest-count">
-              {completed ? (
-                <span className="quest-check">{'\u2713'}</span>
-              ) : (
-                `${current}/${quest.targetCount}`
-              )}
-            </span>
-          </div>
-        );
-      })}
+          );
+        })}
+
+        {/* Completed quests at bottom */}
+        {completedQuests.length > 0 && (
+          <>
+            <div className="quests-section-divider">Abgeschlossen</div>
+            {completedQuests.map((quest) => {
+              const progress = questState.progress[quest.id]!;
+              return (
+                <div key={quest.id} className="quest-row completed">
+                  <span className="quest-icon">{quest.icon}</span>
+                  <div className="quest-info">
+                    <div className="quest-title">{quest.title}</div>
+                    {progress.completedAt && (
+                      <div className="quest-completed-date">
+                        ✓ {formatCompletedAt(progress.completedAt)}
+                      </div>
+                    )}
+                  </div>
+                  <span className="quest-check">✓</span>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
     </div>
   );
-}
+});

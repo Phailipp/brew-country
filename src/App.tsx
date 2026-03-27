@@ -26,6 +26,7 @@ import { DrinkVoteButton } from './ui/DrinkVoteButton';
 import { TeamPanel } from './ui/TeamPanel';
 import { FriendsPanel } from './ui/FriendsPanel';
 import { ChatPanel } from './ui/ChatPanel';
+import { LeaderboardPanel } from './ui/LeaderboardPanel';
 import { useToast } from './ui/Toast';
 import { useQuests } from './hooks/useQuests';
 import { useFeed } from './hooks/useFeed';
@@ -123,7 +124,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const [chatTarget, setChatTarget] = useState<{ friendshipId: string; friendUser: User } | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>(null);
 
-  const tabConfig = [
+  const tabConfig = useMemo(() => [
     { id: 'actions', icon: '⚡', label: 'Aktionen', title: 'Aktionen' },
     { id: 'map',     icon: '🗺️', label: 'Karte',    title: 'Karte' },
     { id: 'social',  icon: '👥', label: 'Sozial',   title: 'Sozial' },
@@ -131,9 +132,27 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     ...(import.meta.env.DEV || isDevUser(user.id)
       ? [{ id: 'dev', icon: '🔧', label: 'Dev', title: 'Dev Tools' }]
       : []),
-  ];
+  ], [user.id]);
 
   const toggleTab = (id: string) => setActiveTab(prev => prev === id ? null : id);
+
+  // Keyboard shortcuts: 1-5 switch tabs, Escape closes panel/chat
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'Escape') {
+        if (chatTarget) setChatTarget(null);
+        else setActiveTab(null);
+      } else if (e.key >= '1' && e.key <= '5') {
+        const idx = parseInt(e.key) - 1;
+        const tab = tabConfig[idx];
+        if (tab) setActiveTab(prev => prev === tab.id ? null : tab.id);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [chatTarget, tabConfig]);
+
   const workerRef = useRef<Worker | null>(null);
   const mapRef = useRef<MapViewHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -519,6 +538,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
               <>
                 <BeerPicker selectedBeerId={selectedBeerId} onSelect={setSelectedBeerId} />
                 <Legend voteCount={votes.length} showSwords={overlaySettings.showSwords} />
+                <LeaderboardPanel regions={regions} totalCells={dominanceData?.cells.length ?? 0} />
                 <ExploreFeed items={feedItems} onNavigate={handleFeedNavigate} />
               </>
             )}
