@@ -3,52 +3,64 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
-    linear-gradient(160deg, #060c18 0%, #04070f 60%, #060c18 100%);
+  min-height: 100dvh;
   padding: 1.5rem;
   position: relative;
   overflow: hidden;
+  background: #04070f;
 }
 
-/* Ambient glow */
-.auth-screen::before {
+/* Animated ambient blobs */
+.auth-screen::before,
+.auth-screen::after {
   content: '';
   position: absolute;
-  width: 600px;
-  height: 600px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%);
-  top: -200px;
+  pointer-events: none;
+  filter: blur(80px);
+}
+
+.auth-screen::before {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%);
+  top: -180px;
   left: 50%;
   transform: translateX(-50%);
-  pointer-events: none;
+  animation: blob-drift 8s ease-in-out infinite alternate;
+}
+
+.auth-screen::after {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+  bottom: -120px;
+  right: -80px;
+  animation: blob-drift 11s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes blob-drift {
+  from { transform: translateX(-50%) scale(1); }
+  to   { transform: translateX(-50%) scale(1.15) translateY(-30px); }
 }
 
 /* ─── Auth card ─────────────────────────────────────── */
 .auth-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  background: rgba(11, 24, 40, 0.72);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: var(--radius-xl);
   padding: 2rem;
   width: 100%;
   max-width: 400px;
   box-shadow:
-    0 0 0 1px var(--border-subtle),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
     0 24px 64px rgba(0, 0, 0, 0.6),
-    0 0 40px rgba(245, 158, 11, 0.04);
+    0 0 60px rgba(245, 158, 11, 0.05);
   position: relative;
-}
-
-.auth-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, transparent 50%);
-  pointer-events: none;
+  z-index: 1;
 }
 
 .onboarding-card {
@@ -86,19 +98,23 @@
 /* ─── Inputs ────────────────────────────────────────── */
 .auth-input-group {
   margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .auth-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border-default);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: var(--radius-md);
-  background: var(--bg-raised);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-100);
   font-size: 0.95rem;
   outline: none;
   box-sizing: border-box;
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  font-family: inherit;
 }
 
 .auth-input::placeholder {
@@ -107,7 +123,8 @@
 
 .auth-input:focus {
   border-color: var(--amber-border);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12), var(--amber-glow);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .auth-error {
@@ -134,11 +151,12 @@
   letter-spacing: 0.2px;
   transition: all var(--transition-base);
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
+  font-family: inherit;
 }
 
-.auth-btn:hover {
+.auth-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4);
   background: linear-gradient(135deg, var(--amber-light) 0%, var(--amber) 100%);
 }
 
@@ -148,7 +166,7 @@
 }
 
 .auth-btn:disabled {
-  background: var(--bg-active);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-400);
   cursor: not-allowed;
   transform: none;
@@ -158,19 +176,21 @@
 .auth-btn-secondary {
   width: 100%;
   padding: 0.65rem;
-  border: 1px solid var(--border-default);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-300);
   font-size: 0.85rem;
   cursor: pointer;
   transition: all var(--transition-fast);
+  font-family: inherit;
+  margin-bottom: 0.5rem;
 }
 
-.auth-btn-secondary:hover {
-  background: var(--bg-hover);
+.auth-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-100);
-  border-color: var(--border-strong);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .auth-dev-note {
@@ -186,8 +206,8 @@
   margin-top: 1.25rem;
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  border: 2px solid #f59e0b;
-  background: #1a1200;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.06);
 }
 
 .auth-dev-bypass-label {
@@ -200,18 +220,21 @@
 .auth-dev-bypass-btn {
   width: 100%;
   padding: 10px;
-  border: none;
+  border: 1px solid rgba(245, 158, 11, 0.4);
   border-radius: var(--radius-sm);
-  background: #f59e0b;
-  color: #000;
-  font-size: 0.9rem;
-  font-weight: 800;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
   letter-spacing: 0.3px;
+  transition: all var(--transition-fast);
+  font-family: inherit;
 }
 
 .auth-dev-bypass-btn:hover {
-  background: #fbbf24;
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.6);
 }
 
 /* ─── Onboarding steps ──────────────────────────────── */
@@ -226,7 +249,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--bg-active);
+  background: rgba(255, 255, 255, 0.12);
   transition: all var(--transition-base);
 }
 
@@ -271,8 +294,8 @@
   align-items: center;
   gap: 0.6rem;
   padding: 0.8rem 1rem;
-  background: rgba(34, 197, 94, 0.08);
-  border: 1px solid rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.07);
+  border: 1px solid rgba(34, 197, 94, 0.18);
   border-radius: var(--radius-md);
   color: var(--green);
   margin-bottom: 1rem;
@@ -297,8 +320,8 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: var(--bg-raised);
-  border: 1px solid var(--border-default);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-md);
 }
 
@@ -324,6 +347,8 @@
   margin-bottom: 1rem;
   max-height: 300px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 .onboarding-beer-item {
@@ -331,27 +356,27 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.55rem 0.75rem;
-  border: 1px solid var(--border-default);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-md);
-  background: var(--bg-raised);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-200);
   cursor: pointer;
   font-size: 0.8rem;
   font-weight: 500;
-  transition: all var(--transition-base);
+  transition: all var(--transition-fast);
+  font-family: inherit;
 }
 
 .onboarding-beer-item:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text-100);
 }
 
 .onboarding-beer-item.selected {
-  background: var(--amber-dim);
-  border-color: var(--amber-border);
-  color: var(--amber);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.12);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--amber-light);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2) inset;
 }
 
 .onboarding-beer-logo {
@@ -365,8 +390,8 @@
 
 /* ─── Confirm summary ───────────────────────────────── */
 .confirm-summary {
-  background: var(--bg-raised);
-  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-md);
   padding: 1rem;
   margin-bottom: 1rem;
