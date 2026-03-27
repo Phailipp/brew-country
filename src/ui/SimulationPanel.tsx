@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Vote } from '../domain/types';
+import type { Vote, User } from '../domain/types';
+import type { StorageInterface } from '../storage/StorageInterface';
 import { BEERS } from '../domain/beers';
 import { getDefaultBoundingBox } from '../domain/geo';
 import './SimulationPanel.css';
@@ -7,6 +8,9 @@ import './SimulationPanel.css';
 interface Props {
   onAddVotes: (votes: Vote[]) => void;
   onClearVotes: () => void;
+  user: User;
+  store: StorageInterface;
+  onUserUpdate: (user: User) => void;
 }
 
 /** Always use the full DACH region for vote generation, not the viewport grid */
@@ -16,7 +20,7 @@ function randomInRange(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-// Major DACH cities for clustered simulation
+// Major DACH cities for clustered simulation + teleport
 const DACH_CITIES = [
   { lat: 48.135, lon: 11.582, name: 'München' },
   { lat: 52.520, lon: 13.405, name: 'Berlin' },
@@ -70,9 +74,14 @@ function generateRandomVotes(count: number, clustered: boolean): Vote[] {
   return votes;
 }
 
-export function SimulationPanel({ onAddVotes, onClearVotes }: Props) {
+export function SimulationPanel({ onAddVotes, onClearVotes, user, store, onUserUpdate }: Props) {
   const [count, setCount] = useState(100);
   const [clustered, setClustered] = useState(true);
+
+  // Location teleport state
+  const [latInput, setLatInput] = useState(user.homeLat.toFixed(4));
+  const [lonInput, setLonInput] = useState(user.homeLon.toFixed(4));
+  const [teleportMsg, setTeleportMsg] = useState('');
 
   const handleGenerate = () => {
     const votes = generateRandomVotes(count, clustered);
@@ -84,8 +93,67 @@ export function SimulationPanel({ onAddVotes, onClearVotes }: Props) {
     onAddVotes(votes);
   };
 
+  const handleTeleport = async () => {
+    const lat = parseFloat(latInput);
+    const lon = parseFloat(lonInput);
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      setTeleportMsg('Ungültige Koordinaten');
+      return;
+    }
+    const updated: User = { ...user, homeLat: lat, homeLon: lon };
+    await store.saveUser(updated);
+    onUserUpdate(updated);
+    setTeleportMsg(`Teleportiert nach ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    setTimeout(() => setTeleportMsg(''), 2500);
+  };
+
+  const handleCitySelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const idx = Number(e.target.value);
+    if (idx < 0) return;
+    const city = DACH_CITIES[idx];
+    setLatInput(city.lat.toFixed(4));
+    setLonInput(city.lon.toFixed(4));
+  };
+
   return (
     <div className="simulation-panel">
+      {/* ── Location teleport ─────────────────────── */}
+      <h3>Standort</h3>
+      <div className="sim-location">
+        <p className="sim-location-current">
+          Aktuell: {user.homeLat.toFixed(4)}, {user.homeLon.toFixed(4)}
+        </p>
+        <select className="sim-city-select" defaultValue="-1" onChange={handleCitySelect}>
+          <option value="-1">Stadt wählen…</option>
+          {DACH_CITIES.map((c, i) => (
+            <option key={c.name} value={i}>{c.name}</option>
+          ))}
+        </select>
+        <div className="sim-coord-row">
+          <input
+            className="sim-coord-input"
+            type="number"
+            step="0.0001"
+            placeholder="Breitengrad"
+            value={latInput}
+            onChange={(e) => setLatInput(e.target.value)}
+          />
+          <input
+            className="sim-coord-input"
+            type="number"
+            step="0.0001"
+            placeholder="Längengrad"
+            value={lonInput}
+            onChange={(e) => setLonInput(e.target.value)}
+          />
+        </div>
+        <button className="sim-btn primary" onClick={handleTeleport}>
+          📍 Teleportieren
+        </button>
+        {teleportMsg && <p className="sim-teleport-msg">{teleportMsg}</p>}
+      </div>
+
+      {/* ── Vote simulation ───────────────────────── */}
       <h3>Simulation</h3>
       <div className="sim-controls">
         <label>

@@ -603,6 +603,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                     <SimulationPanel
                       onAddVotes={handleAddVotes}
                       onClearVotes={handleClearVotes}
+                      user={user}
+                      store={store}
+                      onUserUpdate={handleUserUpdate}
                     />
                   )}
                 </div>

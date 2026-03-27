@@ -37,7 +37,23 @@ export function evaluateEvent(
     let updated = { ...prev };
 
     switch (quest.id) {
-      case 'explorer': {
+      case 'cartographer': {
+        // Track unique vote placements by GPS location (~11 m resolution)
+        if (event.type === 'vote:saved') {
+          const key = `${event.vote.lat.toFixed(4)},${event.vote.lon.toFixed(4)}`;
+          if (!updated.trackedIds.includes(key)) {
+            updated = {
+              ...updated,
+              trackedIds: [...updated.trackedIds, key],
+              currentCount: updated.currentCount + 1,
+            };
+          }
+        }
+        break;
+      }
+
+      case 'explorer':
+      case 'globetrotter': {
         // Track unique beer regions visited (hovered or clicked)
         if (event.type === 'region:hovered' || event.type === 'region:clicked') {
           const regionId = event.region.id;
@@ -53,7 +69,7 @@ export function evaluateEvent(
       }
 
       case 'border-patrol': {
-        // Track close-margin regions visited
+        // Track close-margin (contested) regions visited
         if (event.type === 'region:hovered' || event.type === 'region:clicked') {
           const region = event.region;
           if (region.avgMargin <= settings.closeMarginThreshold) {
@@ -70,14 +86,29 @@ export function evaluateEvent(
         break;
       }
 
-      case 'cartographer': {
-        // Track unique vote placements
-        if (event.type === 'vote:saved') {
-          const key = `${event.vote.lat.toFixed(4)},${event.vote.lon.toFixed(4)}`;
+      case 'regular': {
+        // Track unique drink check-ins by placeKey (one place = one location grid cell ~100m)
+        if (event.type === 'drink:created') {
+          const key = event.vote.placeKey;
           if (!updated.trackedIds.includes(key)) {
             updated = {
               ...updated,
               trackedIds: [...updated.trackedIds, key],
+              currentCount: updated.currentCount + 1,
+            };
+          }
+        }
+        break;
+      }
+
+      case 'networker': {
+        // Track unique friendships added
+        if (event.type === 'friend:added') {
+          const fsId = event.friendship.id;
+          if (!updated.trackedIds.includes(fsId)) {
+            updated = {
+              ...updated,
+              trackedIds: [...updated.trackedIds, fsId],
               currentCount: updated.currentCount + 1,
             };
           }
