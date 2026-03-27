@@ -116,13 +116,24 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const [selectedBeerId, setSelectedBeerId] = useState<string | null>(user.beerId);
   const [dominanceData, setDominanceData] = useState<DominanceResult | null>(null);
   const [computing, setComputing] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [overlaySettings] = useState<OverlaySettings>(FIXED_OVERLAY_SETTINGS);
   const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
   const [gridSpec, setGridSpec] = useState<GridSpec>(fallbackGridSpec);
   const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
   const [chatTarget, setChatTarget] = useState<{ friendshipId: string; friendUser: User } | null>(null);
-  const [activeTab, setActiveTab] = useState<'map' | 'actions' | 'social' | 'quests' | 'dev'>('actions');
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+
+  const tabConfig = [
+    { id: 'actions', icon: '⚡', label: 'Aktionen', title: 'Aktionen' },
+    { id: 'map',     icon: '🗺️', label: 'Karte',    title: 'Karte' },
+    { id: 'social',  icon: '👥', label: 'Sozial',   title: 'Sozial' },
+    { id: 'quests',  icon: '🏆', label: 'Quests',   title: 'Quests' },
+    ...(import.meta.env.DEV || isDevUser(user.id)
+      ? [{ id: 'dev', icon: '🔧', label: 'Dev', title: 'Dev Tools' }]
+      : []),
+  ];
+
+  const toggleTab = (id: string) => setActiveTab(prev => prev === id ? null : id);
   const workerRef = useRef<Worker | null>(null);
   const mapRef = useRef<MapViewHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -445,27 +456,13 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     loadWeightedVotes();
   }, [loadWeightedVotes]);
 
+  const panelTitle = tabConfig.find(t => t.id === activeTab)?.title ?? '';
+  const hasUnread = unreadCounts.size > 0;
+
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>Brew Country</h1>
-        <span className="app-subtitle">Bier-Dominanz-Karte</span>
-        {computing && <span className="computing-badge">Berechne...</span>}
-        {isFirebaseConfigured() && onlineCount > 0 && (
-          <span className="online-badge">
-            <span className="online-dot" />
-            {onlineCount} online
-          </span>
-        )}
-        <button
-          className="sidebar-toggle"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          {sidebarOpen ? '\u2715' : '\u2630'}
-        </button>
-      </header>
-
-      <div className="app-body">
+      {/* ── Full-screen map ── */}
+      <div className="map-wrapper">
         <MapView
           ref={mapRef}
           votes={votes}
@@ -479,147 +476,101 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
           onShareRegion={handleShareRegion}
           friendLocations={friendLocations}
         />
-
-        {sidebarOpen && (
-          <aside className="sidebar">
-            {chatTarget ? (
-              <ChatPanel
-                user={user}
-                friendshipId={chatTarget.friendshipId}
-                friendUser={chatTarget.friendUser}
-                friendPresence={friendPresence.get(chatTarget.friendUser.id)}
-                onBack={() => setChatTarget(null)}
-              />
-            ) : (
-              <>
-                {/* Tab rail */}
-                <nav className="sidebar-tabs">
-                  <button
-                    className={`sidebar-tab${activeTab === 'actions' ? ' active' : ''}`}
-                    onClick={() => setActiveTab('actions')}
-                    title="Aktionen"
-                  >
-                    <span className="sidebar-tab-icon">⚡</span>
-                    <span className="sidebar-tab-label">Aktionen</span>
-                  </button>
-                  <button
-                    className={`sidebar-tab${activeTab === 'map' ? ' active' : ''}`}
-                    onClick={() => setActiveTab('map')}
-                    title="Karte"
-                  >
-                    <span className="sidebar-tab-icon">🗺️</span>
-                    <span className="sidebar-tab-label">Karte</span>
-                  </button>
-                  <button
-                    className={`sidebar-tab${activeTab === 'social' ? ' active' : ''}`}
-                    onClick={() => setActiveTab('social')}
-                    title="Sozial"
-                  >
-                    <span className="sidebar-tab-icon">👥</span>
-                    <span className="sidebar-tab-label">Sozial</span>
-                    {Object.values(unreadCounts).some((c) => c > 0) && (
-                      <span className="sidebar-tab-badge" />
-                    )}
-                  </button>
-                  <button
-                    className={`sidebar-tab${activeTab === 'quests' ? ' active' : ''}`}
-                    onClick={() => setActiveTab('quests')}
-                    title="Quests"
-                  >
-                    <span className="sidebar-tab-icon">🏆</span>
-                    <span className="sidebar-tab-label">Quests</span>
-                  </button>
-                  {(import.meta.env.DEV || isDevUser(user.id)) && (
-                    <button
-                      className={`sidebar-tab${activeTab === 'dev' ? ' active' : ''}`}
-                      onClick={() => setActiveTab('dev')}
-                      title="Dev"
-                    >
-                      <span className="sidebar-tab-icon">🔧</span>
-                      <span className="sidebar-tab-label">Dev</span>
-                    </button>
-                  )}
-                </nav>
-
-                {/* Tab content */}
-                <div className="sidebar-scroll">
-                  {activeTab === 'actions' && (
-                    <>
-                      <HomeStatus
-                        user={user}
-                        store={store}
-                        onUserUpdate={handleUserUpdate}
-                      />
-                      <OnTheRoadButton
-                        user={user}
-                        store={store}
-                        onVoteCreated={handleOTRCreated}
-                      />
-                      <DrinkVoteButton
-                        user={user}
-                        store={store}
-                        onVoteCreated={handleDrinkVoteCreated}
-                      />
-                      <DuelPanel user={user} store={store} />
-                    </>
-                  )}
-                  {activeTab === 'map' && (
-                    <>
-                      <BeerPicker
-                        selectedBeerId={selectedBeerId}
-                        onSelect={setSelectedBeerId}
-                      />
-                      <Legend
-                        voteCount={votes.length}
-                        showSwords={overlaySettings.showSwords}
-                      />
-                      <ExploreFeed
-                        items={feedItems}
-                        onNavigate={handleFeedNavigate}
-                      />
-                    </>
-                  )}
-                  {activeTab === 'social' && (
-                    <>
-                      <FriendsPanel
-                        user={user}
-                        store={store}
-                        onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
-                        friendPresence={friendPresence}
-                        onFriendIdsChange={setFriendIds}
-                        unreadCounts={unreadCounts}
-                        onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
-                      />
-                      <TeamPanel user={user} store={store} />
-                    </>
-                  )}
-                  {activeTab === 'quests' && (
-                    <QuestsPanel
-                      questState={questState}
-                      catalog={catalog}
-                    />
-                  )}
-                  {activeTab === 'dev' && (import.meta.env.DEV || isDevUser(user.id)) && (
-                    <SimulationPanel
-                      onAddVotes={handleAddVotes}
-                      onClearVotes={handleClearVotes}
-                      user={user}
-                      store={store}
-                      onUserUpdate={handleUserUpdate}
-                    />
-                  )}
-                </div>
-              </>
-            )}
-          </aside>
-        )}
       </div>
 
+      {/* ── Floating glass header ── */}
+      <header className="app-header">
+        <h1>Brew Country</h1>
+        {computing && <span className="computing-badge">⚡</span>}
+        {isFirebaseConfigured() && onlineCount > 0 && (
+          <span className="online-badge">
+            <span className="online-dot" />
+            {onlineCount}
+          </span>
+        )}
+      </header>
+
+      {/* ── Slide-in content panel ── */}
+      {chatTarget ? (
+        <aside className="content-panel">
+          <ChatPanel
+            user={user}
+            friendshipId={chatTarget.friendshipId}
+            friendUser={chatTarget.friendUser}
+            friendPresence={friendPresence.get(chatTarget.friendUser.id)}
+            onBack={() => setChatTarget(null)}
+          />
+        </aside>
+      ) : activeTab && (
+        <aside className="content-panel">
+          <div className="panel-header">
+            <span className="panel-title">{panelTitle}</span>
+            <button className="panel-close" onClick={() => setActiveTab(null)}>✕</button>
+          </div>
+          <div className="panel-scroll">
+            {activeTab === 'actions' && (
+              <>
+                <HomeStatus user={user} store={store} onUserUpdate={handleUserUpdate} />
+                <OnTheRoadButton user={user} store={store} onVoteCreated={handleOTRCreated} />
+                <DrinkVoteButton user={user} store={store} onVoteCreated={handleDrinkVoteCreated} />
+                <DuelPanel user={user} store={store} />
+              </>
+            )}
+            {activeTab === 'map' && (
+              <>
+                <BeerPicker selectedBeerId={selectedBeerId} onSelect={setSelectedBeerId} />
+                <Legend voteCount={votes.length} showSwords={overlaySettings.showSwords} />
+                <ExploreFeed items={feedItems} onNavigate={handleFeedNavigate} />
+              </>
+            )}
+            {activeTab === 'social' && (
+              <>
+                <FriendsPanel
+                  user={user}
+                  store={store}
+                  onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
+                  friendPresence={friendPresence}
+                  onFriendIdsChange={setFriendIds}
+                  unreadCounts={unreadCounts}
+                  onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
+                />
+                <TeamPanel user={user} store={store} />
+              </>
+            )}
+            {activeTab === 'quests' && (
+              <QuestsPanel questState={questState} catalog={catalog} />
+            )}
+            {activeTab === 'dev' && (
+              <SimulationPanel
+                onAddVotes={handleAddVotes}
+                onClearVotes={handleClearVotes}
+                user={user}
+                store={store}
+                onUserUpdate={handleUserUpdate}
+              />
+            )}
+          </div>
+        </aside>
+      )}
+
+      {/* ── Bottom navigation pill ── */}
+      <nav className="bottom-nav">
+        {tabConfig.map(tab => (
+          <button
+            key={tab.id}
+            className={`nav-item${activeTab === tab.id ? ' active' : ''}`}
+            onClick={() => toggleTab(tab.id)}
+            title={tab.title}
+          >
+            <span className="nav-icon">{tab.icon}</span>
+            <span className="nav-label">{tab.label}</span>
+            {tab.id === 'social' && hasUnread && <span className="nav-badge" />}
+          </button>
+        ))}
+      </nav>
+
       {sharePayload && (
-        <ShareModal
-          payload={sharePayload}
-          onClose={() => setSharePayload(null)}
-        />
+        <ShareModal payload={sharePayload} onClose={() => setSharePayload(null)} />
       )}
     </div>
   );

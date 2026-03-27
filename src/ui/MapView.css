@@ -1,13 +1,8 @@
 /* ─── Map container ─────────────────────────────────── */
 .map-container {
-  flex: 1;
-  min-height: 400px;
+  width: 100%;
+  height: 100%;
   position: relative;
-}
-
-/* Deep dark desaturation for a moody, cinematic look */
-.map-container .leaflet-tile-pane {
-  filter: saturate(0.15) brightness(0.85) hue-rotate(200deg);
 }
 
 .dominance-canvas {
