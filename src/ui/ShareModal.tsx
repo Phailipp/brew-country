@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import type { SharePayload } from '../domain/types';
 import { encodeShareLink } from '../domain/shareLink';
 import { generateShareCard, downloadShareCard } from '../domain/shareCard';
@@ -43,6 +43,15 @@ export function ShareModal({ payload, onClose }: Props) {
   const handleDownload = useCallback(() => {
     downloadShareCard(payload);
   }, [payload]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   return (
     <div className="share-overlay" onClick={onClose}>

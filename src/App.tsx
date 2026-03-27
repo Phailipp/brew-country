@@ -274,12 +274,11 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     const allTeams = await store.getAllTeams();
     const allDrink = await store.getAllDrinkVotes();
 
-    // Build outcomes map
-    const outcomesMap = new Map<string, Awaited<ReturnType<typeof store.getDuelOutcomes>>>();
-    for (const u of allUsers) {
-      const o = await store.getDuelOutcomes(u.id);
-      outcomesMap.set(u.id, o);
-    }
+    // Build outcomes map — parallel fetches instead of sequential
+    const outcomesEntries = await Promise.all(
+      allUsers.map(async (u) => [u.id, await store.getDuelOutcomes(u.id)] as const)
+    );
+    const outcomesMap = new Map(outcomesEntries);
 
     const wv = buildWeightedVotes(allUsers, allOTR, allTeams, outcomesMap, allDrink);
     setWeightedVotes(wv);
@@ -561,10 +560,14 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
             className={`nav-item${activeTab === tab.id ? ' active' : ''}`}
             onClick={() => toggleTab(tab.id)}
             title={tab.title}
+            aria-label={tab.title}
+            aria-pressed={activeTab === tab.id}
           >
-            <span className="nav-icon">{tab.icon}</span>
+            <span className="nav-icon" aria-hidden="true">{tab.icon}</span>
             <span className="nav-label">{tab.label}</span>
-            {tab.id === 'social' && hasUnread && <span className="nav-badge" />}
+            {tab.id === 'social' && hasUnread && (
+              <span className="nav-badge" aria-label="Ungelesene Nachrichten" />
+            )}
           </button>
         ))}
       </nav>

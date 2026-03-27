@@ -30,8 +30,8 @@ function getDuelTimeoutMs(duel: Duel): number {
 
 export function DuelPanel({ user, store }: Props) {
   const [duels, setDuels] = useState<Duel[]>([]);
-  const [, setTick] = useState(0);
 
+  // Reload every 30s — the re-render also refreshes countdown displays
   useEffect(() => {
     const load = async () => {
       const d = await store.getDuelsForUser(user.id);
@@ -41,12 +41,6 @@ export function DuelPanel({ user, store }: Props) {
     const interval = setInterval(load, 30_000);
     return () => clearInterval(interval);
   }, [user.id, store]);
-
-  // Tick every minute for countdown
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 60_000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleDecline = useCallback(async (duelId: string) => {
     const duel = await store.getDuel(duelId);

@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { ToastProvider } from './ui/Toast.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
+import { ErrorBoundary } from './ui/ErrorBoundary.tsx'
 import { FirestoreStore } from './storage/FirestoreStore.ts'
 import { IndexedDBStore } from './storage/IndexedDBStore.ts'
 
@@ -18,7 +19,9 @@ if (isAdmin) {
   import('./admin/AdminPanel.tsx').then(({ AdminPanel }) => {
     createRoot(document.getElementById('root')!).render(
       <StrictMode>
-        <AdminPanel store={store} />
+        <ErrorBoundary>
+          <AdminPanel store={store} />
+        </ErrorBoundary>
       </StrictMode>,
     );
   });
@@ -27,11 +30,13 @@ if (isAdmin) {
 } else {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <ToastProvider>
-        <AuthProvider store={store}>
-          <App store={store} />
-        </AuthProvider>
-      </ToastProvider>
+      <ErrorBoundary>
+        <ToastProvider>
+          <AuthProvider store={store}>
+            <App store={store} />
+          </AuthProvider>
+        </ToastProvider>
+      </ErrorBoundary>
     </StrictMode>,
   );
 }

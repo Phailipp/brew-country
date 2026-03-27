@@ -113,8 +113,8 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
           Stand Your Ground
           <span className="syg-desc">
             {user.standYourGroundEnabled
-              ? '4x Gewicht, halber Radius'
-              : 'Aktivieren: 4x Gewicht, halber Radius'}
+              ? '2× Gewicht-Multiplikator, halber Radius'
+              : 'Aktivieren: 2× Gewicht, halber Radius'}
           </span>
         </span>
       </label>

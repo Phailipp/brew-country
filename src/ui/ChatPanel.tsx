@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import type { User, ChatMessage, UserPresence } from '../domain/types';
 import { GAME } from '../config/constants';
 import { BEER_MAP } from '../domain/beers';
@@ -36,6 +36,8 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const localIdPrefix = useId();
 
   const friendBeer = BEER_MAP.get(friendUser.beerId);
   const isOnline = friendPresence
@@ -65,15 +67,17 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
       setInput('');
       appEvents.emit({
         type: 'chat:message',
-        message: { id: '', senderId: user.id, text, createdAt: Date.now() },
+        message: { id: `${localIdPrefix}_${Date.now()}`, senderId: user.id, text, createdAt: Date.now() },
         friendshipId,
       });
+      // Refocus input for continued typing
+      inputRef.current?.focus();
     } catch (e) {
       console.error('sendMessage error:', e);
     } finally {
       setSending(false);
     }
-  }, [input, sending, friendshipId, user.id]);
+  }, [input, sending, friendshipId, user.id, localIdPrefix]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -88,7 +92,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
     <div className="chat-panel">
       {/* Header */}
       <div className="chat-header">
-        <button className="chat-back-btn" onClick={onBack} title="Zurück">
+        <button className="chat-back-btn" onClick={onBack} aria-label="Zurück zur Freundesliste" title="Zurück">
           ←
         </button>
         <div className="chat-header-info">
@@ -108,7 +112,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
       </div>
 
       {/* Messages */}
-      <div className="chat-messages" ref={messagesContainerRef}>
+      <div className="chat-messages" ref={messagesContainerRef} aria-live="polite" aria-label="Nachrichtenverlauf">
         {messages.length === 0 && (
           <p className="chat-empty">Noch keine Nachrichten. Sag Prost! 🍻</p>
         )}
@@ -128,6 +132,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
       <div className="chat-input-area">
         <div className="chat-input-wrapper">
           <input
+            ref={inputRef}
             type="text"
             className="chat-input"
             placeholder="Nachricht..."
@@ -136,6 +141,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
             onKeyDown={handleKeyDown}
             disabled={sending}
             maxLength={GAME.MAX_CHAT_MESSAGE_LENGTH}
+            aria-label="Nachricht eingeben"
           />
           {input.length > 400 && (
             <span className="chat-char-count">{charsLeft}</span>
@@ -145,6 +151,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
           className="chat-send-btn"
           onClick={handleSend}
           disabled={!input.trim() || sending}
+          aria-label="Nachricht senden"
         >
           {sending ? '...' : '➤'}
         </button>

@@ -114,12 +114,13 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       maxZoom: 19,
     }).addTo(map);
 
-    // Bounding box outline
+    // Bounding box outline — slate-400 tint; Leaflet options can't reference CSS vars
+    const DACH_BOUNDARY_STROKE = '#94a3b8';
     const bb = getDefaultBoundingBox();
     L.rectangle(
       [[bb.minLat, bb.minLon], [bb.maxLat, bb.maxLon]],
       {
-        color: '#94a3b8',
+        color: DACH_BOUNDARY_STROKE,
         weight: 1,
         fill: false,
         dashArray: '4, 6',
@@ -182,8 +183,8 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
 
     mapRef.current = map;
 
-    // Emit initial viewport
-    setTimeout(() => emitViewport(), 100);
+    // Emit initial viewport once the map has finished its first layout
+    map.whenReady(() => emitViewport());
 
     // Emit on map moves
     map.on('moveend zoomend', emitViewport);

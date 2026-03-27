@@ -65,41 +65,43 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
     return () => unsub();
   }, [user.id]);
 
-  // Resolve friend user data from Firestore when friendships change
+  // Resolve friend user data from Firestore when friendships change (parallel, not sequential)
   useEffect(() => {
     const loadFriendUsers = async () => {
+      const entries = await Promise.all(
+        friendships.map(async (fs) => {
+          const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
+          let friendUser = await store.getUser(friendId);
+          if (!friendUser) {
+            const profile = await getUserProfile(friendId);
+            if (profile) {
+              friendUser = {
+                id: profile.userId,
+                phone: null,
+                createdAt: profile.createdAt,
+                lastActiveAt: profile.lastActiveAt,
+                homeLat: profile.homeLat,
+                homeLon: profile.homeLon,
+                beerId: profile.beerId,
+                standYourGroundEnabled: false,
+                ageVerified: true,
+              };
+            }
+          }
+          return { friendId, friendUser: friendUser ?? null };
+        })
+      );
+
       const map = new Map<string, User>();
       const friendIds: string[] = [];
-
-      for (const fs of friendships) {
-        const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
+      for (const { friendId, friendUser } of entries) {
         friendIds.push(friendId);
-
-        let friendUser = await store.getUser(friendId);
-        if (!friendUser) {
-          const profile = await getUserProfile(friendId);
-          if (profile) {
-            friendUser = {
-              id: profile.userId,
-              phone: null,
-              createdAt: profile.createdAt,
-              lastActiveAt: profile.lastActiveAt,
-              homeLat: profile.homeLat,
-              homeLon: profile.homeLon,
-              beerId: profile.beerId,
-              standYourGroundEnabled: false,
-              ageVerified: true,
-            };
-          }
-        }
-        if (friendUser) {
-          map.set(friendId, friendUser);
-        }
+        if (friendUser) map.set(friendId, friendUser);
       }
 
       setFriendUsers(map);
 
-      const idsStr = friendIds.sort().join(',');
+      const idsStr = [...friendIds].sort().join(',');
       if (idsStr !== prevFriendIdsRef.current) {
         prevFriendIdsRef.current = idsStr;
         onFriendIdsChange(friendIds);
@@ -256,6 +258,7 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
                   <button
                     className="friend-accept-btn"
                     onClick={() => handleAccept(friendId)}
+                    aria-label="Freundschaftsanfrage annehmen"
                     title="Annehmen"
                   >
                     ✅
@@ -263,6 +266,7 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
                   <button
                     className="friend-decline-btn"
                     onClick={() => handleDecline(friendId)}
+                    aria-label="Freundschaftsanfrage ablehnen"
                     title="Ablehnen"
                   >
                     ❌
