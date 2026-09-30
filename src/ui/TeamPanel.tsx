@@ -5,6 +5,7 @@ import { GAME } from '../config/constants';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerName, beerColor } from './kit/beer';
 import { haptic } from './kit/haptics';
+import { fmtPercent, t } from '../i18n';
 import './TeamPanel.css';
 
 interface Props {
@@ -30,7 +31,7 @@ export function TeamPanel({ user, store }: Props) {
         }
       } catch (e) {
         console.error('TeamPanel load error:', e);
-        if (!cancelled) setError('Die Biergemeinschaft konnte nicht geladen werden.');
+        if (!cancelled) setError(t('team.errLoad'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -45,16 +46,16 @@ export function TeamPanel({ user, store }: Props) {
     setLoading(true);
     setError('');
     try {
-      const t = await store.getTeam(user.beerId);
+      const existing = await store.getTeam(user.beerId);
 
-      if (t) {
-        if (t.memberUserIds.includes(user.id)) {
-          setTeam(t);
+      if (existing) {
+        if (existing.memberUserIds.includes(user.id)) {
+          setTeam(existing);
           return;
         }
-        if (t.memberUserIds.length >= GAME.TEAM_MAX_MEMBERS) {
-          setTeam(t);
-          setError('Leider voll – jemand war schneller.');
+        if (existing.memberUserIds.length >= GAME.TEAM_MAX_MEMBERS) {
+          setTeam(existing);
+          setError(t('team.errFull'));
           return;
         }
       }
@@ -63,7 +64,7 @@ export function TeamPanel({ user, store }: Props) {
       haptic('success');
     } catch (e) {
       console.error('TeamPanel join error:', e);
-      setError('Beitreten hat nicht geklappt. Versuch es gleich nochmal.');
+      setError(t('team.errJoin'));
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ export function TeamPanel({ user, store }: Props) {
       haptic('medium');
     } catch (e) {
       console.error('TeamPanel leave error:', e);
-      setError('Verlassen hat nicht geklappt. Versuch es gleich nochmal.');
+      setError(t('team.errLeave'));
     } finally {
       setLoading(false);
     }
@@ -93,13 +94,13 @@ export function TeamPanel({ user, store }: Props) {
   const isMember = team?.memberUserIds.includes(user.id) ?? false;
   const memberCount = team?.memberUserIds.length ?? 0;
   const isFull = memberCount >= GAME.TEAM_MAX_MEMBERS;
-  const boostPct = Math.round(GAME.TEAM_BOOST_PER_OVERLAP * 100);
-  const maxBoostPct = Math.round(GAME.TEAM_MAX_BOOST * 100);
+  const boostPct = fmtPercent(GAME.TEAM_BOOST_PER_OVERLAP);
+  const maxBoostPct = fmtPercent(GAME.TEAM_MAX_BOOST);
   const name = beerName(user.beerId);
 
   return (
     <section className="section team" aria-labelledby="team-title">
-      <h2 className="section-title" id="team-title">Biergemeinschaft</h2>
+      <h2 className="section-title" id="team-title">{t('team.title')}</h2>
 
       <div
         className={`card card-hero team-card${isMember ? ' member' : ''}`}
@@ -108,12 +109,12 @@ export function TeamPanel({ user, store }: Props) {
         <div className="team-head">
           <BeerBadge beerId={user.beerId} size="lg" />
           <div className="team-head-text">
-            <span className="team-name">{name}-Gemeinschaft</span>
+            <span className="team-name">{t('team.name', { beer: name })}</span>
             <span className="muted num">
-              {loading && !team ? 'Lädt …' : `${memberCount} von ${GAME.TEAM_MAX_MEMBERS} Plätzen belegt`}
+              {loading && !team ? t('common.loadingSpaced') : t('team.seats', { count: memberCount, max: GAME.TEAM_MAX_MEMBERS })}
             </span>
           </div>
-          {isMember && <span className="chip chip-success">Dabei</span>}
+          {isMember && <span className="chip chip-success">{t('team.member')}</span>}
         </div>
 
         <div className="team-seats" aria-hidden="true">
@@ -124,26 +125,26 @@ export function TeamPanel({ user, store }: Props) {
 
         <p className="team-desc">
           {isMember
-            ? `Crew-Bonus aktiv: +${boostPct} % Stimmkraft für jedes Mitglied in deiner Nähe (bis +${maxBoostPct} %).`
-            : `Tritt bei und kämpft gemeinsam: +${boostPct} % Stimmkraft pro Mitglied in deiner Nähe.`}
+            ? t('team.descMember', { boost: boostPct, max: maxBoostPct })
+            : t('team.descJoin', { boost: boostPct })}
         </p>
 
         {isMember ? (
           confirmLeave ? (
-            <div className="team-confirm" role="group" aria-label="Gemeinschaft verlassen?">
-              <span className="team-confirm-text">Wirklich raus? Dein Crew-Bonus fällt weg.</span>
+            <div className="team-confirm" role="group" aria-label={t('team.leaveQuestion')}>
+              <span className="team-confirm-text">{t('team.leaveText')}</span>
               <div className="team-confirm-actions">
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmLeave(false)} disabled={loading}>
-                  Bleiben
+                  {t('team.stay')}
                 </button>
                 <button type="button" className="btn btn-danger btn-sm" onClick={handleLeave} disabled={loading}>
-                  {loading ? <span className="spinner" aria-hidden="true" /> : 'Verlassen'}
+                  {loading ? <span className="spinner" aria-hidden="true" /> : t('team.leave')}
                 </button>
               </div>
             </div>
           ) : (
             <button type="button" className="btn btn-ghost btn-block" onClick={() => setConfirmLeave(true)} disabled={loading}>
-              Gemeinschaft verlassen
+              {t('team.leaveButton')}
             </button>
           )
         ) : (
@@ -155,11 +156,11 @@ export function TeamPanel({ user, store }: Props) {
             aria-busy={loading}
           >
             {loading ? (
-              <><span className="spinner" aria-hidden="true" /> Einen Moment …</>
+              <><span className="spinner" aria-hidden="true" /> {t('team.wait')}</>
             ) : isFull ? (
-              'Alle Plätze belegt'
+              t('team.allTaken')
             ) : (
-              'Beitreten'
+              t('team.join')
             )}
           </button>
         )}

@@ -5,6 +5,7 @@ import { haversineDistanceKm } from '../domain/geo';
 import { GAME } from '../config/constants';
 import { getNow } from '../domain/clock';
 import { haptic } from './kit/haptics';
+import { t } from '../i18n';
 import './OnTheRoadButton.css';
 
 interface Props {
@@ -45,7 +46,7 @@ export function OnTheRoadButton({ user, store, onVoteCreated }: Props) {
         : GAME.HOME_RADIUS_KM;
 
       if (distFromHome <= homeRadius) {
-        setError(`Du bist noch in deinem Revier. Flaggen gehen erst ab ${homeRadius} km von zu Hause.`);
+        setError(t('otr.errInTurf', { km: homeRadius }));
         return;
       }
 
@@ -53,14 +54,14 @@ export function OnTheRoadButton({ user, store, onVoteCreated }: Props) {
       const active = existing.filter(v => v.expiresAt > getNow());
       setActiveCount(active.length);
       if (active.length >= GAME.OTR_MAX_ACTIVE) {
-        setError(`Alle ${GAME.OTR_MAX_ACTIVE} Flaggen sind schon gesetzt. Warte, bis eine abläuft.`);
+        setError(t('otr.errAllSet', { max: GAME.OTR_MAX_ACTIVE }));
         return;
       }
 
       for (const v of active) {
         const dist = haversineDistanceKm(v.lat, v.lon, lat, lon);
         if (dist < GAME.OTR_RADIUS_KM * 2) {
-          setError('Hier in der Nähe weht schon eine deiner Flaggen. Zieh weiter!');
+          setError(t('otr.errNearby'));
           return;
         }
       }
@@ -83,8 +84,8 @@ export function OnTheRoadButton({ user, store, onVoteCreated }: Props) {
     } catch (err) {
       setError(
         typeof GeolocationPositionError !== 'undefined' && err instanceof GeolocationPositionError
-          ? 'Wir finden dich gerade nicht. Erlaube den Standortzugriff und versuch es nochmal.'
-          : 'Die Flagge konnte nicht gesetzt werden. Versuch es gleich nochmal.'
+          ? t('otr.errLocation')
+          : t('otr.errFailed')
       );
     } finally {
       setLoading(false);
@@ -97,19 +98,17 @@ export function OnTheRoadButton({ user, store, onVoteCreated }: Props) {
         <div className="otr-head">
           <span className="otr-icon" aria-hidden="true">🚩</span>
           <div className="otr-head-text">
-            <h2 className="otr-title" id="otr-title">Unterwegs-Flagge</h2>
-            <p className="otr-desc">
-              Auf Reisen? Setz eine Flagge für dein Bier – hält {GAME.OTR_EXPIRY_DAYS} Tage mit halber Kraft.
-            </p>
+            <h2 className="otr-title" id="otr-title">{t('otr.title')}</h2>
+            <p className="otr-desc">{t('otr.desc', { days: GAME.OTR_EXPIRY_DAYS })}</p>
           </div>
         </div>
 
-        <div className="otr-slots" role="img" aria-label={activeCount !== null ? `${activeCount} von ${GAME.OTR_MAX_ACTIVE} Flaggen aktiv` : undefined}>
+        <div className="otr-slots" role="img" aria-label={activeCount !== null ? t('otr.slots', { count: activeCount, max: GAME.OTR_MAX_ACTIVE }) : undefined}>
           {activeCount !== null && Array.from({ length: GAME.OTR_MAX_ACTIVE }, (_, i) => (
             <span key={i} className={`otr-slot${i < activeCount ? ' used' : ''}`} aria-hidden="true" />
           ))}
           {activeCount !== null && (
-            <span className="otr-slot-label num">{activeCount}/{GAME.OTR_MAX_ACTIVE} Flaggen aktiv</span>
+            <span className="otr-slot-label num">{t('otr.slotsShort', { count: activeCount, max: GAME.OTR_MAX_ACTIVE })}</span>
           )}
         </div>
 
@@ -122,10 +121,10 @@ export function OnTheRoadButton({ user, store, onVoteCreated }: Props) {
         >
           {loading ? (
             <>
-              <span className="spinner" aria-hidden="true" /> Suche deinen Standort …
+              <span className="spinner" aria-hidden="true" /> {t('otr.locating')}
             </>
           ) : (
-            'Hier Flagge setzen'
+            t('otr.set')
           )}
         </button>
 

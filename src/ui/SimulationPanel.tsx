@@ -3,6 +3,7 @@ import { BeerPicker } from './BeerPicker';
 import type { Vote } from '../domain/types';
 import { BEERS } from '../domain/beers';
 import { WORLD_CITIES, nearestCity } from '../domain/worldCities';
+import { t } from '../i18n';
 import './SimulationPanel.css';
 
 interface Props {
@@ -74,11 +75,11 @@ export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBe
   return (
     <section className="section sim">
       <h2 className="section-title">
-        Demo-Werkzeuge <small>nur lokal, nichts wird gespeichert</small>
+        {t('sim.title')} <small>{t('sim.localOnly')}</small>
       </h2>
 
       <div className="card">
-        <p className="eyebrow">Stimmen simulieren</p>
+        <p className="eyebrow">{t('sim.votes')}</p>
         <div className="sim-count">
           <input
             type="range"
@@ -87,35 +88,35 @@ export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBe
             step={10}
             value={count}
             onChange={(e) => setCount(Number(e.target.value))}
-            aria-label="Anzahl Stimmen"
+            aria-label={t('sim.count')}
           />
           <span className="num sim-count-value">{count}</span>
         </div>
-        <div className="segmented" role="group" aria-label="Verteilung">
-          <button aria-pressed={spread === 'here'} onClick={() => setSpread('here')}>Hier</button>
-          <button aria-pressed={spread === 'world'} onClick={() => setSpread('world')}>Weltweit</button>
+        <div className="segmented" role="group" aria-label={t('sim.spread')}>
+          <button aria-pressed={spread === 'here'} onClick={() => setSpread('here')}>{t('sim.here')}</button>
+          <button aria-pressed={spread === 'world'} onClick={() => setSpread('world')}>{t('sim.world')}</button>
         </div>
         <div className="sim-actions">
           <button className="btn btn-primary" onClick={() => onAddVotes(generateRandomVotes(count, spread, getCenter()))}>
-            {count} Stimmen erzeugen
+            {t('sim.generate', { count })}
           </button>
           <button className="btn btn-danger" onClick={onClearVotes} disabled={voteCount === 0}>
-            Zurücksetzen
+            {t('sim.reset')}
           </button>
         </div>
-        <p className="muted sim-hint num">{voteCount.toLocaleString('de-DE')} Demo-Stimmen auf der Karte</p>
+        <p className="muted sim-hint num">{t('sim.onMap', { count: voteCount })}</p>
       </div>
 
       <div className="card">
-        <p className="eyebrow">Kneipen-Leben</p>
-        <p className="muted">Zoom in ein Viertel, bis die Kneipen erscheinen. Dann besuchen simulierte Stammgäste die Lokale auf dem Bildschirm, und Kneipen wechseln die Farbe.</p>
-        <button className="btn btn-secondary" onClick={onSimulateVenues}>Stammgäste simulieren</button>
+        <p className="eyebrow">{t('sim.pubLife')}</p>
+        <p className="muted">{t('sim.pubLifeText')}</p>
+        <button className="btn btn-secondary" onClick={onSimulateVenues}>{t('sim.simulate')}</button>
       </div>
 
       <div className="card">
-        <p className="eyebrow">Per Tipp auf die Karte abstimmen</p>
-        <BeerPicker value={demoBeerId} onChange={onDemoBeerChange} layout="carousel" country={nearestCity(getCenter().lat, getCenter().lon).country} label="Bier für Demo-Stimmen" />
-        <p className="muted">Tipp auf die Karte → Gebiet ansehen → „Demo: Stimme setzen“.</p>
+        <p className="eyebrow">{t('sim.tapVote')}</p>
+        <BeerPicker value={demoBeerId} onChange={onDemoBeerChange} layout="carousel" country={nearestCity(getCenter().lat, getCenter().lon).country} label={t('sim.pickerLabel')} />
+        <p className="muted">{t('sim.tapHint')}</p>
       </div>
     </section>
   );
