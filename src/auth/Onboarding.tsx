@@ -10,6 +10,7 @@ import { GAME } from '../config/constants';
 import { isFirebaseConfigured } from '../config/firebase';
 import { getFirebaseAuth } from '../config/firebaseAuth';
 import { saveUserProfile } from '../services/firestoreService';
+import { HOWTO_HASH } from '../legal/docs';
 import { BeerBadge } from '../ui/kit/BeerBadge';
 import { beerName, beerColor } from '../ui/kit/beer';
 import { haptic } from '../ui/kit/haptics';
@@ -421,6 +422,7 @@ export function Onboarding() {
               <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo('beer')} disabled={confirming}>
                 {t('common.back')}
               </button>
+              <a className="ob-howto" href={HOWTO_HASH}>{t('howto.link')}</a>
             </section>
           )}
         </div>

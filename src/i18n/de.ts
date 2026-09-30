@@ -224,7 +224,7 @@ export const de = {
   weekly: {
     title: 'Diese Woche',
     daysLeft: { one: 'noch {count} Tag', other: 'noch {count} Tage' },
-    listLabel: 'Wochen-Challenges',
+    listLabel: 'Wochenaufgaben',
     challenge: {
       tour: { title: 'Kneipentour', description: 'Check in {target} verschiedenen Kneipen ein.' },
       new: { title: 'Neuland', description: 'Besuch eine Kneipe, in der du noch nie warst.' },
@@ -637,16 +637,17 @@ export const de = {
   howto: {
     title: 'So funktioniert’s',
     link: 'So funktioniert’s',
+    navLabel: 'Hilfe & Rechtliches',
     lede: 'Brew Country ist ein Spiel um deine Lieblingskneipen. Jede Kneipe gehört dem Bier, dessen Fans dort am meisten Einfluss haben.',
     steps: {
-      find: { title: 'Kneipe finden', text: 'Tipp auf „Prost!“ oder auf eine Kneipe auf der Karte. Die Kneipen kommen weltweit aus OpenStreetMap.' },
+      find: { title: 'Kneipe finden', text: 'Tipp auf „{prost}“ oder auf eine Kneipe auf der Karte. Die Kneipen kommen weltweit aus OpenStreetMap.' },
       checkin: { title: 'Vor Ort einchecken', text: 'Einchecken geht nur direkt in der Kneipe (max. {radius} m), einmal pro Kneipe und Tag und in höchstens {max} Kneipen am Tag. Alkoholfrei zählt genauso.' },
-      influence: { title: 'Einfluss sammeln', text: 'Jeder Besuch bringt deinem Bier Einfluss. Er verblasst jeden Tag ein wenig und zählt 30 Tage. Eine Person allein bringt pro Kneipe nur begrenzt viel. Übernehmen könnt ihr eine Kneipe nur gemeinsam, mit deutlichem Vorsprung.' },
+      influence: { title: 'Einfluss sammeln', text: 'Jeder Besuch bringt deinem Bier Einfluss. Er verblasst jeden Tag ein wenig und zählt {days} Tage. Biere, die laut OpenStreetMap vom Hahn kommen, starten mit Vorsprung; freie Kneipen holt schon der erste Besuch. Pro Person zählen höchstens {visits} Besuche je Bier und Kneipe. Zum Übernehmen braucht ihr {lead} % mehr Einfluss als das regierende Bier – das schafft ihr meist nur als Crew.' },
       map: { title: 'Die Karte', text: 'Die Karte zeigt, welches Bier wo regiert. Zoom hinein, um einzelne Kneipen zu sehen.' },
-      collect: { title: 'Sammeln und dranbleiben', text: 'Jede neue Kneipe bringt einen Bierdeckel für deinen Bierpass. Kommst du öfter, steigst du vom Gast zum Stammgast und weiter auf. Wochen-Challenges und deine Wochen-Serie belohnen Abwechslung, nicht Menge.' },
+      collect: { title: 'Sammeln und dranbleiben', text: 'Jede neue Kneipe bringt einen Bierdeckel für deinen Bierpass. Ab {regular} Besuchstagen in einer Kneipe bist du Stammgast, ab {table} am Stammtisch, ab {fixture} gehörst du zum Inventar. Wochenaufgaben belohnen Abwechslung, deine Wochen-Serie Regelmäßigkeit – nie die Menge.' },
       friends: { title: 'Mit Freunden', text: 'Füg Freunde hinzu, chattet und haltet eure Kneipen zusammen.' },
     },
-    fair: 'Brew Country belohnt Besuche, nicht Mengen. Trink verantwortungsvoll. Fair Play: kein Standort-Schummeln, keine Zweitkonten.',
+    fair: 'Brew Country belohnt Besuche, nicht Mengen. Trink verantwortungsvoll. Bleib fair: kein Standort-Schummeln, keine Zweitkonten.',
     version: 'Version {version}',
   },
 } as const;

@@ -12,8 +12,8 @@ Reihenfolge von oben nach unten. ✅ = im Code erledigt, ☐ = Aufgabe für den 
 - ✅ Hinweise zu verantwortungsvollem Konsum; höchstens 2 Kneipen pro Tag; alkoholfrei zählt voll.
 - ✅ Schriften selbst gehostet, keine Google-Anfragen. Kein Tracking.
 - ✅ OSM/ODbL-Attribution sichtbar, Seite „Quellen & Lizenzen“.
-- ✅ Datenschutzerklärung (DE/EN) beschreibt die tatsächliche Verarbeitung: Wochen-Pseudonym, 35-Tage-TTL, öffentliche Profilfelder, Online-Status, Crash-Reports (lit. f, 30 Tage), Umfang der Kontolöschung.
-- ✅ Spielanleitung „So funktioniert’s“ (`#anleitung`) von Login, Onboarding und Profil erreichbar. Die App-Version steht im Profil.
+- ✅ Datenschutzerklärung (DE/EN) beschreibt die tatsächliche Verarbeitung: Wochen-Pseudonym, 35-Tage-TTL, öffentliche Profilfelder, Online-Status, Crash-Reports (lit. f, 30 Tage), USA-Übermittlung bei der Anmeldung, Widerspruchsrecht, Umfang der Kontolöschung. **Die Fristen stimmen erst, wenn die TTL-Policies (Abschnitt 2) gesetzt sind und die Backup-Aufbewahrung höchstens 30 Tage beträgt.**
+- ✅ Spielanleitung „So funktioniert’s“ (`#anleitung`): Link auf Login, im letzten Onboarding-Schritt, im leeren Bierpass und im Profil. Alle Zahlen kommen aus den Spielregeln im Code. Die App-Version steht im Profil.
 
 ## 2. Firebase-Projekt (Konsole)
 - ☐ Firestore-Region in der EU (z. B. `eur3`). Die Region lässt sich nachträglich nicht ändern. Wenn das Projekt schon in den USA liegt: neues Projekt anlegen.
@@ -25,7 +25,7 @@ Reihenfolge von oben nach unten. ✅ = im Code erledigt, ☐ = Aufgabe für den 
   - Email-Enumeration-Protection aktivieren und eine Passwort-Richtlinie setzen.
   - Den Telefon-Provider **aus** lassen.
 - ☐ App Check aktivieren (Web: reCAPTCHA Enterprise, iOS: App Attest). Zuerst im Monitor-Modus, nach 3–7 Tagen erzwingen.
-- ☐ PITR und tägliche Backups. TTL-Policies setzen (Pflicht, die Datenschutzerklärung verspricht die Löschung):
+- ☐ PITR und tägliche Backups, Aufbewahrung **höchstens 30 Tage** (so steht es in der Datenschutzerklärung). TTL-Policies setzen (Pflicht, die Datenschutzerklärung verspricht die Löschung):
   - `bc_venueVisits.expiresAt` (öffentliche Besuche, 35 Tage)
   - `bc_clientErrors.expiresAt` (Crash-Reports, 30 Tage)
   - `bc_drinkVotes.expiresAt` und `bc_otrVotes.expiresAt` (Legacy)
@@ -47,7 +47,10 @@ Reihenfolge von oben nach unten. ✅ = im Code erledigt, ☐ = Aufgabe für den 
   - Firestore-Reads, -Writes und -Denies
   - Kosten
   - Overpass-Fehler
-- **Rollback:** `SITE_ONLINE: 'false'` pushen und in der Konsole die vorherige Regel-Version wiederherstellen.
+- ☐ Branch-Schutz für `main`: Merge nur per PR mit grünen Checks `check` und `e2e`. Der Deploy-Workflow führt die komplette CI (inkl. Regeln, E2E, CSP) ohnehin vor jeder Auslieferung erneut aus.
+- **Rollback:**
+  - Auf eine gute Version: Actions → „Deploy to GitHub Pages“ → „Run workflow“ mit `ref` = letzter guter Commit oder Tag. Client und Regeln kommen dann aus diesem Stand.
+  - Notbremse: `SITE_ONLINE: 'false'` pushen (zeigt die Offline-Seite).
 
 ## 4. iOS (App Store)
 - ✅ `PrivacyInfo.xcprivacy` ist im Target (Standort, E-Mail, User-ID, Nutzerinhalte, Crash-Daten; kein Tracking).
@@ -65,6 +68,7 @@ Reihenfolge von oben nach unten. ✅ = im Code erledigt, ☐ = Aufgabe für den 
 ## 5. Nach dem Launch (Roadmap)
 - Check-in serverseitig per Cloud Function verifizieren (Kneipen-Koordinate gegen GPS, Impossible Travel), QR-Codes bei Partner-Wirten.
 - Aggregierte Revier- und Kneipendaten serverseitig, statt dass jeder Client alle Profile liest.
+- Online-Zahl serverseitig zählen, `presence` dann nur für Freunde lesbar (Datenschutz, siehe TEAM.md Runde 3).
 - Eigener Overpass-Cache in der EU, bevor viel Traffic kommt.
 - Push-Benachrichtigungen („Deine Kneipe kippt gerade“) mit Opt-in.
 - Melden- und Blockieren-Funktion für Chat und Spitznamen (DSA, App Store 1.2).

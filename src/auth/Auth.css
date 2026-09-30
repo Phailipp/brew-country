@@ -371,3 +371,4 @@
 .auth-legal { margin-top: var(--sp-5); }
 .ob-responsible { font-size: var(--fs-xs); color: var(--c-text-3); }
 .ob-check a { color: var(--c-accent); text-decoration: underline; }
+.ob-howto { align-self: center; min-height: 44px; display: inline-flex; align-items: center; color: var(--c-accent); text-decoration: underline; font-size: var(--fs-sm); }

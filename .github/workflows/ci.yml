@@ -4,12 +4,20 @@ on:
   pull_request:
   push:
     branches-ignore: [main]
+  # deploy.yml runs the full suite before anything goes live
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,6 +39,8 @@ jobs:
     needs: check
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22

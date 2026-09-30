@@ -21,7 +21,7 @@ test('pubs load, open, check in once a day and land in the passport', async ({ p
   await expect(page.getByRole('list', { name: 'Bierdeckel-Sammlung' }).getByRole('listitem')).toHaveCount(1);
 
   await tab(page, 'Quests').click();
-  await expect(page.getByRole('list', { name: 'Wochen-Challenges' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Wochenaufgaben' })).toBeVisible();
   await expect(page.getByText('1/3').first()).toBeVisible();
 });
 

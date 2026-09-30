@@ -54,6 +54,37 @@ test('how-to explains the rules with the real limits and closes again', async ({
   await expect(page).not.toHaveURL(/#anleitung/);
 });
 
+test('how-to from a deep link closes in place without leaving the app', async ({ page }) => {
+  await page.goto('./#anleitung');
+  await expect(page.getByRole('heading', { name: 'So funktioniert’s', level: 1 })).toBeVisible();
+  await expect(page.getByText(/20 % mehr Einfluss/)).toBeVisible();
+  await page.getByRole('button', { name: 'Zurück' }).click();
+  await expect(page.getByRole('button', { name: /Demo ansehen/ })).toBeVisible();
+  await expect(page).not.toHaveURL(/#/);
+});
+
+test('how-to from the profile: pages stack, back walks them, focus and sheet survive', async ({ page }) => {
+  await startDemo(page);
+  await tab(page, 'Profil').click();
+  await expect(page.getByText('Dein Bierpass')).toBeVisible();
+  const link = page.getByRole('navigation', { name: 'Hilfe & Rechtliches' }).getByRole('link', { name: 'So funktioniert’s' });
+  await link.click();
+  await expect(page.getByRole('heading', { name: 'So funktioniert’s', level: 1 })).toBeVisible();
+
+  // How-to → privacy policy, then the browser back button returns to the how-to
+  await page.getByRole('dialog', { name: 'So funktioniert’s' }).getByRole('link', { name: 'Datenschutzerklärung' }).click();
+  await expect(page.getByRole('heading', { name: 'Datenschutzerklärung', level: 1 })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'So funktioniert’s', level: 1 })).toBeVisible();
+
+  // Escape closes only the page on top: the profile sheet stays open, focus returns
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', { name: 'So funktioniert’s', level: 1 })).toHaveCount(0);
+  await expect(page.getByText('Dein Bierpass')).toBeVisible();
+  await expect(page).not.toHaveURL(/#anleitung/);
+  await expect(link).toBeFocused();
+});
+
 test('demo onboarding lands on the map with a home turf', async ({ page }) => {
   await startDemo(page);
   await expect(page.getByText('Dein Revier')).toBeVisible();

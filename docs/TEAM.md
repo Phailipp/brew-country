@@ -74,26 +74,54 @@ Dieses Dokument hält fest, wie das Team denkt und entscheidet. Jede größere �
 - axe-Checks ohne ernste Verstöße.
 - Die CI blockiert bei Rot.
 
+**7. Review-Runde 3: Datenschutzerklärung, Anleitung, Rollout**
+
+Anlass: Die Datenschutzerklärung wurde an die echte Verarbeitung angepasst, und die Anleitung „So funktioniert’s“ kam neu dazu. Alle sechs Personas haben geprüft.
+
+- *Aylin:* Zwei Blocker. Den Online-Status können technisch alle angemeldeten Spieler lesen, nicht nur Freunde. Außerdem fehlt die USA-Übermittlung bei Firebase Auth. Dazu kommen die Lücken nach Art. 13 und Art. 21 Abs. 4 (eigener Abschnitt zum Widerspruchsrecht), und der volle User-Agent in Crash-Reports ist mehr als nötig.
+- *Lena:* Die Anleitung sagt „übernehmen nur gemeinsam“. Das stimmt nicht, wenn eine Kneipe frei ist. Die Crew braucht echte Zahlen: 20 % Vorsprung, 3 Besuche pro Person.
+- *Sophie:* Auf Englisch heißt der Knopf „Cheers!“, nicht „Prost!“. Die Anleitung muss auffindbar sein, im Onboarding und im leeren Bierpass. Außerdem: Fokus zurückgeben, Tipp-Ziele mit 44 px, Abstände in `em`, weniger Anglizismen.
+- *Marco:* Nach dem Schließen steht der Eintrag doppelt im Verlauf, Zurück tut dann nichts. Escape schließt zwei Ebenen auf einmal.
+- *Tim:* `deploy.yml` hat weder E2E- noch Regel-Tests, und `ci.yml` läuft auf `main` nicht. Ein Merge könnte also ungetestet live gehen. Der Rollback kann bisher nur abschalten.
+- *Jonas:* Englisch, der Weg über das Profil, die Zurück-Taste und Escape über einem Sheet sind nicht getestet.
+
+**Entscheidungen:**
+- Online-Status: Die Datenschutzerklärung sagt jetzt ehrlich, was technisch lesbar ist. Auf der Roadmap steht die serverseitige Online-Zahl mit `presence` nur für Freunde lesbar (braucht eine Cloud Function).
+- Crash-Reports speichern nur Browser und OS mit Hauptversion (`coarseUserAgent`, getestet).
+- Die Anleitung zieht alle Zahlen aus den Regel-Konstanten (`INFLUENCE`, `REGULAR_TIERS`, Radius, Tageslimit). Ändert sich eine Regel, stimmt der Text trotzdem.
+- Overlay-Verlauf: Seiten, die die App öffnet, werden per `history.back()` geschlossen, Deep-Links an Ort und Stelle. Escape wird in der Capture-Phase abgefangen.
+- Deploy läuft nur nach der kompletten CI (Reusable Workflow). Rollback per `workflow_dispatch` mit `ref`.
+- „Tag“ bleibt der UTC-Tag (Regeln und Dokument-IDs hängen daran). In Deutschland wechselt er um 1 bzw. 2 Uhr nachts, das passt zu Kneipenabenden. Kein Umbau vor dem Launch.
+- Legacy-Flag (`VITE_LEGACY_FEATURES`): Es bleibt in Produktion aus. Wird es aktiviert, muss vorher die Datenschutzerklärung um die Drink-Votes (Standort, 24 h) ergänzt werden.
+
 ## Release-Plan
 
 **Phase A: Blocker im Code**
 
 - [x] E2E-Suite plus CI
 - [x] Sheet- und Tab-Leiste-Accessibility
-- [ ] Rechtsseiten, Altersabfrage per Geburtsdatum, Konsum-Hinweise, 2 Kneipen pro Tag
-- [ ] Salz-basierte Pseudonyme
-- [ ] Legacy-Features hinter Flag, Prost führt zur Kneipe
-- [ ] Schriften selbst hosten, OSM-Attribution, Mirror bereinigen, Logos hinter Flag
-- [ ] Robustheit: Error Boundary, Worker-Fehler, Listener-Fehler, Overpass-Timeouts, Konto löschen vollständig
-- [ ] Englisch
+- [x] Rechtsseiten, Altersabfrage per Geburtsdatum, Konsum-Hinweise, 2 Kneipen pro Tag
+- [x] Salz-basierte Pseudonyme
+- [x] Legacy-Features hinter Flag, Prost führt zur Kneipe
+- [x] Schriften selbst hosten, OSM-Attribution, Mirror bereinigen, Logos hinter Flag
+- [x] Robustheit: Error Boundary, Worker-Fehler, Listener-Fehler, Overpass-Timeouts, Konto löschen vollständig
+- [x] Englisch
 
 **Phase B: Rollout-Reife**
 
-- [ ] PWA-Manifest und Icons, OG-Meta
-- [ ] iOS-Privacy-Manifest, nur Hochformat
-- [ ] So-funktioniert's-Anleitung
-- [ ] Fehler-Senke
-- [ ] Versionsanzeige
+- [x] PWA-Manifest und Icons, OG-Meta
+- [x] iOS-Privacy-Manifest, nur Hochformat
+- [x] So-funktioniert's-Anleitung
+- [x] Fehler-Senke
+- [x] Versionsanzeige
+
+**Phase B2: Review-Runde 3**
+
+- [x] Datenschutzerklärung: Blocker und Lücken aus Aylins Review
+- [x] Anleitung: echte Zahlen, Auffindbarkeit, Barrierefreiheit
+- [x] Verlauf, Escape, Fokus
+- [x] Deploy nur nach voller CI, Rollback per `ref`
+- [x] Tests: Englisch, Profil-Weg, Zurück-Taste, Deep-Link, User-Agent
 
 **Phase C: Gründer-Aufgaben (nicht im Code lösbar)**
 

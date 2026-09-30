@@ -88,7 +88,7 @@ Empfohlen zusätzlich: TTL-Policies in der Firestore-Konsole auf `bc_drinkVotes.
 ### Datenschutz
 
 - Die exakte Heimposition steht nur im privaten Profil (`bc_users`), öffentlich ist sie gerundet.
-- **Profil → Konto löschen** entfernt Profil, Bierpass mit öffentlichen Besuchen, Salz, Legacy-Check-ins und -Flaggen, Freundschaften inkl. Chats, Crew-Mitgliedschaft, Vorschläge, Presence und den Login. Crash-Reports (`bc_clientErrors`) enthalten keine uid und laufen nach 30 Tagen per TTL ab.
+- **Profil → Konto löschen** entfernt Profil, Bierpass mit öffentlichen Besuchen, Salz, Legacy-Check-ins und -Flaggen, Freundschaften inkl. Chats, Mitgliedschaft in Biergemeinschaften (`bc_teams`), Vorschläge, Presence und den Login. Crash-Reports (`bc_clientErrors`) enthalten keine uid und laufen nach 30 Tagen per TTL ab und speichern nur Browser/OS mit Hauptversion (`coarseUserAgent`).
 
 ## Kneipen-Modell
 

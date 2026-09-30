@@ -5,6 +5,7 @@ import { playerPassport, regularTier } from '../domain/influence';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerColor, beerName } from './kit/beer';
 import { intlLocale, t } from '../i18n';
+import { HOWTO_HASH } from '../legal/docs';
 import './PassportPanel.css';
 
 interface Props {
@@ -45,6 +46,7 @@ export function PassportPanel({ visits, onLocate }: Props) {
           <span className="empty-icon" aria-hidden="true">🍺</span>
           <span className="empty-title">{t('passport.emptyTitle')}</span>
           <span>{t('passport.emptyText')}</span>
+          <a className="passport-howto" href={HOWTO_HASH}>{t('howto.link')}</a>
         </div>
       ) : (
         <ul className="coasters" aria-label={t('passport.listLabel')}>

@@ -7,6 +7,7 @@
 import { addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getFirebaseAuth } from '../config/firebaseAuth';
 import { getFirestoreDb } from '../config/firestore';
+import { coarseUserAgent } from '../domain/userAgent';
 
 const MAX_REPORTS_PER_SESSION = 5;
 let sent = 0;
@@ -26,7 +27,7 @@ async function report(kind: Kind, message: string, stack?: string): Promise<void
       message: message.slice(0, 500),
       stack: (stack ?? '').slice(0, 4000),
       version: __APP_VERSION__.slice(0, 40),
-      ua: navigator.userAgent.slice(0, 200),
+      ua: coarseUserAgent(navigator.userAgent).slice(0, 200),
       at: serverTimestamp(),
       // deleted by a Firestore TTL policy
       expiresAt: Timestamp.fromMillis(Date.now() + 30 * 86_400_000),

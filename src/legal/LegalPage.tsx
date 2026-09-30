@@ -16,9 +16,14 @@ export function LegalPage({ doc, onClose }: Props) {
 
   useEffect(() => {
     headingRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capture phase + stop: Escape closes only this page, not a sheet below it
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [doc, onClose]);
 
   return (
@@ -47,10 +52,10 @@ export function LegalPage({ doc, onClose }: Props) {
 }
 
 /** Small link row for login, onboarding and profile (how-to first). */
-export function LegalLinks({ className = '' }: { className?: string }) {
+export function LegalLinks({ className = '', withHowTo = true }: { className?: string; withHowTo?: boolean }) {
   return (
-    <nav className={`legal-links ${className}`.trim()} aria-label={t('legalLinks.label')}>
-      <a href={HOWTO_HASH}>{t('howto.link')}</a>
+    <nav className={`legal-links ${className}`.trim()} aria-label={withHowTo ? t('howto.navLabel') : t('legalLinks.label')}>
+      {withHowTo && <a href={HOWTO_HASH}>{t('howto.link')}</a>}
       {LEGAL_DOCS.map((d) => <a key={d} href={`#${d}`}>{legalTitle(d)}</a>)}
     </nav>
   );

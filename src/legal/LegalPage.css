@@ -58,7 +58,7 @@
   gap: var(--sp-1) var(--sp-4);
   font-size: var(--fs-xs);
 }
-.legal-links a { color: var(--c-text-3); text-decoration: underline; min-height: 32px; display: inline-flex; align-items: center; }
+.legal-links a { color: var(--c-text-3); text-decoration: underline; min-height: 44px; display: inline-flex; align-items: center; }
 
 /* How it works */
 .howto-lede { font-size: var(--fs-md); color: var(--c-text); }
@@ -66,7 +66,7 @@
 .howto-steps li {
   counter-increment: howto;
   position: relative;
-  padding: var(--sp-3) var(--sp-3) var(--sp-3) calc(var(--sp-3) + 40px);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) calc(var(--sp-3) + 2.5em);
   border-radius: var(--r-md);
   background: var(--c-surface);
   border: 1px solid var(--c-line);
@@ -76,8 +76,8 @@
   position: absolute;
   left: var(--sp-3);
   top: var(--sp-3);
-  width: 28px;
-  height: 28px;
+  width: 1.75em;
+  height: 1.75em;
   display: grid;
   place-items: center;
   border-radius: 50%;

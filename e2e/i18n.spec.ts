@@ -34,6 +34,15 @@ test('English legal pages say the German version is binding', async ({ page }) =
   await expect(page.getByText(/without your name or account ID/)).toBeVisible();
 });
 
+test('English how-to names the real button and the real limits', async ({ page }) => {
+  await page.goto('./#anleitung');
+  await expect(page.getByRole('heading', { name: 'How it works', level: 1 })).toBeVisible();
+  await expect(page.getByText(/Tap “Cheers!”/)).toBeVisible();
+  await expect(page.getByText(/max\. 60 m\), once per pub and day, and at no more than 2 pubs/)).toBeVisible();
+  await expect(page.getByText(/at most 3 visits count per beer and pub/)).toBeVisible();
+  await expect(page.getByText(/20 % more influence/)).toBeVisible();
+});
+
 test('English demo reaches the map; switching to German re-renders at once and sticks', async ({ page }) => {
   // Onboarding, map start and a reload in one test (software WebGL is slow)
   test.slow();

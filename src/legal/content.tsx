@@ -43,7 +43,7 @@ function Datenschutz() {
       <ul>
         <li><strong>Konto:</strong> E-Mail-Adresse, Spitzname, Passwort (nur als Hash beim Anmeldedienst).</li>
         <li>
-          <strong>Profil:</strong> Lieblingsbier und Heimatort. Der genaue Heimatort ist nur für dich sichtbar.
+          <strong>Profil:</strong> Lieblingsbier und Heimatort. Der genaue Heimatort ist nur für dich sichtbar und im Einzelfall für Administratoren (Support, Missbrauch).
           Für andere Spieler sichtbar sind: deine Nutzer-Kennung, Lieblingsbier, Heimatort auf ca. 2 km gerundet,
           Beitrittsdatum, letzter Aktivitätszeitpunkt und eine Spieleinstellung zum Heimat-Radius.
         </li>
@@ -53,13 +53,14 @@ function Datenschutz() {
           mit einem Pseudonym und mit auf die Stunde gerundeter Zeit. Das Pseudonym wird aus einem geheimen
           Zufallswert gebildet, den nur dein Konto lesen kann, und wechselt pro Kneipe und Woche. Mehrere Besuche
           derselben Person in derselben Kneipe und Woche lassen sich daher einander zuordnen, Besuche in anderen
-          Kneipen oder Wochen nicht. Wer dich persönlich kennt, könnte aus Ort und Zeit trotzdem auf dich schließen;
+          Kneipen oder Wochen nicht direkt. Am selben Tag ist eine Zuordnung über Zeit und Reihenfolge nicht
+          ausgeschlossen. Wer dich persönlich kennt, könnte aus Ort und Zeit trotzdem auf dich schließen;
           deshalb speichern wir so wenig wie möglich und löschen diese Einträge nach 35 Tagen.
         </li>
         <li><strong>Standort:</strong> nur in dem Moment, in dem du ihn freigibst (Onboarding, Check-in), um zu prüfen, dass du vor Ort bist. Wir orten dich nicht im Hintergrund.</li>
-        <li><strong>Freunde & Chat:</strong> Freundschaften und Nachrichten, sichtbar nur für die beteiligten Personen. Deine Freunde sehen außerdem, wann du zuletzt in der App aktiv warst (Online-Status).</li>
+        <li><strong>Freunde & Chat:</strong> Freundschaften und Nachrichten, sichtbar nur für die beteiligten Personen. Außerdem wird gespeichert, wann du zuletzt in der App aktiv warst (Online-Status). Angemeldete Spieler können das technisch abrufen; die App zeigt es nur deinen Freunden.</li>
         <li><strong>Biergemeinschaften:</strong> Wenn du einer Biergemeinschaft beitrittst (sofern die Funktion angeboten wird), sehen andere Spieler ihre Mitgliederliste.</li>
-        <li><strong>Absturzberichte:</strong> Stürzt die App ab, speichern wir Fehlermeldung, technischen Fehlerverlauf, App-Version und Browser-Kennung, ohne Konto-Kennung. So finden und beheben wir Fehler.</li>
+        <li><strong>Absturzberichte:</strong> Stürzt die App ab, speichern wir Fehlermeldung, technischen Fehlerverlauf, App-Version sowie Browser und Betriebssystem (nur Name und Hauptversion), ohne Konto-Kennung. So finden und beheben wir Fehler.</li>
         <li><strong>Bier-Vorschläge:</strong> Name, Brauerei, Ort, Land, optional Website und Notiz.</li>
         <li><strong>Auf deinem Gerät:</strong> Anmeldestatus, Einstellungen und ein Zwischenspeicher für Kneipendaten (technisch notwendig, § 25 Abs. 2 TDDDG).</li>
       </ul>
@@ -70,12 +71,17 @@ function Datenschutz() {
         <li>Bereitstellung des Spiels (Art. 6 Abs. 1 lit. b DSGVO).</li>
         <li>Standortprüfung beim Check-in auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit in den Geräteeinstellungen widerrufen kannst.</li>
         <li>Schutz vor Missbrauch und Betrug (Art. 6 Abs. 1 lit. f DSGVO).</li>
-        <li>Absturzberichte zur Fehlerbehebung und Stabilität der App (Art. 6 Abs. 1 lit. f DSGVO). Du kannst jederzeit widersprechen.</li>
+        <li>Absturzberichte zur Fehlerbehebung und Stabilität der App (Art. 6 Abs. 1 lit. f DSGVO).</li>
+        <li>Kartendarstellung, Kneipendaten und Auslieferung der App über die unten genannten Dienste (Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist ein funktionierendes Spiel ohne eigene Kartenserver).</li>
       </ul>
+      <p>
+        Die Angaben zu Konto und Profil sind zum Mitspielen erforderlich; ohne sie kannst du Brew Country nicht nutzen.
+        Eine automatisierte Entscheidungsfindung im Sinne von Art. 22 DSGVO findet nicht statt.
+      </p>
 
       <h2>4. Empfänger und Dienste</h2>
       <ul>
-        <li><strong>Google Firebase</strong> (Google Ireland Ltd.): Anmeldung und Datenbank. Speicherort: {OPERATOR.dataRegion}. Auftragsverarbeitungsvertrag nach Art. 28 DSGVO.</li>
+        <li><strong>Google Firebase</strong> (Google Ireland Ltd.): Anmeldung und Datenbank. Speicherort: {OPERATOR.dataRegion}. Auftragsverarbeitungsvertrag nach Art. 28 DSGVO. Bei der Anmeldung (Firebase Authentication) kann eine Übermittlung an Google LLC in den USA stattfinden; Grundlage sind das EU-US Data Privacy Framework und Standardvertragsklauseln.</li>
         <li><strong>OpenFreeMap</strong>: Kartenkacheln. Dabei wird deine IP-Adresse übertragen.</li>
         <li><strong>Overpass API</strong> (overpass-api.de, overpass.kumi.systems): Kneipendaten aus OpenStreetMap für den sichtbaren Kartenausschnitt. Dabei werden IP-Adresse und Kartenausschnitt übertragen.</li>
         <li><strong>Amazon Web Services</strong> (Geländedaten für das Relief, Server ggf. in den USA; EU-US Data Privacy Framework).</li>
@@ -87,9 +93,10 @@ function Datenschutz() {
         Konto-, Profil- und Spieldaten speichern wir, bis du dein Konto löschst. Für die Wertung zählen Besuche
         30 Tage; die pseudonymen Besuchseinträge werden nach 35 Tagen automatisch gelöscht, Absturzberichte nach
         30 Tagen. Unter <em>Profil → Konto löschen</em> löschst du jederzeit dein Konto mit Profil, Bierpass,
-        Besuchen, Freundschaften samt Chats, Mitgliedschaften in Biergemeinschaften, Vorschlägen und Online-Status. Absturzberichte
-        enthalten keine Konto-Kennung und können dir daher nicht zugeordnet werden; sie laufen nach 30 Tagen ab.
-        Sicherungskopien der Datenbank werden turnusmäßig überschrieben.
+        Besuchen, Pseudonym-Zufallswert, Spielständen, Freundschaften samt Chats (die Chats verschwinden damit
+        auch bei deinen Freunden), Mitgliedschaften in Biergemeinschaften, Vorschlägen und Online-Status.
+        Absturzberichte enthalten keine Konto-Kennung und sind dir in der Regel nicht zuordenbar; sie laufen nach
+        30 Tagen ab. In Sicherungskopien der Datenbank bleiben gelöschte Daten höchstens 30 Tage erhalten.
       </p>
 
       <h2>6. Deine Rechte</h2>
@@ -99,7 +106,16 @@ function Datenschutz() {
         dafür an {OPERATOR.email}.
       </p>
 
-      <h2>7. Minderjährige</h2>
+      <h2>7. Widerspruchsrecht</h2>
+      <p>
+        <strong>
+          Soweit wir Daten auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeiten (Missbrauchsschutz,
+          Absturzberichte, Kartendienste), kannst du aus Gründen, die sich aus deiner besonderen Situation ergeben,
+          jederzeit widersprechen (Art. 21 DSGVO). Eine E-Mail an {OPERATOR.email} genügt.
+        </strong>
+      </p>
+
+      <h2>8. Minderjährige</h2>
       <p>Brew Country ist ausschließlich für Erwachsene (18 Jahre, in Ländern mit höherem Mindestalter für Alkohol entsprechend älter).</p>
     </>
   );
@@ -196,7 +212,7 @@ function DatenschutzEn() {
       <ul>
         <li><strong>Account:</strong> email address, nickname, password (stored only as a hash by the login service).</li>
         <li>
-          <strong>Profile:</strong> favourite beer and home location. Your exact home location is visible only to you.
+          <strong>Profile:</strong> favourite beer and home location. Your exact home location is visible only to you and, where needed, to administrators (support, abuse).
           Other players can see: your user ID, favourite beer, home location rounded to about 2 km, date joined,
           time of last activity and a game setting for your home radius.
         </li>
@@ -206,13 +222,13 @@ function DatenschutzEn() {
           with a pseudonym and with the time rounded to the hour. The pseudonym is derived from a secret random
           value that only your account can read, and it changes per pub and per week. Several visits by the same
           person to the same pub in the same week can therefore be linked, visits to other pubs or in other weeks
-          cannot. Someone who knows you personally could still infer it was you from place and time; that is why
+          cannot be linked directly. On the same day, time and order may still allow it. Someone who knows you personally could still infer it was you from place and time; that is why
           we store as little as possible and delete these entries after 35 days.
         </li>
         <li><strong>Location:</strong> only at the moment you share it (onboarding, check-in), to verify that you are on site. We never track you in the background.</li>
-        <li><strong>Friends & chat:</strong> friendships and messages, visible only to the people involved. Your friends also see when you were last active in the app (online status).</li>
+        <li><strong>Friends & chat:</strong> friendships and messages, visible only to the people involved. We also store when you were last active in the app (online status). Signed-in players can technically retrieve this; the app shows it only to your friends.</li>
         <li><strong>Beer clubs:</strong> if you join a beer club (where the feature is offered), other players can see its member list.</li>
-        <li><strong>Crash reports:</strong> if the app crashes, we store the error message, technical stack trace, app version and browser identifier, without any account ID. This helps us find and fix bugs.</li>
+        <li><strong>Crash reports:</strong> if the app crashes, we store the error message, technical stack trace, app version and your browser and operating system (name and major version only), without any account ID. This helps us find and fix bugs.</li>
         <li><strong>Beer suggestions:</strong> name, brewery, town, country, optionally website and note.</li>
         <li><strong>On your device:</strong> login status, settings and a cache of pub data (technically necessary, § 25(2) TDDDG).</li>
       </ul>
@@ -223,12 +239,17 @@ function DatenschutzEn() {
         <li>Providing the game (Art. 6(1)(b) GDPR).</li>
         <li>Location check at check-in based on your consent (Art. 6(1)(a) GDPR), which you can withdraw at any time in your device settings.</li>
         <li>Protection against abuse and fraud (Art. 6(1)(f) GDPR).</li>
-        <li>Crash reports for fixing bugs and keeping the app stable (Art. 6(1)(f) GDPR). You can object at any time.</li>
+        <li>Crash reports for fixing bugs and keeping the app stable (Art. 6(1)(f) GDPR).</li>
+        <li>Map display, pub data and delivery of the app via the services listed below (Art. 6(1)(f) GDPR; our legitimate interest is a working game without running our own map servers).</li>
       </ul>
+      <p>
+        The account and profile details are required to play; without them you cannot use Brew Country.
+        There is no automated decision-making within the meaning of Art. 22 GDPR.
+      </p>
 
       <h2>4. Recipients and services</h2>
       <ul>
-        <li><strong>Google Firebase</strong> (Google Ireland Ltd.): login and database. Storage location: {OPERATOR.dataRegion}. Data processing agreement pursuant to Art. 28 GDPR.</li>
+        <li><strong>Google Firebase</strong> (Google Ireland Ltd.): login and database. Storage location: {OPERATOR.dataRegion}. Data processing agreement pursuant to Art. 28 GDPR. When you log in (Firebase Authentication), data may be transferred to Google LLC in the USA, based on the EU-US Data Privacy Framework and standard contractual clauses.</li>
         <li><strong>OpenFreeMap</strong>: map tiles. Your IP address is transmitted in the process.</li>
         <li><strong>Overpass API</strong> (overpass-api.de, overpass.kumi.systems): pub data from OpenStreetMap for the visible map area. Your IP address and the map area are transmitted in the process.</li>
         <li><strong>Amazon Web Services</strong> (terrain data for the relief, servers possibly in the USA; EU-US Data Privacy Framework).</li>
@@ -240,9 +261,10 @@ function DatenschutzEn() {
         We store account, profile and game data until you delete your account. Visits count towards scoring for
         30 days; the pseudonymous visit entries are deleted automatically after 35 days, crash reports after
         30 days. Under <em>Profile → Delete account</em> you can delete your account at any time, together with your
-        profile, beer passport, visits, friendships including chats, beer club memberships, suggestions and online
-        status. Crash reports contain no account ID and therefore cannot be linked to you; they expire after
-        30 days. Database backups are overwritten on a rolling basis.
+        profile, beer passport, visits, pseudonym random value, game progress, friendships including chats (the
+        chats therefore also disappear for your friends), beer club memberships, suggestions and online status.
+        Crash reports contain no account ID and usually cannot be linked to you; they expire after 30 days.
+        Deleted data remains in database backups for at most 30 days.
       </p>
 
       <h2>6. Your rights</h2>
@@ -252,7 +274,16 @@ function DatenschutzEn() {
         authority. To exercise them, write to us at {OPERATOR.email}.
       </p>
 
-      <h2>7. Minors</h2>
+      <h2>7. Right to object</h2>
+      <p>
+        <strong>
+          Where we process data on the basis of Art. 6(1)(f) GDPR (abuse protection, crash reports, map services),
+          you may object at any time on grounds relating to your particular situation (Art. 21 GDPR). An email to
+          {OPERATOR.email} is enough.
+        </strong>
+      </p>
+
+      <h2>8. Minors</h2>
       <p>Brew Country is for adults only (18, or older in countries with a higher legal drinking age).</p>
     </>
   );

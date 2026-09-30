@@ -636,16 +636,17 @@ export const en = {
   howto: {
     title: 'How it works',
     link: 'How it works',
+    navLabel: 'Help & legal',
     lede: 'Brew Country is a game about your favourite pubs. Each pub belongs to the beer whose fans have the most influence there.',
     steps: {
-      find: { title: 'Find a pub', text: 'Tap “Prost!” or a pub on the map. Pubs come from OpenStreetMap, worldwide.' },
+      find: { title: 'Find a pub', text: 'Tap “{prost}” or a pub on the map. Pubs come from OpenStreetMap, worldwide.' },
       checkin: { title: 'Check in on site', text: 'You can only check in right at the pub (max. {radius} m), once per pub and day, and at no more than {max} pubs a day. Alcohol-free counts just the same.' },
-      influence: { title: 'Build influence', text: 'Every visit gives your beer influence. It fades a little every day and counts for 30 days. One person alone can only add so much per pub. You can only take over a pub together, with a clear lead.' },
+      influence: { title: 'Build influence', text: 'Every visit gives your beer influence. It fades a little every day and counts for {days} days. Beers on tap according to OpenStreetMap start with a head start; an unclaimed pub goes to the very first visit. Per person, at most {visits} visits count per beer and pub. To take over, you need {lead} % more influence than the ruling beer – usually only doable as a crew.' },
       map: { title: 'The map', text: 'The map shows which beer rules where. Zoom in to see individual pubs.' },
-      collect: { title: 'Collect and keep going', text: 'Every new pub earns a coaster for your beer passport. Come back more often and you rise from guest to regular and beyond. Weekly challenges and your weekly streak reward variety, not volume.' },
+      collect: { title: 'Collect and keep going', text: 'Every new pub earns a coaster for your beer passport. After {regular} days of visits to a pub you are a regular, after {table} you join the inner circle, after {fixture} you are a fixture. Weekly challenges reward variety, your weekly streak rewards consistency – never volume.' },
       friends: { title: 'With friends', text: 'Add friends, chat and hold your pubs together.' },
     },
-    fair: 'Brew Country rewards visits, not volume. Drink responsibly. Fair play: no location spoofing, no second accounts.',
+    fair: 'Brew Country rewards visits, not volume. Drink responsibly. Play fair: no location spoofing, no second accounts.',
     version: 'Version {version}',
   },
 } satisfies Messages;
