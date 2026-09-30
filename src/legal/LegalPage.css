@@ -59,3 +59,39 @@
   font-size: var(--fs-xs);
 }
 .legal-links a { color: var(--c-text-3); text-decoration: underline; min-height: 32px; display: inline-flex; align-items: center; }
+
+/* How it works */
+.howto-lede { font-size: var(--fs-md); color: var(--c-text); }
+.howto-steps { list-style: none; padding: 0; display: grid; gap: var(--sp-3); counter-reset: howto; }
+.howto-steps li {
+  counter-increment: howto;
+  position: relative;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) calc(var(--sp-3) + 40px);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+}
+.howto-steps li::before {
+  content: counter(howto);
+  position: absolute;
+  left: var(--sp-3);
+  top: var(--sp-3);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-weight: 800;
+  font-size: var(--fs-sm);
+}
+.howto-steps h2 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); color: var(--c-text); }
+.howto-steps p { margin: 0; }
+.howto-fair {
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-line);
+  color: var(--c-text);
+}
+.howto-version { font-size: var(--fs-xs); }

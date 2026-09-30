@@ -88,7 +88,7 @@ Empfohlen zusätzlich: TTL-Policies in der Firestore-Konsole auf `bc_drinkVotes.
 ### Datenschutz
 
 - Die exakte Heimposition steht nur im privaten Profil (`bc_users`), öffentlich ist sie gerundet.
-- **Profil → Konto löschen** entfernt Profil, Check-ins, Flaggen, Freundschaften inkl. Chats, Team-Mitgliedschaft und den Login.
+- **Profil → Konto löschen** entfernt Profil, Bierpass mit öffentlichen Besuchen, Salz, Legacy-Check-ins und -Flaggen, Freundschaften inkl. Chats, Crew-Mitgliedschaft, Vorschläge, Presence und den Login. Crash-Reports (`bc_clientErrors`) enthalten keine uid und laufen nach 30 Tagen per TTL ab.
 
 ## Kneipen-Modell
 
@@ -102,7 +102,7 @@ Empfohlen zusätzlich: TTL-Policies in der Firestore-Konsole auf `bc_drinkVotes.
   - Nur vor Ort (60 m).
   - 1× pro Kneipe und Tag, höchstens 2 Kneipen am Tag (verantwortungsvoller Konsum). Die Regeln erzwingen das über Id-Slots.
   - Alkoholfrei zählt gleich.
-- **Datenschutz:** Öffentliche Besuche tragen nur Pseudonyme aus einem geheimen Zufalls-Salz pro Spieler (`sha256(salz|kneipe)`), die Zeit ist auf die Stunde gerundet. Der Bierpass liegt privat unter `bc_users/{uid}/visits`.
+- **Datenschutz:** Öffentliche Besuche tragen nur ein Wochen-Pseudonym `sha256(salz|kneipe|woche)`. Das Salz liegt in `bc_secrets/{uid}` (nur der Besitzer liest es, einmal gesetzt). Die Zeit ist auf die Stunde gerundet, per TTL wird nach 35 Tagen gelöscht (`expiresAt`). Der Bierpass liegt privat unter `bc_users/{uid}/visits`.
 - **Bierpass:** Bierdeckel pro Kneipe, Stammgast-Stufen (Gast → Stammgast → Stammtisch → Inventar), Wochen-Serie.
 - **Brauerei-Cockpit** (Entdecken → Brauerei-Cockpit oder `#brauerei`):
   - Kneipen regiert und Share of Voice.

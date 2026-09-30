@@ -633,4 +633,19 @@ export const en = {
     nutzungsbedingungen: 'Terms of use',
     credits: 'Sources & licences',
   },
+  howto: {
+    title: 'How it works',
+    link: 'How it works',
+    lede: 'Brew Country is a game about your favourite pubs. Each pub belongs to the beer whose fans have the most influence there.',
+    steps: {
+      find: { title: 'Find a pub', text: 'Tap “Prost!” or a pub on the map. Pubs come from OpenStreetMap, worldwide.' },
+      checkin: { title: 'Check in on site', text: 'You can only check in right at the pub (max. {radius} m), once per pub and day, and at no more than {max} pubs a day. Alcohol-free counts just the same.' },
+      influence: { title: 'Build influence', text: 'Every visit gives your beer influence. It fades a little every day and counts for 30 days. One person alone can only add so much per pub. You can only take over a pub together, with a clear lead.' },
+      map: { title: 'The map', text: 'The map shows which beer rules where. Zoom in to see individual pubs.' },
+      collect: { title: 'Collect and keep going', text: 'Every new pub earns a coaster for your beer passport. Come back more often and you rise from guest to regular and beyond. Weekly challenges and your weekly streak reward variety, not volume.' },
+      friends: { title: 'With friends', text: 'Add friends, chat and hold your pubs together.' },
+    },
+    fair: 'Brew Country rewards visits, not volume. Drink responsibly. Fair play: no location spoofing, no second accounts.',
+    version: 'Version {version}',
+  },
 } satisfies Messages;

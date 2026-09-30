@@ -248,3 +248,4 @@
 .settings-responsible { font-size: var(--fs-xs); margin: var(--sp-3) 0; }
 .settings-responsible a { color: var(--c-text-2); text-decoration: underline; }
 .settings-legal { margin-top: var(--sp-4); }
+.settings-version { text-align: center; font-size: var(--fs-xs); margin-top: var(--sp-2); }

@@ -12,6 +12,8 @@ Reihenfolge von oben nach unten. ✅ = im Code erledigt, ☐ = Aufgabe für den 
 - ✅ Hinweise zu verantwortungsvollem Konsum; höchstens 2 Kneipen pro Tag; alkoholfrei zählt voll.
 - ✅ Schriften selbst gehostet, keine Google-Anfragen. Kein Tracking.
 - ✅ OSM/ODbL-Attribution sichtbar, Seite „Quellen & Lizenzen“.
+- ✅ Datenschutzerklärung (DE/EN) beschreibt die tatsächliche Verarbeitung: Wochen-Pseudonym, 35-Tage-TTL, öffentliche Profilfelder, Online-Status, Crash-Reports (lit. f, 30 Tage), Umfang der Kontolöschung.
+- ✅ Spielanleitung „So funktioniert’s“ (`#anleitung`) von Login, Onboarding und Profil erreichbar. Die App-Version steht im Profil.
 
 ## 2. Firebase-Projekt (Konsole)
 - ☐ Firestore-Region in der EU (z. B. `eur3`). Die Region lässt sich nachträglich nicht ändern. Wenn das Projekt schon in den USA liegt: neues Projekt anlegen.

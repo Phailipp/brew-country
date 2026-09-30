@@ -42,15 +42,24 @@ function Datenschutz() {
       <h2>2. Welche Daten wir verarbeiten</h2>
       <ul>
         <li><strong>Konto:</strong> E-Mail-Adresse, Spitzname, Passwort (nur als Hash beim Anmeldedienst).</li>
-        <li><strong>Profil:</strong> Lieblingsbier und Heimatort. Der genaue Heimatort ist nur für dich sichtbar; für andere Spieler ist er auf ca. 2 km gerundet.</li>
+        <li>
+          <strong>Profil:</strong> Lieblingsbier und Heimatort. Der genaue Heimatort ist nur für dich sichtbar.
+          Für andere Spieler sichtbar sind: deine Nutzer-Kennung, Lieblingsbier, Heimatort auf ca. 2 km gerundet,
+          Beitrittsdatum, letzter Aktivitätszeitpunkt und eine Spieleinstellung zum Heimat-Radius.
+        </li>
         <li>
           <strong>Kneipenbesuche:</strong> Dein Bierpass (Kneipe, Bier, Zeitpunkt, alkoholfrei ja/nein) ist privat.
           Für die Spielwertung wird jeder Besuch zusätzlich <em>ohne Namen oder Konto-Kennung</em> gespeichert:
-          mit einem Pseudonym, das aus einem nur dir bekannten Zufallswert gebildet wird, und mit auf die Stunde gerundeter Zeit.
-          Andere können daraus nicht erkennen, wer du bist oder in welchen Kneipen du sonst warst.
+          mit einem Pseudonym und mit auf die Stunde gerundeter Zeit. Das Pseudonym wird aus einem geheimen
+          Zufallswert gebildet, den nur dein Konto lesen kann, und wechselt pro Kneipe und Woche. Mehrere Besuche
+          derselben Person in derselben Kneipe und Woche lassen sich daher einander zuordnen, Besuche in anderen
+          Kneipen oder Wochen nicht. Wer dich persönlich kennt, könnte aus Ort und Zeit trotzdem auf dich schließen;
+          deshalb speichern wir so wenig wie möglich und löschen diese Einträge nach 35 Tagen.
         </li>
         <li><strong>Standort:</strong> nur in dem Moment, in dem du ihn freigibst (Onboarding, Check-in), um zu prüfen, dass du vor Ort bist. Wir orten dich nicht im Hintergrund.</li>
-        <li><strong>Freunde & Chat:</strong> Freundschaften und Nachrichten, sichtbar nur für die beteiligten Personen.</li>
+        <li><strong>Freunde & Chat:</strong> Freundschaften und Nachrichten, sichtbar nur für die beteiligten Personen. Deine Freunde sehen außerdem, wann du zuletzt in der App aktiv warst (Online-Status).</li>
+        <li><strong>Biergemeinschaften:</strong> Wenn du einer Biergemeinschaft beitrittst (sofern die Funktion angeboten wird), sehen andere Spieler ihre Mitgliederliste.</li>
+        <li><strong>Absturzberichte:</strong> Stürzt die App ab, speichern wir Fehlermeldung, technischen Fehlerverlauf, App-Version und Browser-Kennung, ohne Konto-Kennung. So finden und beheben wir Fehler.</li>
         <li><strong>Bier-Vorschläge:</strong> Name, Brauerei, Ort, Land, optional Website und Notiz.</li>
         <li><strong>Auf deinem Gerät:</strong> Anmeldestatus, Einstellungen und ein Zwischenspeicher für Kneipendaten (technisch notwendig, § 25 Abs. 2 TDDDG).</li>
       </ul>
@@ -61,6 +70,7 @@ function Datenschutz() {
         <li>Bereitstellung des Spiels (Art. 6 Abs. 1 lit. b DSGVO).</li>
         <li>Standortprüfung beim Check-in auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit in den Geräteeinstellungen widerrufen kannst.</li>
         <li>Schutz vor Missbrauch und Betrug (Art. 6 Abs. 1 lit. f DSGVO).</li>
+        <li>Absturzberichte zur Fehlerbehebung und Stabilität der App (Art. 6 Abs. 1 lit. f DSGVO). Du kannst jederzeit widersprechen.</li>
       </ul>
 
       <h2>4. Empfänger und Dienste</h2>
@@ -74,9 +84,12 @@ function Datenschutz() {
 
       <h2>5. Speicherdauer</h2>
       <p>
-        Konto-, Profil- und Spieldaten speichern wir, bis du dein Konto löschst. Für die Wertung zählen Besuche nur
-        30 Tage. Unter <em>Profil → Konto löschen</em> entfernst du jederzeit alle Daten: Profil, Bierpass,
-        Besuche, Freundschaften, Chats und Vorschläge.
+        Konto-, Profil- und Spieldaten speichern wir, bis du dein Konto löschst. Für die Wertung zählen Besuche
+        30 Tage; die pseudonymen Besuchseinträge werden nach 35 Tagen automatisch gelöscht, Absturzberichte nach
+        30 Tagen. Unter <em>Profil → Konto löschen</em> löschst du jederzeit dein Konto mit Profil, Bierpass,
+        Besuchen, Freundschaften samt Chats, Mitgliedschaften in Biergemeinschaften, Vorschlägen und Online-Status. Absturzberichte
+        enthalten keine Konto-Kennung und können dir daher nicht zugeordnet werden; sie laufen nach 30 Tagen ab.
+        Sicherungskopien der Datenbank werden turnusmäßig überschrieben.
       </p>
 
       <h2>6. Deine Rechte</h2>
@@ -182,15 +195,24 @@ function DatenschutzEn() {
       <h2>2. What data we process</h2>
       <ul>
         <li><strong>Account:</strong> email address, nickname, password (stored only as a hash by the login service).</li>
-        <li><strong>Profile:</strong> favourite beer and home location. Your exact home location is visible only to you; other players see it rounded to about 2 km.</li>
+        <li>
+          <strong>Profile:</strong> favourite beer and home location. Your exact home location is visible only to you.
+          Other players can see: your user ID, favourite beer, home location rounded to about 2 km, date joined,
+          time of last activity and a game setting for your home radius.
+        </li>
         <li>
           <strong>Pub visits:</strong> your beer passport (pub, beer, time, alcohol-free yes/no) is private.
           For scoring, each visit is additionally stored <em>without your name or account ID</em>:
-          with a pseudonym derived from a random value only you know, and with the time rounded to the hour.
-          Others cannot tell from this who you are or which other pubs you have visited.
+          with a pseudonym and with the time rounded to the hour. The pseudonym is derived from a secret random
+          value that only your account can read, and it changes per pub and per week. Several visits by the same
+          person to the same pub in the same week can therefore be linked, visits to other pubs or in other weeks
+          cannot. Someone who knows you personally could still infer it was you from place and time; that is why
+          we store as little as possible and delete these entries after 35 days.
         </li>
         <li><strong>Location:</strong> only at the moment you share it (onboarding, check-in), to verify that you are on site. We never track you in the background.</li>
-        <li><strong>Friends & chat:</strong> friendships and messages, visible only to the people involved.</li>
+        <li><strong>Friends & chat:</strong> friendships and messages, visible only to the people involved. Your friends also see when you were last active in the app (online status).</li>
+        <li><strong>Beer clubs:</strong> if you join a beer club (where the feature is offered), other players can see its member list.</li>
+        <li><strong>Crash reports:</strong> if the app crashes, we store the error message, technical stack trace, app version and browser identifier, without any account ID. This helps us find and fix bugs.</li>
         <li><strong>Beer suggestions:</strong> name, brewery, town, country, optionally website and note.</li>
         <li><strong>On your device:</strong> login status, settings and a cache of pub data (technically necessary, § 25(2) TDDDG).</li>
       </ul>
@@ -201,6 +223,7 @@ function DatenschutzEn() {
         <li>Providing the game (Art. 6(1)(b) GDPR).</li>
         <li>Location check at check-in based on your consent (Art. 6(1)(a) GDPR), which you can withdraw at any time in your device settings.</li>
         <li>Protection against abuse and fraud (Art. 6(1)(f) GDPR).</li>
+        <li>Crash reports for fixing bugs and keeping the app stable (Art. 6(1)(f) GDPR). You can object at any time.</li>
       </ul>
 
       <h2>4. Recipients and services</h2>
@@ -214,9 +237,12 @@ function DatenschutzEn() {
 
       <h2>5. Retention period</h2>
       <p>
-        We store account, profile and game data until you delete your account. Visits only count towards scoring
-        for 30 days. Under <em>Profile → Delete account</em> you can remove all your data at any time: profile,
-        beer passport, visits, friendships, chats and suggestions.
+        We store account, profile and game data until you delete your account. Visits count towards scoring for
+        30 days; the pseudonymous visit entries are deleted automatically after 35 days, crash reports after
+        30 days. Under <em>Profile → Delete account</em> you can delete your account at any time, together with your
+        profile, beer passport, visits, friendships including chats, beer club memberships, suggestions and online
+        status. Crash reports contain no account ID and therefore cannot be linked to you; they expire after
+        30 days. Database backups are overwritten on a rolling basis.
       </p>
 
       <h2>6. Your rights</h2>

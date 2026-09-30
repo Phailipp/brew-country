@@ -16,6 +16,14 @@ test('login screen has no serious accessibility violations', async ({ page }) =>
   expect(serious(r.violations)).toEqual([]);
 });
 
+test('how-to page has no serious accessibility violations', async ({ page }) => {
+  await stubNetwork(page);
+  await page.goto('./#anleitung');
+  await expect(page.getByRole('heading', { name: 'So funktioniert’s', level: 1 })).toBeVisible();
+  const r = await new AxeBuilder({ page }).analyze();
+  expect(serious(r.violations)).toEqual([]);
+});
+
 test('game shell and profile have no serious accessibility violations', async ({ page }) => {
   await stubNetwork(page);
   await startDemo(page);

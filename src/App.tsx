@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties, type ReactNode } from 'react';
+import Dexie from 'dexie';
 import type {
   Vote, GridSpec, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship,
   WorkerInput, WorkerOutput, WorkerResult, DrinkVote, CellResult,
@@ -994,7 +995,6 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
 /** Demo sandbox + venue cache: close the open connections, then delete. */
 async function deleteLocalData(): Promise<void> {
-  const { default: Dexie } = await import('dexie');
   await Promise.all(['BrewCountryDB', 'BrewCountryVenues'].map((name) => Dexie.delete(name).catch(() => {})));
 }
 
@@ -1096,6 +1096,7 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
         </div>
       )}
       <LegalLinks className="settings-legal" />
+      <p className="muted settings-version">{t('howto.version', { version: __APP_VERSION__ })}</p>
     </section>
   );
 }

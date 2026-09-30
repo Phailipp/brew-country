@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { OPERATOR } from '../config/legal';
 import { LegalContent } from './content';
-import { LEGAL_DOCS, legalTitle, type LegalDoc } from './docs';
+import { HOWTO_HASH, LEGAL_DOCS, legalTitle, type LegalDoc } from './docs';
 import { t } from '../i18n';
 import './LegalPage.css';
 
@@ -46,10 +46,11 @@ export function LegalPage({ doc, onClose }: Props) {
   );
 }
 
-/** Small link row for login, onboarding and profile. */
+/** Small link row for login, onboarding and profile (how-to first). */
 export function LegalLinks({ className = '' }: { className?: string }) {
   return (
     <nav className={`legal-links ${className}`.trim()} aria-label={t('legalLinks.label')}>
+      <a href={HOWTO_HASH}>{t('howto.link')}</a>
       {LEGAL_DOCS.map((d) => <a key={d} href={`#${d}`}>{legalTitle(d)}</a>)}
     </nav>
   );

@@ -634,4 +634,19 @@ export const de = {
     nutzungsbedingungen: 'Nutzungsbedingungen',
     credits: 'Quellen & Lizenzen',
   },
+  howto: {
+    title: 'So funktioniert’s',
+    link: 'So funktioniert’s',
+    lede: 'Brew Country ist ein Spiel um deine Lieblingskneipen. Jede Kneipe gehört dem Bier, dessen Fans dort am meisten Einfluss haben.',
+    steps: {
+      find: { title: 'Kneipe finden', text: 'Tipp auf „Prost!“ oder auf eine Kneipe auf der Karte. Die Kneipen kommen weltweit aus OpenStreetMap.' },
+      checkin: { title: 'Vor Ort einchecken', text: 'Einchecken geht nur direkt in der Kneipe (max. {radius} m), einmal pro Kneipe und Tag und in höchstens {max} Kneipen am Tag. Alkoholfrei zählt genauso.' },
+      influence: { title: 'Einfluss sammeln', text: 'Jeder Besuch bringt deinem Bier Einfluss. Er verblasst jeden Tag ein wenig und zählt 30 Tage. Eine Person allein bringt pro Kneipe nur begrenzt viel. Übernehmen könnt ihr eine Kneipe nur gemeinsam, mit deutlichem Vorsprung.' },
+      map: { title: 'Die Karte', text: 'Die Karte zeigt, welches Bier wo regiert. Zoom hinein, um einzelne Kneipen zu sehen.' },
+      collect: { title: 'Sammeln und dranbleiben', text: 'Jede neue Kneipe bringt einen Bierdeckel für deinen Bierpass. Kommst du öfter, steigst du vom Gast zum Stammgast und weiter auf. Wochen-Challenges und deine Wochen-Serie belohnen Abwechslung, nicht Menge.' },
+      friends: { title: 'Mit Freunden', text: 'Füg Freunde hinzu, chattet und haltet eure Kneipen zusammen.' },
+    },
+    fair: 'Brew Country belohnt Besuche, nicht Mengen. Trink verantwortungsvoll. Fair Play: kein Standort-Schummeln, keine Zweitkonten.',
+    version: 'Version {version}',
+  },
 } as const;

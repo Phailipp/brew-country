@@ -42,6 +42,18 @@ test('legal pages open from the login and without an account', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Impressum', level: 1 })).toBeVisible();
 });
 
+test('how-to explains the rules with the real limits and closes again', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('link', { name: 'So funktioniert’s' }).click();
+  await expect(page.getByRole('heading', { name: 'So funktioniert’s', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Vor Ort einchecken', level: 2 })).toBeVisible();
+  await expect(page.getByText(/max\. 60 m\), einmal pro Kneipe und Tag und in höchstens 2 Kneipen/)).toBeVisible();
+  await expect(page.getByText(/^Version /)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: /Demo ansehen/ })).toBeVisible();
+  await expect(page).not.toHaveURL(/#anleitung/);
+});
+
 test('demo onboarding lands on the map with a home turf', async ({ page }) => {
   await startDemo(page);
   await expect(page.getByText('Dein Revier')).toBeVisible();
