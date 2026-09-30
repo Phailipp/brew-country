@@ -7,3 +7,8 @@ export function beerName(beerId: string | null | undefined): string {
 export function beerColor(beerId: string | null | undefined): string {
   return (beerId && BEER_MAP.get(beerId)?.color) || '#a39580';
 }
+
+/** "1 Punkt" / "2,5 Punkte" */
+export function pointsLabel(n: number): string {
+  return `${n.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${n === 1 ? 'Punkt' : 'Punkte'}`;
+}

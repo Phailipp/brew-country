@@ -8,7 +8,7 @@ import { acquireGpsSamples } from '../domain/gpsVerify';
 import { BeerBadge } from './kit/BeerBadge';
 import { BeerPicker } from './BeerPicker';
 import { nearestCity } from '../domain/worldCities';
-import { beerColor, beerName } from './kit/beer';
+import { beerColor, beerName, pointsLabel } from './kit/beer';
 import { haptic } from './kit/haptics';
 import { clink, primeAudio } from './kit/sound';
 import { VENUE_KIND } from './kit/venueKind';
@@ -156,8 +156,8 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
           </ul>
           {owner && standing.challengerBeerId && standing.toFlip > 0 && (
             <p className="venue-flip">
-              <strong>{beerName(standing.challengerBeerId)}</strong> fehlen noch{' '}
-              <strong className="num">{standing.toFlip.toLocaleString('de-DE')}</strong> Punkte zur Übernahme.
+              <strong>{beerName(standing.challengerBeerId)}</strong> {standing.toFlip === 1 ? 'fehlt' : 'fehlen'} noch{' '}
+              <strong className="num">{pointsLabel(standing.toFlip)}</strong> zur Übernahme.
               Eine Person bringt höchstens {INFLUENCE.PER_PLAYER_CAP}: <em>Übernehmen geht nur als Crew.</em>
             </p>
           )}

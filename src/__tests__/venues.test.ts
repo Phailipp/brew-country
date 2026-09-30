@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeStanding, dedupeVisits, INFLUENCE, playerPassport, regularTier, weeklyStreak, weekIndex } from '../domain/influence';
+import { breweryReport } from '../domain/breweryInsights';
 import { parseOverpass, overpassQuery, tilesForViewport, venueTileKey, tileBounds, visitBlocker, nextVisitSlot, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
 
 const DAY = 86_400_000;
@@ -159,5 +160,28 @@ describe('visit limits', () => {
     expect(nextVisitSlot([mine('n1', 1)], NOW)).toBe(1);
     expect(nextVisitSlot([mine('n1', 1)], NOW, (s) => s === 1)).toBe(2);
     expect(nextVisitSlot([mine('n1', 1), mine('n2', 2), mine('n3', 3)], NOW)).toBe(-1);
+  });
+});
+
+describe('brewery report', () => {
+  const v = (id: string, beerIds: string[]): Venue => ({ id, name: id, lat: 48.1, lon: 11.5, kind: 'pub', beerIds, tile: '0_0' });
+  it('finds pubs at risk, opportunities and sleeping taps', () => {
+    const venues = [v('n1', ['augustiner']), v('n2', ['augustiner']), v('n3', ['paulaner']), v('n4', [])];
+    const checkins: VenueCheckin[] = [
+      // n1: Paulaner crew closing in on Augustiner
+      visit('a', 'paulaner', 0, { venueId: 'n1' }), visit('b', 'paulaner', 0, { venueId: 'n1' }), visit('c', 'paulaner', 0, { venueId: 'n1' }),
+      // n3: Augustiner fans pushing into a Paulaner pub
+      visit('d', 'augustiner', 0, { venueId: 'n3' }), visit('e', 'augustiner', 0, { venueId: 'n3' }), visit('f', 'augustiner', 1, { venueId: 'n3' }),
+    ];
+    const standings = new Map(venues.map((x) => [x.id, computeStanding(x, checkins.filter((c) => c.venueId === x.id), NOW)]));
+    const r = breweryReport('augustiner', venues, standings);
+    expect(r.ruled).toBe(2);
+    expect(r.tapped).toBe(2);
+    expect(r.shareOfVoice).toBeCloseTo(2 / 3);
+    expect(r.atRisk.map((x) => x.venue.id)).toEqual(['n1']);
+    expect(r.opportunities.map((x) => x.venue.id)).toEqual(['n3']);
+    expect(r.sleeping.map((x) => x.venue.id)).toEqual(['n2']);
+    expect(r.rivals[0]).toEqual({ beerId: 'augustiner', venues: 2 });
+    expect(r.visitPoints).toBeGreaterThan(0);
   });
 });

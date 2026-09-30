@@ -26,6 +26,7 @@ import { SimulationPanel } from './ui/SimulationPanel';
 import { VenueCard } from './ui/VenueCard';
 import { VENUE_KIND } from './ui/kit/venueKind';
 import { PassportPanel } from './ui/PassportPanel';
+import { BreweryCockpit } from './ui/BreweryCockpit';
 import { useVenues, VENUE_MIN_ZOOM } from './hooks/useVenues';
 import { venuePlayerId } from './domain/visitIds';
 import { nearestCity } from './domain/worldCities';
@@ -42,7 +43,7 @@ import { TeamPanel } from './ui/TeamPanel';
 import { FriendsPanel } from './ui/FriendsPanel';
 import { ChatPanel } from './ui/ChatPanel';
 import { BeerBadge } from './ui/kit/BeerBadge';
-import { beerColor, beerName } from './ui/kit/beer';
+import { beerColor, beerName, pointsLabel } from './ui/kit/beer';
 import { haptic } from './ui/kit/haptics';
 import { conquer, setSoundEnabled, soundEnabled } from './ui/kit/sound';
 import NumberFlow from '@number-flow/react';
@@ -129,7 +130,8 @@ type SheetMode =
   | { kind: 'tab'; tab: TabId }
   | { kind: 'prost' }
   | { kind: 'territory' }
-  | { kind: 'venue'; venueId: string };
+  | { kind: 'venue'; venueId: string }
+  | { kind: 'brewery' };
 
 interface DominanceState {
   result: WorkerOutput;
@@ -365,6 +367,11 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
   }, []);
 
+  // Deep link for brewery pitches: …/#brauerei opens the cockpit
+  useEffect(() => {
+    if (window.location.hash === '#brauerei') setSheet({ kind: 'brewery' });
+  }, []);
+
   // Share link on load
   useEffect(() => {
     const shareData = decodeShareLink();
@@ -578,7 +585,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       });
     } else {
       const flip = after.ownerBeerId !== beerId && after.challengerBeerId === beerId && after.toFlip > 0
-        ? ` Noch ${after.toFlip.toLocaleString('de-DE')} Punkte bis zur Übernahme.`
+        ? ` Noch ${pointsLabel(after.toFlip)} bis zur Übernahme.`
         : '';
       setCelebration({
         id: Date.now(),
@@ -694,6 +701,16 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     ) : (
       <div className="empty"><span className="spinner" /> Lädt…</div>
     );
+  } else if (sheet?.kind === 'brewery') {
+    sheetTitle = 'Für Brauereien';
+    sheetBody = (
+      <BreweryCockpit
+        initialBeerId={user.beerId}
+        venues={venueState.venues}
+        standings={venueState.standings}
+        onOpenVenue={(v) => { mapRef.current?.flyTo(v.lat, v.lon, 16.5); setSheet({ kind: 'venue', venueId: v.id }); }}
+      />
+    );
   } else if (sheet?.kind === 'territory') {
     sheetTitle = selected.cell?.winnerBeerId ? 'Territorium' : 'Freies Land';
     sheetBody = (
@@ -713,6 +730,14 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       case 'explore':
         sheetBody = (
           <>
+            <button className="card cockpit-entry" onClick={() => setSheet({ kind: 'brewery' })}>
+              <span className="cockpit-entry-icon" aria-hidden="true">🏭</span>
+              <span className="cockpit-entry-text">
+                <strong>Brauerei-Cockpit</strong>
+                <span>Wo regiert welche Marke? Welche Kneipen kippen gerade?</span>
+              </span>
+              <span className="cockpit-entry-go" aria-hidden="true">›</span>
+            </button>
             <Leaderboard entries={leaderboard} ownBeerId={user.beerId} computing={computing} />
             <ExploreFeed items={feedItems} onNavigate={(lat, lon, zoom) => mapRef.current?.flyTo(lat, lon, zoom)} />
           </>

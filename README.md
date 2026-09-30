@@ -65,6 +65,25 @@ Empfohlen zusätzlich: TTL-Policies in der Firestore-Konsole auf `bc_drinkVotes.
 - Die exakte Heimposition steht nur im privaten Profil (`bc_users`), öffentlich ist sie gerundet.
 - **Profil → Konto löschen** entfernt Profil, Check-ins, Flaggen, Freundschaften inkl. Chats, Team-Mitgliedschaft und den Login.
 
+## Kneipen-Modell
+
+- **Kneipen weltweit aus OpenStreetMap:** Kneipen, Bars, Biergärten, Brauereien und Wirtshäuser mit Ausschank. Sie werden zur Laufzeit über Overpass geladen und eine Woche gecacht (`services/venueService.ts`).
+- **Ausschank-Vorsprung:** `brewery=*` aus OSM wird Katalogmarken zugeordnet (Ausschank 10 Punkte, Brauerei 15). So ist die Karte ab Tag 1 gefüllt.
+- **Besuche:**
+  - +3 Punkte pro Besuch, 10 % Verfall pro Tag, 30 Tage Fenster.
+  - Pro Spieler höchstens 9 Punkte je Bier und Kneipe. Übernahmen gehen nur als Crew.
+  - Wechsel erst bei 20 % Vorsprung.
+- **Check-in:**
+  - Nur vor Ort (60 m).
+  - 1× pro Kneipe und Tag, höchstens 3 Kneipen am Tag. Die Regeln erzwingen das über Id-Slots.
+  - Alkoholfrei zählt gleich.
+- **Datenschutz:** Öffentliche Besuche tragen nur das Pseudonym `sha256(uid|kneipe)`. Der Bierpass liegt privat unter `bc_users/{uid}/visits`.
+- **Bierpass:** Bierdeckel pro Kneipe, Stammgast-Stufen (Gast → Stammgast → Stammtisch → Inventar), Wochen-Serie.
+- **Brauerei-Cockpit** (Entdecken → Brauerei-Cockpit oder `#brauerei`):
+  - Kneipen regiert und Share of Voice.
+  - Gefährdete Kneipen, Chancen und Ausschank ohne Fans.
+  - Das ist die Vertriebs-Demo für Brauereien.
+
 ## Bedienung
 
 | Aktion | Wie |
