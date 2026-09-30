@@ -14,6 +14,7 @@ import { LOCAL_AUTH_KEY, isDemoUserId } from './auth/authContext.ts'
 import { ADMIN_ENABLED } from './config/env.ts'
 import { installGlobalLight } from './ui/kit/globalLight.ts'
 import { ErrorBoundary } from './ui/ErrorBoundary.tsx'
+import { LegalOverlay } from './legal/LegalOverlay.tsx'
 
 installGlobalLight()
 
@@ -45,11 +46,13 @@ if (ADMIN_ENABLED && window.location.hash === '#admin') {
   root.render(
     <StrictMode>
       <ErrorBoundary>
-        <ToastProvider>
-          <AuthProvider store={store}>
-            <App store={store} />
-          </AuthProvider>
-        </ToastProvider>
+        <LegalOverlay>
+          <ToastProvider>
+            <AuthProvider store={store}>
+              <App store={store} />
+            </AuthProvider>
+          </ToastProvider>
+        </LegalOverlay>
       </ErrorBoundary>
     </StrictMode>,
   );

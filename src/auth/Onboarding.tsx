@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, type CSSProperties } from 'react';
 import { nearestCity, localeCountry } from '../domain/worldCities';
+import { ageInYears, minimumAge } from '../domain/age';
 import { searchBeers } from '../domain/beers';
 import type { User } from '../domain/types';
 import { useAuth } from './authContext';
@@ -42,7 +43,9 @@ export function Onboarding() {
 
   const [step, setStep] = useState<OnboardingStep>('age');
   const [suggestOpen, setSuggestOpen] = useState(false);
-  const [ageVerified, setAgeVerified] = useState(false);
+  const [birthdate, setBirthdate] = useState('');
+  const [accepted, setAccepted] = useState(false);
+  const requiredAge = minimumAge(localeCountry());
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedBeerId, setSelectedBeerId] = useState<string>(() => searchBeers('', localeCountry())[0]?.id ?? 'augustiner');
   const beerTouchedRef = useRef(false);
@@ -76,8 +79,17 @@ export function Onboarding() {
   };
 
   const handleAgeNext = () => {
-    if (!ageVerified) {
-      setError('Brew Country ist nur für Erwachsene. Bitte bestätige, dass du mindestens 18 bist.');
+    const age = ageInYears(birthdate);
+    if (age === null) {
+      setError('Bitte gib dein Geburtsdatum ein.');
+      return;
+    }
+    if (age < requiredAge) {
+      setError(`Brew Country ist nur für Erwachsene ab ${requiredAge} Jahren.`);
+      return;
+    }
+    if (!accepted) {
+      setError('Bitte stimme den Nutzungsbedingungen zu.');
       return;
     }
     haptic('light');
@@ -256,19 +268,36 @@ export function Onboarding() {
               <div className="auth-hero-icon" aria-hidden="true">🔞</div>
               <h1 className="ob-title" ref={headingRef} tabIndex={-1}>Kurz vorab</h1>
               <p className="auth-instruction">
-                Bei Brew Country dreht sich alles um Bier. Deshalb ist die App erst ab 18.
+                Bei Brew Country dreht sich alles um Bier. Deshalb ist die App erst ab {requiredAge}.
+                Dein Geburtsdatum prüfen wir nur, gespeichert wird es nicht.
               </p>
-              <label className={`ob-check${ageVerified ? ' checked' : ''}`}>
+              <label className="field">
+                <span className="field-label">Geburtsdatum</span>
+                <input
+                  type="date"
+                  value={birthdate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => { setBirthdate(e.target.value); setError(''); }}
+                  autoComplete="bday"
+                />
+              </label>
+              <label className={`ob-check${accepted ? ' checked' : ''}`}>
                 <input
                   type="checkbox"
-                  checked={ageVerified}
-                  onChange={(e) => { setAgeVerified(e.target.checked); setError(''); }}
+                  checked={accepted}
+                  onChange={(e) => { setAccepted(e.target.checked); setError(''); }}
                 />
                 <span className="ob-check-box" aria-hidden="true">
                   <svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </span>
-                <span>Ich bin mindestens 18 Jahre alt</span>
+                <span>
+                  Ich akzeptiere die <a href="#nutzungsbedingungen">Nutzungsbedingungen</a> und habe
+                  die <a href="#datenschutz">Datenschutzerklärung</a> gelesen.
+                </span>
               </label>
+              <p className="ob-responsible">
+                Trink verantwortungsvoll: Brew Country belohnt Besuche, nicht Mengen. Alkoholfrei zählt genauso.
+              </p>
               {errorBox}
               <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handleAgeNext}>
                 Weiter
@@ -354,7 +383,7 @@ export function Onboarding() {
           {step === 'beer' && (
             <section className="ob-step" key="beer">
               <h1 className="ob-title" ref={headingRef} tabIndex={-1}>Wähl dein Bier</h1>
-              <p className="auth-instruction">Für welche Brauerei ziehst du in die Schlacht?</p>
+              <p className="auth-instruction">Welches Bier ist deins? Du kannst bei jedem Check-in ein anderes wählen.</p>
               <BeerPicker
                 value={selectedBeerId}
                 onChange={(id) => { beerTouchedRef.current = true; setSelectedBeerId(id); }}

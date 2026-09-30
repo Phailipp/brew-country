@@ -47,7 +47,8 @@ export async function stubNetwork(page: Page, opts: { overpass?: 'ok' | 'error' 
 export async function startDemo(page: Page, opts: { beer?: string } = {}): Promise<void> {
   await page.goto('./');
   await page.getByRole('button', { name: /Demo ansehen/ }).click();
-  await page.getByText('Ich bin mindestens 18 Jahre alt').click();
+  await page.getByLabel('Geburtsdatum').fill('1990-05-17');
+  await page.locator('.ob-check .ob-check-box').click();
   await page.getByRole('button', { name: 'Weiter', exact: true }).click();
   await page.getByRole('button', { name: /Koordinaten selbst eingeben/ }).click();
   await page.getByLabel('Breitengrad').fill(String(MARIENPLATZ.lat));

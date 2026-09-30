@@ -8,11 +8,38 @@ test('login screen offers the demo', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Demo ansehen/ })).toBeVisible();
 });
 
-test('age gate blocks without confirmation', async ({ page }) => {
+test('age gate requires a birthdate, adulthood and consent', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: /Demo ansehen/ }).click();
-  await page.getByRole('button', { name: 'Weiter', exact: true }).click();
-  await expect(page.getByText(/nur für Erwachsene/)).toBeVisible();
+  const next = page.getByRole('button', { name: 'Weiter', exact: true });
+  await next.click();
+  await expect(page.getByText('Bitte gib dein Geburtsdatum ein.')).toBeVisible();
+
+  const minor = new Date();
+  minor.setFullYear(minor.getFullYear() - 17);
+  await page.getByLabel('Geburtsdatum').fill(minor.toISOString().slice(0, 10));
+  await next.click();
+  await expect(page.getByText(/nur für Erwachsene ab 18/)).toBeVisible();
+
+  await page.getByLabel('Geburtsdatum').fill('1990-05-17');
+  await next.click();
+  await expect(page.getByText('Bitte stimme den Nutzungsbedingungen zu.')).toBeVisible();
+
+  await page.locator('.ob-check .ob-check-box').click();
+  await next.click();
+  await expect(page.getByRole('heading', { name: 'Wo ist dein Zuhause?' })).toBeVisible();
+});
+
+test('legal pages open from the login and without an account', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('link', { name: 'Datenschutzerklärung' }).click();
+  await expect(page.getByRole('heading', { name: 'Datenschutzerklärung', level: 1 })).toBeVisible();
+  await expect(page.getByText(/ohne Namen oder Konto-Kennung/)).toBeVisible();
+  await page.getByRole('button', { name: 'Zurück' }).click();
+  await expect(page.getByRole('button', { name: /Demo ansehen/ })).toBeVisible();
+
+  await page.goto('./#impressum');
+  await expect(page.getByRole('heading', { name: 'Impressum', level: 1 })).toBeVisible();
 });
 
 test('demo onboarding lands on the map with a home turf', async ({ page }) => {

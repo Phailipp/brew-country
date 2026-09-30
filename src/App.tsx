@@ -27,6 +27,8 @@ import { VenueCard } from './ui/VenueCard';
 import { VENUE_KIND } from './ui/kit/venueKind';
 import { PassportPanel } from './ui/PassportPanel';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+import { LegalLinks } from './legal/LegalPage';
+import { RESPONSIBLE_DRINKING_URL } from './config/legal';
 import { PubFinder, type LocateResult } from './ui/PubFinder';
 import { LEGACY_FEATURES } from './config/env';
 import { weeklyChallenges } from './domain/weeklyChallenges';
@@ -1041,6 +1043,10 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
           <span />
         </button>
       </div>
+      <p className="muted settings-responsible">
+        Trink verantwortungsvoll und fahr nicht nach dem Bier. Hilfe und Infos:{' '}
+        <a href={RESPONSIBLE_DRINKING_URL} target="_blank" rel="noopener noreferrer">kenn-dein-limit.de</a>
+      </p>
       <button className="btn btn-secondary btn-block settings-logout" onClick={logout}>
         {isDemo ? 'Demo beenden' : 'Abmelden'}
       </button>
@@ -1065,6 +1071,7 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
           </div>
         </div>
       )}
+      <LegalLinks className="settings-legal" />
     </section>
   );
 }

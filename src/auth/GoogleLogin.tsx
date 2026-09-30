@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
+import { LegalLinks } from '../legal/LegalPage';
 import { FirebaseError } from 'firebase/app';
 import { useAuth } from './authContext';
 import { isFirebaseConfigured } from '../config/firebase';
@@ -239,6 +240,7 @@ export function GoogleLogin() {
           </button>
           <p className="auth-demo-hint">Lokale Demo, nichts wird gespeichert</p>
         </div>
+        <LegalLinks className="auth-legal" />
       </main>
     </div>
   );
