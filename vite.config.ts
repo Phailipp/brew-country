@@ -4,6 +4,26 @@ import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
+/**
+ * Content Security Policy for production builds (dev needs inline scripts for
+ * hot reload). GitHub Pages cannot send headers, so it ships as a meta tag;
+ * frame-ancestors is not supported there (needs a real header / other host).
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  // React inline style attributes and MapLibre's dynamic styles
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://tiles.openfreemap.org https://s3.amazonaws.com",
+  "font-src 'self' data:",
+  "worker-src 'self' blob:",
+  "connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://overpass-api.de https://overpass.kumi.systems https://*.googleapis.com https://brew-country.firebaseapp.com",
+  "frame-src https://brew-country.firebaseapp.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ')
+
 function appVersion(): string {
   const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
   let sha = process.env.GITHUB_SHA?.slice(0, 7) ?? ''
@@ -20,7 +40,15 @@ export default defineConfig(({ command, mode }) => {
   // files are not even part of the production build.
   const brandLogos = command === 'serve' || env.VITE_BRAND_LOGOS === 'true'
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: 'brew-country-csp',
+        apply: 'build',
+        transformIndexHtml: (html: string) =>
+          html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`),
+      },
+    ],
     base: './',
     define: { __APP_VERSION__: JSON.stringify(appVersion()) },
     resolve: {
