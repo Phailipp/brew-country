@@ -11,7 +11,10 @@ const MIRRORS = [
   'https://overpass.kumi.systems/api/interpreter',
 ];
 const TTL_MS = 7 * 24 * 3600 * 1000;
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 15_000;
+/** A mirror that answered 429/5xx or timed out is skipped for a while. */
+const MIRROR_COOLDOWN_MS = 2 * 60_000;
+const mirrorDownUntil = new Map<string, number>();
 
 interface TileRow {
   key: string;
@@ -56,8 +59,12 @@ async function fromCache(key: string, now: number): Promise<TileRow | null> {
 }
 
 async function fetchOverpass(query: string, signal?: AbortSignal): Promise<unknown> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('offline');
   let lastError: unknown = null;
-  for (const url of MIRRORS) {
+  // Healthy mirrors first; if all are cooling down, try them anyway
+  const now = Date.now();
+  const order = [...MIRRORS].sort((a, b) => Number((mirrorDownUntil.get(a) ?? 0) > now) - Number((mirrorDownUntil.get(b) ?? 0) > now));
+  for (const url of order) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     const onAbort = () => ctrl.abort();
@@ -69,9 +76,12 @@ async function fetchOverpass(query: string, signal?: AbortSignal): Promise<unkno
         signal: ctrl.signal,
       });
       if (!res.ok) throw new Error(`Overpass ${res.status}`);
-      return await res.json();
+      const json = await res.json();
+      mirrorDownUntil.delete(url);
+      return json;
     } catch (e) {
       if (signal?.aborted) throw e;
+      mirrorDownUntil.set(url, Date.now() + MIRROR_COOLDOWN_MS);
       lastError = e;
     } finally {
       clearTimeout(timer);
@@ -82,7 +92,7 @@ async function fetchOverpass(query: string, signal?: AbortSignal): Promise<unkno
 }
 
 /** Load (bounding box of) the given tiles in one request and cache each tile. */
-async function loadTiles(keys: string[], signal?: AbortSignal): Promise<void> {
+async function loadTiles(keys: string[]): Promise<void> {
   const bounds = keys.map(tileBounds);
   const bbox = {
     south: Math.min(...bounds.map((b) => b.south)),
@@ -90,7 +100,7 @@ async function loadTiles(keys: string[], signal?: AbortSignal): Promise<void> {
     north: Math.max(...bounds.map((b) => b.north)),
     east: Math.max(...bounds.map((b) => b.east)),
   };
-  const venues = parseOverpass((await fetchOverpass(overpassQuery(bbox), signal)) as { elements?: [] });
+  const venues = parseOverpass((await fetchOverpass(overpassQuery(bbox))) as { elements?: [] });
   const fetchedAt = Date.now();
   const rows: TileRow[] = keys.map((key) => ({ key, fetchedAt, venues: venues.filter((v) => v.tile === key) }));
   for (const r of rows) memory.set(r.key, r);
@@ -101,29 +111,30 @@ async function loadTiles(keys: string[], signal?: AbortSignal): Promise<void> {
   }
 }
 
-/** All venues of the given tiles (cached where possible). */
+/**
+ * All venues of the given tiles (cached where possible). Rejects when a tile
+ * could not be loaded, so callers never mistake an outage for "no pubs here".
+ * Requests are shared between callers and never tied to one caller's abort
+ * signal; `signal` only stops *this* caller from waiting.
+ */
 export async function loadVenues(keys: string[], signal?: AbortSignal): Promise<Venue[]> {
   const now = Date.now();
   const rows = await Promise.all(keys.map((k) => fromCache(k, now)));
   const missing = keys.filter((k, i) => !rows[i] && !inflight.has(k));
   if (missing.length > 0) {
-    const p = loadTiles(missing, signal);
+    const p = loadTiles(missing).finally(() => { for (const k of missing) inflight.delete(k); });
     for (const k of missing) inflight.set(k, p);
-    try {
-      await p;
-    } finally {
-      for (const k of missing) inflight.delete(k);
-    }
+    p.catch(() => undefined); // observed below; avoid unhandled rejections
   }
-  await Promise.all(keys.map((k) => inflight.get(k)?.catch(() => undefined)));
+  const pending = [...new Set(keys.map((k) => inflight.get(k)).filter((p): p is Promise<void> => !!p))];
+  const all = Promise.all(pending);
+  await (signal
+    ? Promise.race([all, new Promise<never>((_, reject) => {
+      if (signal.aborted) reject(new DOMException('Aborted', 'AbortError'));
+      signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+    })])
+    : all);
+  if (keys.some((k) => !memory.has(k))) throw new Error('Venue tiles unavailable');
   return keys.flatMap((k) => memory.get(k)?.venues ?? []);
 }
 
-/** Venues we already know, without touching the network. */
-export function cachedVenue(id: string): Venue | null {
-  for (const row of memory.values()) {
-    const v = row.venues.find((x) => x.id === id);
-    if (v) return v;
-  }
-  return null;
-}

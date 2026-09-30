@@ -26,6 +26,9 @@ import { SimulationPanel } from './ui/SimulationPanel';
 import { VenueCard } from './ui/VenueCard';
 import { VENUE_KIND } from './ui/kit/venueKind';
 import { PassportPanel } from './ui/PassportPanel';
+import { PubFinder, type LocateResult } from './ui/PubFinder';
+import { LEGACY_FEATURES } from './config/env';
+import { weeklyChallenges } from './domain/weeklyChallenges';
 import { BreweryCockpit } from './ui/BreweryCockpit';
 import { WeeklyPanel } from './ui/WeeklyPanel';
 import { useVenues, VENUE_MIN_ZOOM } from './hooks/useVenues';
@@ -251,11 +254,13 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
     const firestoreUsers: User[] = remoteUsers.map(profileToUser);
 
+    // Launch model: home turf + pubs. Legacy flags, teams and drink votes are
+    // neither shown nor read (saves N full-collection reads per player).
     const [localUsers, allOTR, allTeams, allDrink] = await Promise.all([
       store.getAllUsers(),
-      store.getAllOTRVotes(),
-      store.getAllTeams(),
-      store.getAllDrinkVotes(),
+      LEGACY_FEATURES ? store.getAllOTRVotes() : Promise.resolve([]),
+      LEGACY_FEATURES ? store.getAllTeams() : Promise.resolve([]),
+      LEGACY_FEATURES ? store.getAllDrinkVotes() : Promise.resolve([]),
     ]);
 
     // Public (coarse) profiles for everyone; the player's own full record wins
@@ -265,7 +270,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     merged.set(user.id, user);
     const allUsers = Array.from(merged.values()).filter((u) => u.homeLat !== 0 || u.homeLon !== 0);
 
-    const outcomeLists = await Promise.all(allUsers.map((u) => store.getDuelOutcomes(u.id)));
+    const outcomeLists = LEGACY_FEATURES
+      ? await Promise.all(allUsers.map((u) => store.getDuelOutcomes(u.id)))
+      : allUsers.map(() => []);
     const outcomesMap = new Map(allUsers.map((u, i) => [u.id, outcomeLists[i]]));
 
     if (seq !== weightsSeqRef.current) return; // superseded
@@ -385,7 +392,14 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   // ── Derived UI data
   const questState = useQuests(user.id, QUEST_SETTINGS);
   const feedItems = useFeed(dominanceData, regions, votes, viewportBounds);
-  const questsDone = Object.values(questState.questState.progress).filter((p) => p.completed).length;
+  const [sessionStart] = useState(() => Date.now());
+  const weeklyDone = useMemo(
+    () => weeklyChallenges(venueState.myVisits, sessionStart).filter((c) => c.done).length,
+    [venueState.myVisits, sessionStart],
+  );
+  const questsDone = LEGACY_FEATURES
+    ? Object.values(questState.questState.progress).filter((p) => p.completed).length
+    : weeklyDone;
 
   const leaderboard = useMemo<LeaderboardEntry[]>(() => {
     if (!dominance || !viewportBounds) return [];
@@ -599,33 +613,46 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     }
   }, [selectedVenue, venueCheckIn]);
 
-  // Prost → "Which pub am I in?": GPS (demo: map centre), nearest pub within reach
-  const findVenueHere = useCallback(async () => {
+  // Prost → "Which pub am I in?": GPS (demo: map centre), pubs within reach
+  const locateNearby = useCallback(async (): Promise<LocateResult> => {
     let pos: { lat: number; lon: number };
     try {
       pos = await acquireGpsSamples(1);
     } catch {
-      if (!isDemo) {
-        showToast('📍', 'Ohne Standort finden wir deine Kneipe nicht.');
-        return;
-      }
+      if (!isDemo) return { ok: false, reason: 'no-location' };
       pos = mapCenterRef.current;
     }
     const d = 0.004;
     const tiles = tilesForViewport({ south: pos.lat - d, north: pos.lat + d, west: pos.lon - d * 1.5, east: pos.lon + d * 1.5 });
-    const nearby = (await loadVenues(tiles).catch(() => []))
-      .map((v) => ({ v, m: haversineDistanceKm(pos.lat, pos.lon, v.lat, v.lon) * 1000 }))
-      .filter((x) => x.m <= (isDemo ? 400 : CHECKIN_RADIUS_M + 40))
-      .sort((a, b) => a.m - b.m);
-    if (nearby.length === 0) {
-      showToast('🍺', 'Keine Kneipe in deiner Nähe gefunden. Check hier trotzdem ein.');
-      return;
+    let venues;
+    try {
+      venues = await loadVenues(tiles);
+    } catch {
+      return { ok: false, reason: 'network' };
     }
-    const { v } = nearby[0];
-    addVenues([v]);
+    const nearby = venues
+      .map((v) => ({ venue: v, distance: haversineDistanceKm(pos.lat, pos.lon, v.lat, v.lon) * 1000 }))
+      .filter((x) => x.distance <= (isDemo ? 400 : CHECKIN_RADIUS_M + 90))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 6);
+    addVenues(nearby.map((x) => x.venue));
+    return { ok: true, nearby };
+  }, [isDemo, addVenues]);
+
+  const openVenue = useCallback((v: { id: string; lat: number; lon: number }) => {
     mapRef.current?.flyTo(v.lat, v.lon, 17);
     setSheet({ kind: 'venue', venueId: v.id });
-  }, [isDemo, showToast, addVenues]);
+  }, []);
+
+  // Legacy prost panel: jump straight to the nearest pub
+  const findVenueHere = useCallback(async () => {
+    const r = await locateNearby();
+    if (!r.ok || r.nearby.length === 0) {
+      showToast('🍺', 'Keine Kneipe in deiner Nähe gefunden.');
+      return;
+    }
+    openVenue(r.nearby[0].venue);
+  }, [locateNearby, openVenue, showToast]);
 
   // Demo: a crowd of simulated regulars visits the venues on screen
   const simulateVenueCrowd = useCallback(async () => {
@@ -677,7 +704,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   let sheetBody: ReactNode = null;
   if (sheet?.kind === 'prost') {
     sheetTitle = 'Prost! Einchecken';
-    sheetBody = (
+    sheetBody = !LEGACY_FEATURES ? (
+      <PubFinder locate={locateNearby} standings={venueState.standings} onOpen={openVenue} />
+    ) : (
       <ProstPanel
         user={user}
         store={store}
@@ -756,7 +785,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
               unreadCounts={unreadCounts}
               onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
             />
-            <TeamPanel user={user} store={store} />
+            {LEGACY_FEATURES && <TeamPanel user={user} store={store} />}
           </>
         ) : (
           <>
@@ -765,7 +794,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
               <span className="empty-title">Crew gibt’s mit Konto</span>
               <span>In der Demo spielst du allein. Mit Konto siehst du Freunde auf der Karte und chattest mit ihnen.</span>
             </div>
-            <TeamPanel user={user} store={store} />
+            {LEGACY_FEATURES && <TeamPanel user={user} store={store} />}
           </>
         );
         break;
@@ -773,7 +802,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         sheetBody = (
           <>
             <WeeklyPanel visits={venueState.myVisits} />
-            <QuestsPanel questState={questState.questState} catalog={questState.catalog} />
+            {LEGACY_FEATURES && <QuestsPanel questState={questState.questState} catalog={questState.catalog} />}
           </>
         );
         break;
@@ -784,9 +813,13 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
               const v = venueState.venues.find((x) => x.id === venueId);
               if (v) { mapRef.current?.flyTo(v.lat, v.lon, 16); handleVenueTap(v.id); }
             }} />
-            <HomeStatus user={user} store={store} onUserUpdate={handleUserUpdate} />
-            <OnTheRoadButton user={user} store={store} onVoteCreated={() => loadWeightedVotes().catch(() => {})} />
-            <DuelPanel user={user} store={store} />
+            {LEGACY_FEATURES && (
+              <>
+                <HomeStatus user={user} store={store} onUserUpdate={handleUserUpdate} />
+                <OnTheRoadButton user={user} store={store} onVoteCreated={() => loadWeightedVotes().catch(() => {})} />
+                <DuelPanel user={user} store={store} />
+              </>
+            )}
             {devTools && (
               <SimulationPanel
                 onAddVotes={handleAddVotes}

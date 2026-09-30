@@ -56,10 +56,21 @@ test('zoomed out, the app hints to zoom in for pubs', async ({ page }) => {
   await expect(page.getByText(/Näher ranzoomen/)).toBeVisible();
 });
 
-test('"In einer Kneipe?" finds the pub at the GPS position', async ({ page }) => {
+test('Prost lists the pubs around the player and opens the chosen one', async ({ page }) => {
   await stubNetwork(page);
   await startDemo(page);
   await page.getByRole('button', { name: /Prost! Jetzt einchecken/ }).click();
-  await page.getByRole('button', { name: /In einer Kneipe/ }).click();
-  await expect(page.locator('.venue .venue-name')).toBeVisible();
+  const list = page.getByRole('list', { name: 'Kneipen in deiner Nähe' });
+  await expect(list.getByRole('button').first()).toBeVisible();
+  const name = (await list.locator('.finder-name').first().textContent()) ?? '';
+  await list.getByRole('button').first().click();
+  await expect(page.locator('.venue .venue-name')).toHaveText(name);
+});
+
+test('Prost explains when the pub data is unreachable', async ({ page }) => {
+  await stubNetwork(page, { overpass: 'error' });
+  await startDemo(page);
+  await page.getByRole('button', { name: /Prost! Jetzt einchecken/ }).click();
+  await expect(page.getByText('Kneipen gerade nicht erreichbar')).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole('button', { name: 'Nochmal suchen' })).toBeVisible();
 });
