@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 5199;
+const PORT = Number(process.env.E2E_PORT ?? 5199);
 
 /**
  * End-to-end tests in the demo sandbox (IndexedDB, no Firebase).
