@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { OPERATOR } from '../config/legal';
 import { LegalContent } from './content';
-import { LEGAL_DOCS, LEGAL_TITLES, type LegalDoc } from './docs';
+import { LEGAL_DOCS, legalTitle, type LegalDoc } from './docs';
+import { t } from '../i18n';
 import './LegalPage.css';
 
 interface Props {
@@ -23,21 +24,21 @@ export function LegalPage({ doc, onClose }: Props) {
   return (
     <div className="legal" role="dialog" aria-modal="true" aria-labelledby="legal-title">
       <header className="legal-header">
-        <button className="icon-btn" onClick={onClose} aria-label="Zurück">
+        <button className="icon-btn" onClick={onClose} aria-label={t('common.back')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
         </button>
-        <h1 id="legal-title" ref={headingRef} tabIndex={-1}>{LEGAL_TITLES[doc]}</h1>
+        <h1 id="legal-title" ref={headingRef} tabIndex={-1}>{legalTitle(doc)}</h1>
       </header>
       <article className="legal-body">
         {!OPERATOR.configured && (
           <p className="legal-template" role="note">
-            Vorlage: Betreiberangaben fehlen noch (src/config/legal.ts). Vor dem Launch ausfüllen und rechtlich prüfen lassen.
+            {t('legalLinks.template')}
           </p>
         )}
         <LegalContent doc={doc} />
-        <nav className="legal-nav" aria-label="Rechtliches">
+        <nav className="legal-nav" aria-label={t('legalLinks.label')}>
           {LEGAL_DOCS.filter((d) => d !== doc).map((d) => (
-            <a key={d} href={`#${d}`}>{LEGAL_TITLES[d]}</a>
+            <a key={d} href={`#${d}`}>{legalTitle(d)}</a>
           ))}
         </nav>
       </article>
@@ -48,8 +49,8 @@ export function LegalPage({ doc, onClose }: Props) {
 /** Small link row for login, onboarding and profile. */
 export function LegalLinks({ className = '' }: { className?: string }) {
   return (
-    <nav className={`legal-links ${className}`.trim()} aria-label="Rechtliches">
-      {LEGAL_DOCS.map((d) => <a key={d} href={`#${d}`}>{LEGAL_TITLES[d]}</a>)}
+    <nav className={`legal-links ${className}`.trim()} aria-label={t('legalLinks.label')}>
+      {LEGAL_DOCS.map((d) => <a key={d} href={`#${d}`}>{legalTitle(d)}</a>)}
     </nav>
   );
 }

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { BEERS } from '../domain/beers';
+import { t } from '../i18n';
 
 /**
  * Shared chrome for the full-screen auth flows (login, onboarding, reset):
@@ -51,8 +52,8 @@ export function AuthBrand({ compact = false, claim = true }: { compact?: boolean
           <path d="M18 23v12M24 23v12" stroke="var(--c-accent)" strokeWidth="2.4" strokeLinecap="round" opacity="0.55" />
         </svg>
       </span>
-      <p className="auth-wordmark">Brew Country</p>
-      {claim && <p className="auth-claim">Welches Bier regiert dein Viertel?</p>}
+      <p className="auth-wordmark">{t('common.brand')}</p>
+      {claim && <p className="auth-claim">{t('auth.claim')}</p>}
     </header>
   );
 }
@@ -64,9 +65,9 @@ export function GpsProgress({ phase, intervalMs }: { phase: GpsPhase; intervalMs
   const width = phase === 'first' ? '18%' : phase === 'wait' ? '85%' : '96%';
   const duration = phase === 'wait' ? intervalMs : 900;
   const text: Record<GpsPhase, ReactNode> = {
-    first: 'Erste Messung läuft …',
-    wait: 'Bleib kurz stehen – wir messen gleich nochmal für mehr Genauigkeit.',
-    second: 'Zweite Messung läuft …',
+    first: t('auth.gpsFirst'),
+    wait: t('auth.gpsWait'),
+    second: t('auth.gpsSecond'),
   };
   return (
     <div className="gps-progress" role="status" aria-live="polite">
