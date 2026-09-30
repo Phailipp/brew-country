@@ -1,4 +1,5 @@
 import type { User, OnTheRoadVote, DrinkVote, Duel, DuelMessage, Team, DuelOutcome } from '../domain/types';
+import type { MyVisit, Venue, VenueCheckin } from '../domain/venues';
 
 /**
  * Abstract storage interface for all game entities.
@@ -45,4 +46,12 @@ export interface StorageInterface {
   /** Add the given player to the team of their beer (creates it if needed). */
   joinTeam(beerId: string, userId: string): Promise<Team>;
   leaveTeam(beerId: string, userId: string): Promise<void>;
+
+  // ── Venue visits ──────────────────────────────────────
+  /** Check in at a venue (1 per venue and day, 3 per day). Throws with a player-facing message. */
+  checkInAtVenue(userId: string, venue: Venue, beerId: string, alcoholFree: boolean): Promise<MyVisit>;
+  /** Public (pseudonymous) visits of the given venue tiles since `sinceMs`. */
+  getVenueCheckins(tiles: string[], sinceMs: number): Promise<VenueCheckin[]>;
+  /** The player's private passport. */
+  getMyVisits(userId: string): Promise<MyVisit[]>;
 }

@@ -505,6 +505,13 @@ export async function deleteMyAccount(uid: string, beerId: string): Promise<void
     await Promise.all(mine.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
   }
 
+  // Venue visits: the private passport lists the ids of the public visits
+  const visits = await getDocs(collection(db, 'bc_users', uid, 'visits'));
+  for (const v of visits.docs) {
+    await deleteDoc(doc(db, 'bc_venueVisits', v.id)).catch(() => {});
+    await deleteDoc(v.ref).catch(() => {});
+  }
+
   // Team membership
   await setDoc(doc(db, 'bc_teams', `team_${beerId}`), { memberUserIds: arrayRemove(uid) }, { merge: true }).catch(() => {});
 

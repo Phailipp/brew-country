@@ -42,6 +42,17 @@ service cloud.firestore {
     function friendshipId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
 
     // ── private profile (exact home, email) ──────────────
+    // Private passport: the player's own visits (venue names included)
+    match /bc_users/{uid}/visits/{visit} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create: if isUser(uid)
+        && incoming().keys().hasOnly(['venueId', 'venueName', 'tile', 'beerId', 'alcoholFree', 'createdAt'])
+        && validVisitCore(incoming())
+        && incoming().venueName is string && incoming().venueName.size() <= 80
+        && existsAfter(/databases/$(database)/documents/bc_venueVisits/$(visit));
+      allow update: if false;
+    }
+
     match /bc_users/{uid} {
       allow read: if isUser(uid) || isAdmin();
       allow create: if isUser(uid)
@@ -127,6 +138,35 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if (signedIn() && request.auth.uid == existing().userId)
         || existing().expiresAt < nowMs()
+        || isAdmin();
+    }
+
+    // ── venue visits (pubs, bars, beer gardens from OpenStreetMap) ──
+    // Public and pseudonymous: `pid` = sha256(uid|venueId) lets everyone count
+    // one visit per player, venue and day without linking a player's visits
+    // across venues. Max 3 per UTC day by construction: the document id is
+    // sha256(uid_day_slot) with slot 0–2, so a fourth create would be an update.
+    function utcDay() { return math.floor(nowMs() / 86400000); }
+    function visitId(uid, day, slot) { return hashing.sha256(uid + '_' + string(day) + '_' + string(slot)).toHexString(); }
+    function venuePid(uid, venueId) { return hashing.sha256(uid + '|' + venueId).toHexString(); }
+    function validVisitCore(v) {
+      return v.venueId is string && v.venueId.matches('^[nwr][0-9]{1,15}$')
+        && v.tile is string && v.tile.matches('^-?[0-9]{1,5}_-?[0-9]{1,5}$')
+        && validBeerId(v.beerId)
+        && v.alcoholFree is bool
+        && near(v.createdAt, 2 * 60 * 1000);
+    }
+    match /bc_venueVisits/{visit} {
+      allow read: if verified();
+      allow create: if verified()
+        && incoming().keys().hasOnly(['venueId', 'tile', 'beerId', 'alcoholFree', 'createdAt', 'pid', 'day', 'slot'])
+        && validVisitCore(incoming())
+        && incoming().day == utcDay()
+        && incoming().slot is int && incoming().slot >= 0 && incoming().slot <= 2
+        && visit == visitId(request.auth.uid, incoming().day, incoming().slot)
+        && incoming().pid == venuePid(request.auth.uid, incoming().venueId);
+      allow update: if false;
+      allow delete: if (signedIn() && visit == visitId(request.auth.uid, existing().day, existing().slot))
         || isAdmin();
     }
 

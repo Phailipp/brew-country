@@ -1,6 +1,8 @@
 import Dexie from 'dexie';
 import type { User, OnTheRoadVote, DrinkVote, Duel, DuelMessage, Team, DuelOutcome } from '../domain/types';
 import type { StorageInterface } from './StorageInterface';
+import { nextVisitSlot, visitBlocker, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
+import { venuePlayerId } from '../domain/visitIds';
 import { getNow } from '../domain/clock';
 
 class BrewCountryDB extends Dexie {
@@ -11,6 +13,8 @@ class BrewCountryDB extends Dexie {
   duelMessages!: Dexie.Table<DuelMessage, string>;
   duelOutcomes!: Dexie.Table<DuelOutcome, string>;
   teams!: Dexie.Table<Team, string>;
+  venueVisits!: Dexie.Table<VenueCheckin, string>;
+  myVisits!: Dexie.Table<MyVisit, string>;
 
   constructor() {
     super('BrewCountryDB');
@@ -30,6 +34,10 @@ class BrewCountryDB extends Dexie {
       duelMessages: 'id, duelId, createdAt',
       duelOutcomes: '[duelId+userId], userId, expiresAt',
       teams: 'id, beerId',
+    });
+    this.version(3).stores({
+      venueVisits: 'id, tile, createdAt',
+      myVisits: 'id, createdAt',
     });
   }
 }
@@ -160,5 +168,43 @@ export class IndexedDBStore implements StorageInterface {
     const existing = await this.getTeam(beerId);
     if (!existing) return;
     await this.db.teams.put({ ...existing, memberUserIds: existing.memberUserIds.filter((id) => id !== userId) });
+  }
+
+  // ── Venue visits (demo sandbox) ───────────────────────
+  async checkInAtVenue(userId: string, venue: Venue, beerId: string, alcoholFree: boolean): Promise<MyVisit> {
+    const now = getNow();
+    const mine = await this.getMyVisits();
+    const blocked = visitBlocker(mine, venue.id, now);
+    if (blocked) throw new Error(blocked);
+    const slot = nextVisitSlot(mine, now);
+    const id = `${userId}_${Math.floor(now / 86_400_000)}_${slot}`;
+    const visit: MyVisit = { id, venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now };
+    await this.db.transaction('rw', this.db.venueVisits, this.db.myVisits, async () => {
+      await this.db.venueVisits.put({
+        id, player: await venuePlayerId(userId, venue.id), venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: now,
+      });
+      await this.db.myVisits.put(visit);
+    });
+    return visit;
+  }
+
+  async getVenueCheckins(tiles: string[], sinceMs: number): Promise<VenueCheckin[]> {
+    if (tiles.length === 0) return [];
+    const rows = await this.db.venueVisits.where('tile').anyOf(tiles).toArray();
+    return rows.filter((r) => r.createdAt >= sinceMs);
+  }
+
+  async getMyVisits(): Promise<MyVisit[]> {
+    return this.db.myVisits.orderBy('createdAt').reverse().toArray();
+  }
+
+  /** Demo only: let a crowd of simulated regulars visit the given venues. */
+  async simulateVenueCrowd(visits: VenueCheckin[]): Promise<void> {
+    await this.db.venueVisits.bulkPut(visits);
+  }
+
+  async clearVenueCrowd(): Promise<void> {
+    const mine = new Set((await this.db.myVisits.toArray()).map((v) => v.id));
+    await this.db.venueVisits.filter((v) => !mine.has(v.id)).delete();
   }
 }
