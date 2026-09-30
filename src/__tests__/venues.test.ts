@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeStanding, dedupeVisits, INFLUENCE, playerPassport, regularTier, weeklyStreak, weekIndex } from '../domain/influence';
 import { breweryReport } from '../domain/breweryInsights';
+import { weeklyChallenges, weekStart } from '../domain/weeklyChallenges';
 import { parseOverpass, overpassQuery, tilesForViewport, venueTileKey, tileBounds, visitBlocker, nextVisitSlot, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
 
 const DAY = 86_400_000;
@@ -183,5 +184,27 @@ describe('brewery report', () => {
     expect(r.sleeping.map((x) => x.venue.id)).toEqual(['n2']);
     expect(r.rivals[0]).toEqual({ beerId: 'augustiner', venues: 2 });
     expect(r.visitPoints).toBeGreaterThan(0);
+  });
+});
+
+describe('weekly challenges', () => {
+  const mine = (venueId: string, beerId: string, at: number, af = false): MyVisit => ({
+    id: `${venueId}${at}`, venueId, venueName: venueId, tile: '0_0', beerId, alcoholFree: af, createdAt: at,
+  });
+  it('counts only this week and resets on Monday', () => {
+    const monday = weekStart(NOW);
+    expect(new Date(monday).getUTCDay()).toBe(1);
+    const visits = [
+      mine('n1', 'augustiner', monday - DAY), // last week
+      mine('n1', 'augustiner', monday + 3600_000),
+      mine('n2', 'paulaner', monday + DAY),
+      mine('n3', 'erdinger', monday + DAY + 3600_000, true),
+    ];
+    const byId = Object.fromEntries(weeklyChallenges(visits, NOW).map((c) => [c.id, c]));
+    expect(byId.tour).toMatchObject({ progress: 3, done: true });
+    expect(byId.new).toMatchObject({ progress: 1, done: true }); // n2 and n3 are new
+    expect(byId.taste.progress).toBe(3);
+    expect(byId.regular.progress).toBe(2);
+    expect(byId.af.done).toBe(true);
   });
 });

@@ -27,6 +27,7 @@ import { VenueCard } from './ui/VenueCard';
 import { VENUE_KIND } from './ui/kit/venueKind';
 import { PassportPanel } from './ui/PassportPanel';
 import { BreweryCockpit } from './ui/BreweryCockpit';
+import { WeeklyPanel } from './ui/WeeklyPanel';
 import { useVenues, VENUE_MIN_ZOOM } from './hooks/useVenues';
 import { venuePlayerId } from './domain/visitIds';
 import { nearestCity } from './domain/worldCities';
@@ -769,7 +770,12 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         );
         break;
       case 'quests':
-        sheetBody = <QuestsPanel questState={questState.questState} catalog={questState.catalog} />;
+        sheetBody = (
+          <>
+            <WeeklyPanel visits={venueState.myVisits} />
+            <QuestsPanel questState={questState.questState} catalog={questState.catalog} />
+          </>
+        );
         break;
       case 'profile':
         sheetBody = (
