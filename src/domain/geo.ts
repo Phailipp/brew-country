@@ -21,51 +21,65 @@ export function haversineDistanceKm(
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/**
- * DACH center coordinates (roughly center of DE + AT + CH).
- */
-export const DACH_CENTER = { lat: 48.5, lon: 11.5 };
-
 export const MUNICH_CENTER = { lat: 48.137, lon: 11.575 };
 
+/** Where the map opens when nothing better (home, last view) is known. */
+export const DEFAULT_CENTER = MUNICH_CENTER;
+
+/** Web-Mercator limit: tiles and grids stop here. */
+export const WORLD_MAX_LAT = 85;
+
 /**
- * Default bounding box: entire DACH region
- * (Deutschland, Österreich, Schweiz).
- *
- * Lat  45.8 (southern Swiss Alps) → 55.1 (northern Germany)
- * Lon   5.8 (western Germany)     → 17.2 (eastern Austria)
- *
- * Cell size = 2 km to keep grid manageable (~470 × 425 ≈ 200 k cells).
+ * Fallback grid covering the whole world. The lattice origin is (0°, 0°), so
+ * every viewport grid anywhere on Earth snaps onto the same global lattice.
  */
 export function getDefaultBoundingBox(): GridSpec {
   return {
-    minLat: 45.8,
-    maxLat: 55.1,
-    minLon: 5.8,
-    maxLon: 17.2,
-    cellSizeMeters: 2000,
+    minLat: -WORLD_MAX_LAT,
+    maxLat: WORLD_MAX_LAT,
+    minLon: -180,
+    maxLon: 180,
+    cellSizeMeters: 200_000,
+    refLat: 0,
   };
 }
 
+/** Lattice origin of the global grid. */
+export const GRID_ORIGIN = { lat: 0, lon: 0 };
+
+/** Reference latitude used when a spec carries none (legacy/tests). */
+export const GRID_REF_LAT = 45;
+
+/** Width of the latitude bands that share one longitude step. */
+const REF_LAT_BAND = 15;
+
 /**
- * Reference latitude for the longitude step of the global grid.
- * Using one fixed reference (instead of the viewport centre) keeps every
- * cell boundary anchored to the same global lattice, so territories no
- * longer shift when the map is panned.
+ * Reference latitude for the longitude step. Cells stay roughly square
+ * anywhere on Earth: the step is derived from the 15° band around the
+ * viewport, so it only changes when you travel far north/south — never
+ * while panning around a city.
  */
-export const GRID_REF_LAT = 48.5;
+export function refLatFor(lat: number): number {
+  const band = Math.round(Math.abs(lat) / REF_LAT_BAND) * REF_LAT_BAND;
+  return Math.min(75, band);
+}
 
 /** Degree step of one grid cell (lat / lon) for a given cell size. */
-export function cellStepDeg(cellSizeMeters: number): { dLat: number; dLon: number } {
+export function cellStepDeg(cellSizeMeters: number, refLat: number = GRID_REF_LAT): { dLat: number; dLon: number } {
   return {
     dLat: cellSizeMeters / METERS_PER_DEG_LAT,
-    dLon: cellSizeMeters / (METERS_PER_DEG_LAT * Math.cos(GRID_REF_LAT * DEG_TO_RAD)),
+    dLon: cellSizeMeters / (METERS_PER_DEG_LAT * Math.cos(refLat * DEG_TO_RAD)),
   };
+}
+
+/** Degree step for a grid spec. */
+export function specStepDeg(spec: GridSpec): { dLat: number; dLon: number } {
+  return cellStepDeg(spec.cellSizeMeters, spec.refLat ?? GRID_REF_LAT);
 }
 
 /** Grid dimensions for a spec. */
 export function gridDims(spec: GridSpec): { rows: number; cols: number; dLat: number; dLon: number } {
-  const { dLat, dLon } = cellStepDeg(spec.cellSizeMeters);
+  const { dLat, dLon } = specStepDeg(spec);
   return {
     rows: Math.max(0, Math.round((spec.maxLat - spec.minLat) / dLat)),
     cols: Math.max(0, Math.round((spec.maxLon - spec.minLon) / dLon)),
@@ -78,7 +92,7 @@ export function gridDims(spec: GridSpec): { rows: number; cols: number; dLat: nu
 export function cellAt(
   spec: GridSpec, rows: number, cols: number, lat: number, lon: number,
 ): { row: number; col: number } | null {
-  const { dLat, dLon } = cellStepDeg(spec.cellSizeMeters);
+  const { dLat, dLon } = specStepDeg(spec);
   const row = Math.floor((lat - spec.minLat) / dLat);
   const col = Math.floor((lon - spec.minLon) / dLon);
   if (row < 0 || row >= rows || col < 0 || col >= cols) return null;
@@ -152,48 +166,47 @@ export function getCellSizeForZoom(zoom: number): number {
  * 1. Expands the viewport by `bufferKm` on each side so that
  *    nearby votes outside the visible area still influence cells.
  * 2. Picks cell size via `getCellSizeForZoom(zoom)`.
- * 3. Clamps to DACH bounding box.
+ * 3. Clamps to the world (±85° lat, ±180° lon).
  * 4. If estimated cell count exceeds MAX_GRID_CELLS, auto-coarsens.
+ * 5. Snaps to the global lattice (origin 0°/0°, per-band lon step).
  */
 export function getViewportGridSpec(
   viewport: ViewportBounds,
   zoom: number,
   bufferKm: number = GAME.VIEWPORT_BUFFER_KM,
 ): GridSpec {
-  const dach = getDefaultBoundingBox();
+  const centerLat = Math.max(-WORLD_MAX_LAT, Math.min(WORLD_MAX_LAT, (viewport.south + viewport.north) / 2));
+  const refLat = refLatFor(centerLat);
 
-  // Buffer in degrees
   const bufferLat = metersToDegLat(bufferKm * 1000);
-  const centerLat = (viewport.south + viewport.north) / 2;
   const bufferLon = metersToDegLon(bufferKm * 1000, centerLat);
 
-  // Expand viewport + clamp to DACH
-  const minLat = Math.max(viewport.south - bufferLat, dach.minLat);
-  const maxLat = Math.min(viewport.north + bufferLat, dach.maxLat);
-  const minLon = Math.max(viewport.west - bufferLon, dach.minLon);
-  const maxLon = Math.min(viewport.east + bufferLon, dach.maxLon);
+  const minLat = Math.max(viewport.south - bufferLat, -WORLD_MAX_LAT);
+  const maxLat = Math.min(viewport.north + bufferLat, WORLD_MAX_LAT);
+  // Wrapped views (globe / world copies) can report west < -180 or east > 180
+  const minLon = Math.max(viewport.west - bufferLon, -180);
+  const maxLon = Math.min(viewport.east + bufferLon, 180);
 
   let cellSizeMeters = getCellSizeForZoom(zoom);
 
-  // Auto-coarsen until under the cap
   const estimate = (size: number) => {
-    const { dLat, dLon } = cellStepDeg(size);
+    const { dLat, dLon } = cellStepDeg(size, refLat);
     return ((maxLat - minLat) / dLat) * ((maxLon - minLon) / dLon);
   };
-  while (estimate(cellSizeMeters) > GAME.MAX_GRID_CELLS && cellSizeMeters < 10_000) {
+  while (estimate(cellSizeMeters) > GAME.MAX_GRID_CELLS && cellSizeMeters < 1_000_000) {
     cellSizeMeters = Math.round(cellSizeMeters * 1.5);
   }
 
-  // Snap to the global lattice anchored at the DACH origin
-  const { dLat, dLon } = cellStepDeg(cellSizeMeters);
+  const { dLat, dLon } = cellStepDeg(cellSizeMeters, refLat);
   const snap = (v: number, origin: number, step: number, fn: (x: number) => number) =>
     origin + fn((v - origin) / step) * step;
 
   return {
-    minLat: snap(minLat, dach.minLat, dLat, Math.floor),
-    maxLat: snap(maxLat, dach.minLat, dLat, Math.ceil),
-    minLon: snap(minLon, dach.minLon, dLon, Math.floor),
-    maxLon: snap(maxLon, dach.minLon, dLon, Math.ceil),
+    minLat: snap(minLat, GRID_ORIGIN.lat, dLat, Math.floor),
+    maxLat: snap(maxLat, GRID_ORIGIN.lat, dLat, Math.ceil),
+    minLon: snap(minLon, GRID_ORIGIN.lon, dLon, Math.floor),
+    maxLon: snap(maxLon, GRID_ORIGIN.lon, dLon, Math.ceil),
     cellSizeMeters,
+    refLat,
   };
 }

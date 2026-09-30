@@ -6,6 +6,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -29,6 +31,8 @@ import { getFirebaseAuth } from '../config/firebaseAuth';
 import { CHECKIN_STEPS, PUBLIC_HOME_STEPS, snapToLattice } from '../domain/privacy';
 import { GAME } from '../config/constants';
 import type { StorageInterface } from './StorageInterface';
+import { MAX_VISITS_PER_DAY, nextVisitSlot, utcDay, visitBlocker, visitBlockedError, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
+import { hourFloor, newVisitSalt, PUBLIC_VISIT_TTL_MS, utcWeek, visitDocId, venuePlayerId } from '../domain/visitIds';
 
 const COLLECTIONS = {
   users: 'bc_users',
@@ -40,6 +44,7 @@ const COLLECTIONS = {
   duelMessages: 'bc_duelMessages',
   duelOutcomes: 'bc_duelOutcomes',
   teams: 'bc_teams',
+  venueVisits: 'bc_venueVisits',
 } as const;
 
 function clean<T>(data: T): T {
@@ -75,7 +80,8 @@ export class FirestoreStore implements StorageInterface {
 
   async saveUser(user: User): Promise<void> {
     const db = getFirestoreDb();
-    await setDoc(doc(db, COLLECTIONS.users, user.id), clean(user));
+    // merge: never wipe fields this client does not know about
+    await setDoc(doc(db, COLLECTIONS.users, user.id), clean(user), { merge: true });
   }
 
   /** Public (coarse) profiles of all players — private records are owner-only. */
@@ -296,5 +302,92 @@ export class FirestoreStore implements StorageInterface {
     const db = getFirestoreDb();
     const snapshot = await getDocs(collection(db, COLLECTIONS.teams));
     return snapshot.docs.map((d) => d.data() as Team);
+  }
+
+  // ── Venue visits ──────────────────────────────────────
+  async checkInAtVenue(userId: string, venue: Venue, beerId: string, alcoholFree: boolean): Promise<MyVisit> {
+    const db = getFirestoreDb();
+    const now = Date.now();
+    const mine = await this.getMyVisits(userId);
+    const blocked = visitBlocker(mine, venue.id, now);
+    if (blocked) throw visitBlockedError(blocked);
+
+    const day = utcDay(now);
+    const salt = await this.visitSalt(userId);
+    const pid = await venuePlayerId(salt, venue.id, utcWeek(now));
+    // Another device may have used a slot already: try the next free one
+    for (let slot = nextVisitSlot(mine, now); slot >= 0 && slot < MAX_VISITS_PER_DAY; slot++) {
+      const id = await visitDocId(salt, day, slot);
+      const visit: MyVisit = { id, venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now };
+      const batch = writeBatch(db);
+      batch.set(doc(db, COLLECTIONS.venueVisits, id), {
+        venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: hourFloor(now), pid, day, slot,
+        expiresAt: Timestamp.fromMillis(now + PUBLIC_VISIT_TTL_MS),
+      });
+      batch.set(doc(db, COLLECTIONS.users, userId, 'visits', id), {
+        venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now,
+      });
+      try {
+        await batch.commit();
+        return visit;
+      } catch (e) {
+        if ((e as { code?: string }).code !== 'permission-denied') throw e;
+      }
+    }
+    throw visitBlockedError('daily-limit');
+  }
+
+  private saltCache = new Map<string, string>();
+
+  /** The player's secret pseudonym salt (created on first use, never changes). */
+  private async visitSalt(userId: string): Promise<string> {
+    const cached = this.saltCache.get(userId);
+    if (cached) return cached;
+    const db = getFirestoreDb();
+    const ref = doc(db, 'bc_secrets', userId);
+    const read = async () => {
+      const snap = await getDoc(ref);
+      return snap.exists() ? (snap.data().visitSalt as string | undefined) : undefined;
+    };
+    let salt = await read();
+    if (!salt) {
+      try {
+        salt = newVisitSalt();
+        await setDoc(ref, { visitSalt: salt });
+      } catch {
+        // another device created it first (set-once rule): use theirs
+        salt = await read();
+        if (!salt) throw Object.assign(new Error('visit salt unavailable'), { code: 'salt-unavailable' });
+      }
+    }
+    this.saltCache.set(userId, salt);
+    return salt;
+  }
+
+  async getVenueCheckins(tiles: string[], sinceMs: number): Promise<VenueCheckin[]> {
+    if (tiles.length === 0) return [];
+    const db = getFirestoreDb();
+    const out: VenueCheckin[] = [];
+    // `in` takes at most 30 values
+    for (let i = 0; i < tiles.length; i += 30) {
+      const q = query(
+        collection(db, COLLECTIONS.venueVisits),
+        where('tile', 'in', tiles.slice(i, i + 30)),
+        where('createdAt', '>=', sinceMs),
+        limit(2000),
+      );
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        const v = d.data();
+        out.push({ id: d.id, player: v.pid, venueId: v.venueId, tile: v.tile, beerId: v.beerId, alcoholFree: !!v.alcoholFree, createdAt: v.createdAt });
+      }
+    }
+    return out;
+  }
+
+  async getMyVisits(userId: string): Promise<MyVisit[]> {
+    const db = getFirestoreDb();
+    const snap = await getDocs(query(collection(db, COLLECTIONS.users, userId, 'visits'), orderBy('createdAt', 'desc'), limit(500)));
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MyVisit, 'id'>) }));
   }
 }

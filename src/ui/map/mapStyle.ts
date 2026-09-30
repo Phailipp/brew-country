@@ -1,4 +1,5 @@
-import type { StyleSpecification, LayerSpecification } from 'maplibre-gl';
+import type { StyleSpecification, LayerSpecification, ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl';
+import { getLocale, type Locale } from '../../i18n/locale';
 
 /** Keyless vector tiles (OpenStreetMap data via OpenFreeMap). */
 const BASE_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
@@ -89,14 +90,29 @@ function buildings3d(): LayerSpecification {
   };
 }
 
-/** German place and street names first, local name as fallback. */
-const GERMAN_NAME = ['coalesce', ['get', 'name:de'], ['get', 'name']];
+/** Place and street names in the UI language first, local name as fallback. */
+function localName(locale: Locale): ExpressionSpecification {
+  return ['coalesce', ['get', `name:${locale}`], ['get', 'name']];
+}
+
+const LOCAL_NAME_PREFIX = '["coalesce",["get","name:';
+
+/** Switch the map labels to another language (after a language change). */
+export function relabelMap(map: MapLibreMap, locale: Locale): void {
+  for (const layer of map.getStyle()?.layers ?? []) {
+    if (layer.type !== 'symbol') continue;
+    const field = map.getLayoutProperty(layer.id, 'text-field');
+    if (JSON.stringify(field ?? '').startsWith(LOCAL_NAME_PREFIX)) {
+      map.setLayoutProperty(layer.id, 'text-field', localName(locale));
+    }
+  }
+}
 
 function customize(style: StyleSpecification): StyleSpecification {
   const layers: LayerSpecification[] = [];
   for (const layer of style.layers) {
     if (layer.type === 'symbol' && layer.layout && JSON.stringify(layer.layout['text-field'] ?? '').includes('name_en')) {
-      (layer.layout as Record<string, unknown>)['text-field'] = GERMAN_NAME;
+      (layer.layout as Record<string, unknown>)['text-field'] = localName(getLocale());
     }
     const override = PAINT_OVERRIDES[layer.id];
     if (override) Object.assign((layer.paint ??= {} as never), override);

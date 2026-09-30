@@ -3,7 +3,7 @@ import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebas
 import {
   Timestamp, deleteDoc, doc, getDoc, serverTimestamp, setDoc, writeBatch, type Firestore,
 } from 'firebase/firestore';
-import { BEER, DAY, HOUR, anonDb, createEnv, round200, round50, seed, todayUtc, userDb } from './helpers';
+import { BEER, DAY, HOUR, anonDb, createEnv, privateProfile, round200, round50, seed, todayUtc, userDb } from './helpers';
 
 let env: RulesTestEnvironment;
 beforeAll(async () => { env = await createEnv(); });
@@ -116,8 +116,11 @@ describe('check-in batch (bc_userStats + bc_drinkVotes)', () => {
   it('denies unrounded coordinates', async () => {
     await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: 48.1372, lon: 11.5761 }));
   });
-  it('denies coordinates outside DACH', async () => {
-    await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: round200(48.8566), lon: round200(2.3522) }));
+  it('allows check-ins anywhere in the world (Tokio)', async () => {
+    await assertSucceeds(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: round200(35.6762), lon: round200(139.6503) }));
+  });
+  it('denies coordinates off the map (beyond ±85°)', async () => {
+    await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: round200(89.5), lon: round200(10) }));
   });
   it('denies poor GPS accuracy (> 75 m)', async () => {
     await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { gpsAccuracyM: 500 }));
@@ -142,8 +145,18 @@ describe('check-in batch (bc_userStats + bc_drinkVotes)', () => {
   // Regression: users could delete their own bc_userStats doc, which resets cooldown and
   // daily cap (the next write is a "create" with dayCount 1 and no cooldown check).
   it('denies resetting the rate limit by deleting the own stats doc', async () => {
+    await seed(env, (db) => setDoc(doc(db, 'bc_users/alice'), privateProfile('alice')));
     await seedStats('alice', { lastDrinkAt: Timestamp.now(), day: todayUtc(), dayCount: 12 });
     await assertFails(deleteDoc(doc(userDb(env, 'alice'), 'bc_userStats/alice')));
+  });
+  it('allows deleting the stats together with the own profile (account deletion)', async () => {
+    await seed(env, (db) => setDoc(doc(db, 'bc_users/alice'), privateProfile('alice')));
+    await seedStats('alice', { lastDrinkAt: Timestamp.now(), day: todayUtc(), dayCount: 12 });
+    const db = userDb(env, 'alice');
+    const b = writeBatch(db);
+    b.delete(doc(db, 'bc_userStats/alice'));
+    b.delete(doc(db, 'bc_users/alice'));
+    await assertSucceeds(b.commit());
   });
   it('allows reading own stats, denies reading foreign stats', async () => {
     await seedStats('alice', { lastDrinkAt: Timestamp.now(), day: todayUtc(), dayCount: 1 });
@@ -153,9 +166,10 @@ describe('check-in batch (bc_userStats + bc_drinkVotes)', () => {
 });
 
 describe('bc_drinkVotes read / update / delete', () => {
-  it('allows verified users to read votes', async () => {
+  it('lets only the owner read a check-in (uid + position are private)', async () => {
     await seed(env, (db) => setDoc(doc(db, 'bc_drinkVotes/v1'), drinkVote('v1', 'alice')));
-    await assertSucceeds(getDoc(doc(userDb(env, 'bob'), 'bc_drinkVotes/v1')));
+    await assertSucceeds(getDoc(doc(userDb(env, 'alice'), 'bc_drinkVotes/v1')));
+    await assertFails(getDoc(doc(userDb(env, 'bob'), 'bc_drinkVotes/v1')));
     await assertFails(getDoc(doc(anonDb(env), 'bc_drinkVotes/v1')));
   });
   it('denies updates', async () => {

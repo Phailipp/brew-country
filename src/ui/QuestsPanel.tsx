@@ -1,5 +1,11 @@
 import type { QuestDefinition, QuestState } from '../domain/types';
+import { t, type Key } from '../i18n';
 import './QuestsPanel.css';
+
+/** Localised quest title (unknown ids fall back to the id). */
+function questTitle(q: QuestDefinition): string {
+  return t(`quests.catalog.${q.id}.title` as Key);
+}
 
 interface Props {
   questState: QuestState;
@@ -30,13 +36,13 @@ export function QuestsPanel({ questState, catalog }: Props) {
 
   return (
     <section className="section quests" aria-labelledby="quests-title">
-      <h2 className="section-title" id="quests-title">Brew Quests</h2>
+      <h2 className="section-title" id="quests-title">{t('quests.title')}</h2>
 
       {total === 0 ? (
         <div className="empty">
           <span className="empty-icon" aria-hidden="true">🗺️</span>
-          <span className="empty-title">Noch keine Quests</span>
-          <p>Bald gibt's hier Aufgaben für dich. Schau später wieder rein!</p>
+          <span className="empty-title">{t('quests.emptyTitle')}</span>
+          <p>{t('quests.emptyText')}</p>
         </div>
       ) : (
         <>
@@ -58,23 +64,23 @@ export function QuestsPanel({ questState, catalog }: Props) {
               </span>
               <span className="quests-summary-label">
                 {doneCount === total
-                  ? 'Alle geschafft – Legende! 🏆'
+                  ? t('quests.allDone')
                   : doneCount === 0
-                    ? 'geschafft – leg los!'
-                    : 'geschafft – weiter so!'}
+                    ? t('quests.noneDone')
+                    : t('quests.someDone')}
               </span>
             </div>
           </div>
 
-          <ul className="quests-list stagger" aria-label="Quests">
+          <ul className="quests-list stagger" aria-label={t('quests.listLabel')}>
             {sorted.map(({ quest, current, completed, pct }) => (
               <li key={quest.id} className={`card quest${completed ? ' done' : ''}`}>
                 <span className="quest-tile" aria-hidden="true">{quest.icon}</span>
                 <div className="quest-body">
                   <div className="quest-head">
-                    <h3 className="quest-title">{quest.title}</h3>
+                    <h3 className="quest-title">{questTitle(quest)}</h3>
                     {completed ? (
-                      <span className="quest-check" aria-label="Erledigt">
+                      <span className="quest-check" role="img" aria-label={t('common.completed')}>
                         <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                           <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
@@ -83,12 +89,12 @@ export function QuestsPanel({ questState, catalog }: Props) {
                       <span className="quest-count num">{current}/{quest.targetCount}</span>
                     )}
                   </div>
-                  <p className="quest-desc">{quest.description}</p>
+                  <p className="quest-desc">{t(`quests.catalog.${quest.id}.description` as Key, { target: quest.targetCount })}</p>
                   {!completed && (
                     <div
                       className="bar quest-bar"
                       role="progressbar"
-                      aria-label={`Fortschritt ${quest.title}`}
+                      aria-label={t('common.progressOf', { title: questTitle(quest) })}
                       aria-valuemin={0}
                       aria-valuemax={quest.targetCount}
                       aria-valuenow={current}

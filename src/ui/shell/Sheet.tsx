@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react';
+import { t } from '../../i18n';
 import './Sheet.css';
 
 export type SheetSnap = 'half' | 'full';
@@ -25,6 +26,8 @@ export function Sheet({ open, title, onClose, leading, initialSnap = 'half', chi
   const [lastKey, setLastKey] = useState(contentKey);
   const drag = useRef<{ startY: number; startTime: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const titleId = useId();
 
   // Reset snap when the content changes (adjusting state during render)
   if (contentKey !== lastKey) {
@@ -35,6 +38,16 @@ export function Sheet({ open, title, onClose, leading, initialSnap = 'half', chi
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [contentKey]);
+
+  // Focus moves into the sheet when it opens and back to the trigger when it closes
+  useEffect(() => {
+    if (!open) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    titleRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (trigger && document.contains(trigger)) trigger.focus({ preventScroll: true });
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -78,9 +91,11 @@ export function Sheet({ open, title, onClose, leading, initialSnap = 'half', chi
     <section
       className={`sheet glass-panel sheet-${snap}${open ? ' open' : ''}`}
       style={style}
+      role="dialog"
+      aria-modal={snap === 'full' ? true : undefined}
+      aria-labelledby={titleId}
       aria-hidden={!open}
       inert={!open}
-      aria-label={typeof title === 'string' ? title : undefined}
     >
       <div
         className="sheet-grabber"
@@ -90,17 +105,19 @@ export function Sheet({ open, title, onClose, leading, initialSnap = 'half', chi
         onPointerCancel={onPointerUp}
         role="button"
         tabIndex={0}
-        aria-label={snap === 'half' ? 'Panel vergrößern' : 'Panel verkleinern'}
+        aria-label={snap === 'half' ? t('sheet.expand') : t('sheet.collapse')}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') setSnap((s) => (s === 'half' ? 'full' : 'half'));
+          else if (e.key === 'ArrowUp') setSnap('full');
+          else if (e.key === 'ArrowDown') setSnap('half');
         }}
       >
         <span />
       </div>
       <header className="sheet-header">
         {leading}
-        <h2 key={contentKey} className="sheet-title sheet-enter">{title}</h2>
-        <button className="icon-btn sheet-close" onClick={onClose} aria-label="Schließen">
+        <h2 key={contentKey} id={titleId} ref={titleRef} tabIndex={-1} className="sheet-title sheet-enter">{title}</h2>
+        <button className="icon-btn sheet-close" onClick={onClose} aria-label={t('common.close')}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>

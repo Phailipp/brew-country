@@ -1,5 +1,5 @@
 import type { Vote, CellResult, WeightedVote, GridSpec } from './types';
-import { cellStepDeg } from './geo';
+import { specStepDeg } from './geo';
 
 const KM_PER_DEG_LAT = 111.32;
 const DEG_TO_RAD = Math.PI / 180;
@@ -65,12 +65,16 @@ export function computeDominance(
   const nBeers = beerIds.length;
   const acc = new Float64Array(n * nBeers);
 
-  const { dLat, dLon } = cellStepDeg(spec.cellSizeMeters);
+  const { dLat, dLon } = specStepDeg(spec);
+  // On coarse (world) grids a small radius would miss every cell centre;
+  // every vote reaches at least its own cell.
+  const minRadiusKm = (spec.cellSizeMeters / 1000) * 0.75;
 
   for (const v of all) {
     const b = beerIndex.get(v.beerId)!;
-    const rDegLat = v.radiusKm / KM_PER_DEG_LAT;
-    const r2 = v.radiusKm * v.radiusKm;
+    const radiusKm = Math.max(v.radiusKm, minRadiusKm);
+    const rDegLat = radiusKm / KM_PER_DEG_LAT;
+    const r2 = radiusKm * radiusKm;
     const rowMin = Math.max(0, Math.floor((v.lat - rDegLat - spec.minLat) / dLat));
     const rowMax = Math.min(rows - 1, Math.floor((v.lat + rDegLat - spec.minLat) / dLat));
 

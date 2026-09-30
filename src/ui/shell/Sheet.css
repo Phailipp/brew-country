@@ -8,7 +8,7 @@
   z-index: 40;
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 72px - var(--safe-top));
+  height: var(--sheet-h);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   position: fixed;
   background:
@@ -57,11 +57,23 @@
 }
 .sheet-close { background: rgba(255, 246, 232, 0.06); }
 
+.sheet {
+  --sheet-h: calc(100dvh - 72px - var(--safe-top));
+  /* Tab bar + FAB overlap the bottom of the sheet */
+  --sheet-cover: calc(140px + var(--safe-bottom));
+}
 .sheet-scroll {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--sp-2) var(--sp-4) calc(140px + var(--safe-bottom));
+  padding: var(--sp-2) var(--sp-4) var(--sheet-cover);
+  scroll-padding-bottom: var(--sheet-cover);
+}
+/* Half snap: the lowest 30 % of the sheet sit below the screen edge, so the
+   content needs that much extra room to scroll everything into view. */
+.sheet.sheet-half .sheet-scroll {
+  padding-bottom: calc(var(--sheet-h) * 0.3 + var(--sheet-cover));
+  scroll-padding-bottom: calc(var(--sheet-h) * 0.3 + var(--sheet-cover));
 }
 
 .sheet-scrim {
@@ -97,7 +109,8 @@
   .sheet.open.sheet-full { transform: none; opacity: 1; }
   .sheet-grabber { display: none; }
   .sheet-header { padding-top: var(--sp-4); }
-  .sheet-scroll { padding-bottom: var(--sp-6); }
+  .sheet-scroll,
+  .sheet.sheet-half .sheet-scroll { padding-bottom: var(--sp-6); scroll-padding-bottom: var(--sp-6); }
 }
 
 .sheet-enter { animation: sheetContentIn 420ms var(--ease-soft) both; }
@@ -105,3 +118,4 @@
 @keyframes sheetContentIn {
   from { opacity: 0; transform: translateY(12px); }
 }
+.sheet-title:focus { outline: none; }

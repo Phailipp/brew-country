@@ -5,10 +5,20 @@ import { extractRegionsWithLabels } from '../domain/regions';
 import { buildTerritoryGeometry } from '../domain/territoryGeometry';
 
 self.onmessage = (e: MessageEvent<WorkerInput>) => {
+  try {
+    compute(e.data);
+  } catch (err) {
+    // Report instead of dying silently: the UI stops spinning and can retry
+    const failure: WorkerOutput = { type: 'error', requestId: e.data.requestId, message: String(err) };
+    self.postMessage(failure);
+  }
+};
+
+function compute(input: WorkerInput) {
   const {
     requestId, votes, weightedVotes, gridSpec, radiusKm,
     smoothingIterations, mergeIslandSize, closeMarginThreshold, closeMarginMinWeight,
-  } = e.data;
+  } = input;
 
   const { rows, cols } = gridDims(gridSpec);
   const cells = computeDominance(gridSpec, rows, cols, votes, radiusKm, weightedVotes);
@@ -33,4 +43,4 @@ self.onmessage = (e: MessageEvent<WorkerInput>) => {
   };
 
   self.postMessage(output, { transfer: [labels.buffer] });
-};
+}

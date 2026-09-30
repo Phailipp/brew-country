@@ -9,8 +9,11 @@ export interface Beer {
   logoUrl?: string;
   brewery?: string;
   city?: string;
-  country?: 'DE' | 'AT' | 'CH';
-  /** Shown first in pickers (Munich core brands) */
+  /** ISO 3166-1 alpha-2 country code of the brewery */
+  country?: string;
+  /** Other spellings used in OpenStreetMap `brewery=*` tags */
+  aliases?: string[];
+  /** Shown first in pickers of players from the same country */
   featured?: boolean;
   /** 'community' = added via an approved submission */
   source?: 'builtin' | 'community';
@@ -30,6 +33,8 @@ export interface GridSpec {
   minLon: number;
   maxLon: number;
   cellSizeMeters: number;
+  /** Reference latitude of the lon step (see geo.refLatFor). */
+  refLat?: number;
 }
 
 export interface GridCell {
@@ -88,7 +93,15 @@ export interface WorkerInput {
   closeMarginMinWeight: number;
 }
 
-export interface WorkerOutput {
+export type WorkerOutput = WorkerResult | WorkerFailure;
+
+export interface WorkerFailure {
+  type: 'error';
+  requestId: number;
+  message: string;
+}
+
+export interface WorkerResult {
   type: 'result';
   requestId: number;
   data: DominanceResult;
@@ -144,7 +157,7 @@ export interface WeightedVote {
   beerId: string;
   weight: number;
   radiusKm: number;
-  source: 'home' | 'otr' | 'drink';
+  source: 'home' | 'otr' | 'drink' | 'venue';
 }
 
 // ── On The Road Vote ────────────────────────────────────
@@ -275,10 +288,9 @@ export type AppEvent =
   | { type: 'chat:message'; message: ChatMessage; friendshipId: string };
 
 // ── Quests ───────────────────────────────────────────────
+/** A quest; the UI names it by `id`. */
 export interface QuestDefinition {
   id: string;
-  title: string;
-  description: string;
   icon: string;
   targetCount: number;
 }
@@ -298,11 +310,15 @@ export interface QuestState {
 // ── Feed ─────────────────────────────────────────────────
 export type FeedItemType = 'battlefront' | 'flip-watch' | 'trending';
 
+/**
+ * A hotspot for the explore feed. The UI builds the texts from `type`,
+ * the beers and `stats` (battlefront: marginPct; flip-watch: recent, against;
+ * trending: votes).
+ */
 export interface FeedItem {
   id: string;
   type: FeedItemType;
-  title: string;
-  subtitle: string;
+  stats: { marginPct?: number; recent?: number; against?: number; votes?: number };
   beerId: string | null;
   secondaryBeerId: string | null;
   lat: number;

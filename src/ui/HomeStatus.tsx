@@ -6,6 +6,7 @@ import { GAME } from '../config/constants';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
+import { fmtNumber, fmtPercent, t } from '../i18n';
 import './HomeStatus.css';
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
 }
 
 function fmtFactor(n: number): string {
-  return `×${n.toFixed(1).replace('.', ',')}`;
+  return `×${fmtNumber(n, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 }
 
 export function HomeStatus({ user, store, onUserUpdate }: Props) {
@@ -90,7 +91,7 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
       onUserUpdate(updated);
     } catch (e) {
       console.error('SYG toggle error:', e);
-      setSaveError('Hat nicht geklappt – versuch es gleich nochmal.');
+      setSaveError(t('home.errSave'));
     } finally {
       setSaving(false);
     }
@@ -108,16 +109,16 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
 
   return (
     <section className="section home-status" aria-labelledby="hs-title">
-      <h2 className="section-title" id="hs-title">Dein Revier</h2>
+      <h2 className="section-title" id="hs-title">{t('home.title')}</h2>
 
       <div className="card card-hero hs-hero">
         <div className="hs-top">
           <BeerBadge beerId={user.beerId} size="xl" />
           <div className="hs-top-text">
-            <span className="eyebrow">Dein Bier</span>
+            <span className="eyebrow">{t('home.yourBeer')}</span>
             <p className="hs-beer-name">{beerName(user.beerId)}</p>
             <span className="muted">
-              {breakdown ? breakdown.effectiveRadius : (syg ? GAME.HOME_RADIUS_KM / GAME.SYG_RADIUS_DIVISOR : GAME.HOME_RADIUS_KM)} km rund um dein Zuhause
+              {t('home.radius', { km: breakdown ? breakdown.effectiveRadius : (syg ? GAME.HOME_RADIUS_KM / GAME.SYG_RADIUS_DIVISOR : GAME.HOME_RADIUS_KM) })}
             </span>
           </div>
         </div>
@@ -127,31 +128,33 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
             <>
               <div className="hs-power-main">
                 <span className="hs-power-num num">{fmtFactor(breakdown.finalWeight)}</span>
-                <span className="hs-power-label">Stimmkraft</span>
+                <span className="hs-power-label">{t('home.power')}</span>
               </div>
               <p className="hs-power-explain">
-                So stark zählt deine Stimme in deinem Revier – ein normaler Spieler zählt ×1.
+                {t('home.powerExplain')}
               </p>
-              <ul className="hs-chips" aria-label="Woraus sich deine Stimmkraft zusammensetzt">
-                <li className="chip chip-accent">{fmtFactor(breakdown.baseMultiplier)} Heimvorteil</li>
-                {syg && <li className="chip chip-hot">{fmtFactor(breakdown.sygMultiplier)} Festung</li>}
+              <ul className="hs-chips" aria-label={t('home.chipsLabel')}>
+                <li className="chip chip-accent">{t('home.homeAdvantage', { factor: fmtFactor(breakdown.baseMultiplier) })}</li>
+                {syg && <li className="chip chip-hot">{t('home.fortressChip', { factor: fmtFactor(breakdown.sygMultiplier) })}</li>}
                 {breakdown.teamBoost > 0 && (
-                  <li className="chip chip-success">+{Math.round(breakdown.teamBoost * 100)} % Crew-Bonus</li>
+                  <li className="chip chip-success">{t('home.crewBonus', { pct: fmtPercent(breakdown.teamBoost) })}</li>
                 )}
                 {breakdown.duelDelta !== 0 && (
                   <li className={`chip ${breakdown.duelDelta > 0 ? 'chip-success' : 'chip-hot'}`}>
-                    {breakdown.duelDelta > 0 ? '+' : '−'}
-                    {Math.abs(breakdown.duelDelta).toFixed(1).replace('.', ',')} aus Duellen
+                    {t('home.duels', {
+                      delta: (breakdown.duelDelta > 0 ? '+' : '−')
+                        + fmtNumber(Math.abs(breakdown.duelDelta), { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+                    })}
                   </li>
                 )}
               </ul>
             </>
           ) : loadError ? (
             <p className="hs-error" role="alert">
-              Deine Stimmkraft konnte gerade nicht geladen werden. Schau gleich nochmal rein.
+              {t('home.errLoad')}
             </p>
           ) : (
-            <div className="hs-skeleton" aria-label="Lädt …">
+            <div className="hs-skeleton" role="status" aria-label={t('common.loadingSpaced')}>
               <span className="skeleton" style={{ width: 120, height: 40 }} />
               <span className="skeleton" style={{ width: '80%', height: 14 }} />
             </div>
@@ -160,13 +163,13 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
 
         <div className="hs-charge">
           <div className="hs-charge-head">
-            <span className="hs-charge-title">Heimvorteil-Akku</span>
+            <span className="hs-charge-title">{t('home.battery')}</span>
             <span className="num hs-charge-val">{fmtFactor(base)}</span>
           </div>
           <div
             className={`bar hs-charge-bar${fullyCharged ? ' full' : ''}`}
             role="progressbar"
-            aria-label="Heimvorteil"
+            aria-label={t('home.batteryLabel')}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={charge}
@@ -175,8 +178,8 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
           </div>
           <p className="hs-charge-hint">
             {fullyCharged
-              ? 'Voll aufgeladen! Morgen aktiv bleiben, sonst sinkt deine Stimmkraft.'
-              : 'Dein Heimvorteil schwindet pro verpasstem Tag. Bleib täglich dabei, dann lädt er wieder auf ×2.'}
+              ? t('home.full')
+              : t('home.draining')}
           </p>
         </div>
       </div>
@@ -184,10 +187,10 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
       <div className="card hs-syg">
         <div className="hs-syg-text">
           <span className="hs-syg-title" id="hs-syg-label">
-            <span aria-hidden="true">🏰</span> Festung
+            <span aria-hidden="true">🏰</span> {t('home.fortress')}
           </span>
           <span className="hs-syg-desc" id="hs-syg-desc">
-            Doppelte Kraft, halber Radius. Perfekt, um dein Viertel zu verteidigen.
+            {t('home.fortressText')}
           </span>
         </div>
         <button
@@ -207,28 +210,28 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
 
       <div className="hs-id">
         <div className="hs-id-text">
-          <span className="eyebrow">Deine Freundes-ID</span>
+          <span className="eyebrow">{t('home.friendId')}</span>
           <code className="hs-id-code" title={user.id}>{shortId}</code>
         </div>
         <button
           type="button"
           className={`btn btn-sm btn-secondary${copied ? ' hs-copied' : ''}`}
           onClick={handleCopyId}
-          aria-label="Freundes-ID kopieren"
+          aria-label={t('home.copyId')}
         >
           {copied ? (
             <>
               <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              Kopiert
+              {t('home.copied')}
             </>
           ) : (
             <>
               <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
-              Kopieren
+              {t('home.copy')}
             </>
           )}
         </button>
-        <span className="sr-only" aria-live="polite">{copied ? 'ID kopiert' : ''}</span>
+        <span className="sr-only" aria-live="polite">{copied ? t('home.idCopied') : ''}</span>
       </div>
     </section>
   );

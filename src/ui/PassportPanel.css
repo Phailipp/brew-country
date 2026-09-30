@@ -1,0 +1,64 @@
+.passport { display: grid; gap: var(--sp-3); }
+.passport-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.passport-stat { display: grid; gap: 2px; padding: var(--sp-3); text-align: center; }
+.passport-stat-value {
+  display: inline-flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.passport-stat .muted { font-size: 11px; }
+.passport-stat.is-hot { box-shadow: inset 0 0 0 1px rgba(255, 106, 61, 0.45), 0 10px 30px -18px #ff6a3d; }
+
+.coasters {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: var(--sp-3) var(--sp-2);
+}
+.coaster {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  color: var(--c-text-2);
+  text-align: center;
+  background: none;
+  transition: transform 360ms var(--ease-spring);
+}
+.coaster:active { transform: scale(0.94); }
+/* A real beer mat: serrated rim, printed ring, the beer crest in the middle */
+.coaster-disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 27px, color-mix(in oklab, var(--coaster) 80%, #fff) 27px 29px, transparent 29px),
+    radial-gradient(circle at 35% 30%, #fffaf0, #efe2c9 70%);
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.7), inset 0 0 0 3px color-mix(in oklab, var(--coaster) 55%, transparent);
+  -webkit-mask: radial-gradient(circle at 50% 50%, #000 34px, transparent 34.5px), repeating-conic-gradient(#000 0 6deg, transparent 6deg 12deg);
+  mask: radial-gradient(circle at 50% 50%, #000 34px, transparent 34.5px), repeating-conic-gradient(#000 0 6deg, transparent 6deg 12deg);
+  transform: rotate(-6deg);
+}
+.coasters li:nth-child(even) .coaster-disc { transform: rotate(5deg); }
+.coaster-disc .beer-badge { width: 40px; height: 40px; }
+.coaster-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--c-text);
+}
+.coaster-meta { font-size: 11px; color: var(--c-text-3); }
+.passport-af { text-align: center; font-size: var(--fs-xs); }
+.passport-howto { min-height: 44px; display: inline-flex; align-items: center; color: var(--c-accent); text-decoration: underline; font-weight: 700; }

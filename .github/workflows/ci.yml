@@ -4,12 +4,20 @@ on:
   pull_request:
   push:
     branches-ignore: [main]
+  # deploy.yml runs the full suite before anything goes live
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -24,3 +32,35 @@ jobs:
           java-version: 21
       - run: npm run test:rules
       - run: npm run build
+
+  e2e:
+    # Demo-sandbox journeys on phone + desktop, network fully stubbed
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          CI: 'true'
+      - name: Production build runs under its CSP
+        run: |
+          npm run build
+          npx vite preview --port 5402 --strictPort &
+          npx wait-on -t 60000 http://localhost:5402/ || sleep 5
+          CSP_CHECK=1 E2E_PORT=5402 npx playwright test e2e/csp.spec.ts --project=mobile
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

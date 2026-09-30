@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where,
 } from 'firebase/firestore';
 import { adminDb, anonDb, createEnv, seed, unverifiedDb, userDb } from './helpers';
 
@@ -40,8 +40,11 @@ describe('beerSubmissions', () => {
   it('denies a name longer than 60 chars', async () => {
     await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { name: 'x'.repeat(61) })));
   });
-  it('denies a country outside DACH', async () => {
-    await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { country: 'FR' })));
+  it('allows any ISO country code', async () => {
+    await assertSucceeds(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { country: 'JP' })));
+  });
+  it('denies a malformed country code', async () => {
+    await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { country: 'Japan' })));
   });
   it('denies a client-side createdAt', async () => {
     await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { createdAt: Date.now() })));
@@ -105,9 +108,31 @@ describe('admin-only & default deny', () => {
     await assertFails(getDoc(doc(userDb(env, 'alice'), 'secrets/s1')));
     await assertFails(setDoc(doc(adminDb(env), 'secrets/s1'), { a: 1 }));
   });
-  it('questStates: owner only', async () => {
-    await assertSucceeds(setDoc(doc(userDb(env, 'alice'), 'questStates/alice'), { q: 1 }));
-    await assertFails(setDoc(doc(userDb(env, 'alice'), 'questStates/bob'), { q: 1 }));
+  it('questStates: owner only, bounded shape', async () => {
+    const valid = { state: { progress: {} }, updatedAt: Date.now() };
+    await assertSucceeds(setDoc(doc(userDb(env, 'alice'), 'questStates/alice'), valid));
+    await assertFails(setDoc(doc(userDb(env, 'alice'), 'questStates/alice'), { ...valid, junk: 'x'.repeat(1000) }));
+    await assertFails(setDoc(doc(userDb(env, 'alice'), 'questStates/bob'), valid));
     await assertFails(getDoc(doc(userDb(env, 'bob'), 'questStates/alice')));
+  });
+});
+
+describe('beerSubmissions: links and withdrawal', () => {
+  it('denies a non-https website', async () => {
+    await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { website: 'javascript:alert(1)' })));
+  });
+  it('lets players withdraw their own suggestion, not those of others', async () => {
+    const ref = await addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice'));
+    await assertFails(deleteDoc(doc(userDb(env, 'bob'), 'beerSubmissions', ref.id)));
+    await assertSucceeds(deleteDoc(doc(userDb(env, 'alice'), 'beerSubmissions', ref.id)));
+  });
+});
+
+describe('legacy duels are server-authoritative', () => {
+  it('players cannot create or resolve duels, admins can', async () => {
+    const duel = { challengerUserId: 'alice', defenderUserId: 'bob', status: 'pending' };
+    await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_duels/d1'), duel));
+    await assertSucceeds(setDoc(doc(adminDb(env), 'bc_duels/d1'), duel));
+    await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_duels/d1'), { winnerId: 'alice' }, { merge: true }));
   });
 });

@@ -16,6 +16,8 @@ import {
   orderBy,
   limitToLast,
   arrayRemove,
+  updateDoc,
+  writeBatch,
   onSnapshot,
   serverTimestamp,
   type Unsubscribe,
@@ -23,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { getFirestoreDb } from '../config/firestore';
 import { getFirebaseAuth } from '../config/firebaseAuth';
-import { deleteUser } from 'firebase/auth';
+import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { GAME } from '../config/constants';
 import { PUBLIC_HOME_STEPS, snapToLattice } from '../domain/privacy';
 import type { Friendship, ChatMessage, UserPresence } from '../domain/types';
@@ -35,6 +37,19 @@ import type { QuestState, Vote } from '../domain/types';
  * Public user profile stored in Firestore.
  * Contains all fields needed for map dominance + friend display.
  */
+
+/**
+ * Live listeners die silently on permission errors, expired sessions or quota
+ * limits. Report it once so the UI can tell the player the data may be stale.
+ */
+export const SYNC_ERROR_EVENT = 'bc:sync-error';
+function snapshotError(what: string) {
+  return (error: Error) => {
+    console.warn(`[sync] ${what} listener stopped:`, error);
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(SYNC_ERROR_EVENT, { detail: what }));
+  };
+}
+
 export interface FirestoreUserProfile {
   userId: string;
   beerId: string;
@@ -125,7 +140,7 @@ export function subscribeAllUsers(
       // Only include users with valid location
       .filter((u) => u.homeLat !== 0 || u.homeLon !== 0);
     callback(users);
-  });
+  }, snapshotError('users'));
 }
 
 // ── Helpers ──────────────────────────────────────────────
@@ -223,7 +238,7 @@ export function subscribeFriends(
       };
     });
     callback(friendships);
-  });
+  }, snapshotError('friendships'));
 }
 
 // ── Chat ─────────────────────────────────────────────────
@@ -275,7 +290,7 @@ export function subscribeMessages(
       };
     });
     callback(messages);
-  });
+  }, snapshotError('chat'));
 }
 
 // ── Presence ─────────────────────────────────────────────
@@ -313,7 +328,7 @@ export function subscribeOnlineCount(
       }
     });
     callback(count);
-  });
+  }, snapshotError('presence'));
 }
 
 /**
@@ -355,7 +370,7 @@ export function subscribePresenceForUsers(
         });
       });
       callback(new Map(presenceMap));
-    });
+    }, snapshotError('friend presence'));
 
     unsubscribers.push(unsub);
   }
@@ -374,7 +389,7 @@ export function subscribeLegacyVotes(callback: (votes: Vote[]) => void): Unsubsc
   return onSnapshot(q, (snapshot) => {
     const votes = snapshot.docs.map((d) => d.data() as Vote);
     callback(votes);
-  });
+  }, snapshotError('legacy votes'));
 }
 
 export async function saveLegacyVote(vote: Vote): Promise<void> {
@@ -414,7 +429,8 @@ export interface BeerSubmission {
   name: string;
   brewery: string;
   city: string;
-  country: 'DE' | 'AT' | 'CH';
+  /** ISO 3166-1 alpha-2 */
+  country: string;
   website: string;
   note: string;
   submittedBy: string;
@@ -453,7 +469,8 @@ export interface CatalogBeer {
   name: string;
   brewery: string;
   city: string;
-  country: 'DE' | 'AT' | 'CH';
+  /** ISO 3166-1 alpha-2 */
+  country: string;
   color: string;
   logoUrl?: string;
 }
@@ -485,34 +502,67 @@ export function subscribeCatalogBeers(callback: (beers: CatalogBeer[]) => void):
  * Throws `auth/requires-recent-login` if the session is too old — the UI
  * then asks the player to sign in again.
  */
-export async function deleteMyAccount(uid: string, beerId: string): Promise<void> {
+/**
+ * Confirm the password right before deleting. Firebase refuses to delete an
+ * account whose sign-in is old, and we must not end up with half-deleted data.
+ */
+export async function reauthenticate(password: string): Promise<void> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user?.email) throw Object.assign(new Error('no user'), { code: 'auth/no-current-user' });
+  await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+}
+
+export async function deleteMyAccount(uid: string): Promise<void> {
   const db = getFirestoreDb();
-  const del = (path: string, id: string) => deleteDoc(doc(db, path, id)).catch(() => {});
+  const failures: unknown[] = [];
+  // Every step is attempted; the profile, the pseudonym salt and the login are
+  // only removed when everything else is gone, so a retry can finish the job.
+  const attempt = (p: Promise<unknown>) => p.catch((e) => { failures.push(e); });
 
   // Friendships incl. chat history
   const friends = await getDocs(query(collection(db, 'friendships'), where('userIds', 'array-contains', uid)));
   for (const f of friends.docs) {
     const msgs = await getDocs(collection(db, 'friendships', f.id, 'messages'));
-    await Promise.all(msgs.docs.map((m) => deleteDoc(m.ref).catch(() => {})));
-    await deleteDoc(f.ref).catch(() => {});
+    await Promise.all(msgs.docs.map((m) => attempt(deleteDoc(m.ref))));
+    await attempt(deleteDoc(f.ref));
   }
 
-  // Check-ins and flags
+  // Legacy check-ins and flags
   for (const coll of ['bc_drinkVotes', 'bc_otrVotes']) {
     const mine = await getDocs(query(collection(db, coll), where('userId', '==', uid)));
-    await Promise.all(mine.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+    await Promise.all(mine.docs.map((d) => attempt(deleteDoc(d.ref))));
   }
 
-  // Team membership
-  await setDoc(doc(db, 'bc_teams', `team_${beerId}`), { memberUserIds: arrayRemove(uid) }, { merge: true }).catch(() => {});
+  // Venue visits: the private passport lists the ids of the public visits
+  // (the public delete rule needs the salt, so it goes before the salt)
+  const visits = await getDocs(collection(db, 'bc_users', uid, 'visits'));
+  for (const v of visits.docs) {
+    await attempt(deleteDoc(doc(db, 'bc_venueVisits', v.id)));
+    await attempt(deleteDoc(v.ref));
+  }
 
-  await Promise.all([
-    del('presence', uid),
-    del('questStates', uid),
-    del('bc_userStats', uid),
-    del('users', uid),
-  ]);
-  await del('bc_users', uid);
+  // Own beer suggestions
+  const subs = await getDocs(query(collection(db, 'beerSubmissions'), where('submittedBy', '==', uid)));
+  await Promise.all(subs.docs.map((d) => attempt(deleteDoc(d.ref))));
+
+  // Every team the player ever joined
+  const teams = await getDocs(query(collection(db, 'bc_teams'), where('memberUserIds', 'array-contains', uid)));
+  await Promise.all(teams.docs.map((t) => attempt(updateDoc(t.ref, { memberUserIds: arrayRemove(uid) }))));
+
+  await Promise.all(['presence', 'questStates', 'users'].map((c) => attempt(deleteDoc(doc(db, c, uid)))));
+
+  if (failures.length > 0) {
+    console.warn('[account] deletion incomplete:', failures);
+    throw Object.assign(new Error('Account deletion incomplete'), { code: 'brew/deletion-incomplete' });
+  }
+
+  // Profile, rate-limit counter and salt together (the rules allow deleting
+  // the counter only in the same write as the profile)
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bc_userStats', uid));
+  batch.delete(doc(db, 'bc_secrets', uid));
+  batch.delete(doc(db, 'bc_users', uid));
+  await batch.commit();
 
   const current = getFirebaseAuth().currentUser;
   if (current && current.uid === uid) await deleteUser(current);

@@ -1,4 +1,4 @@
-import { getAuth, type Auth } from 'firebase/auth';
+import { browserLocalPersistence, indexedDBLocalPersistence, initializeAuth, type Auth } from 'firebase/auth';
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import { firebaseConfig, isFirebaseConfigured } from './firebase';
 
@@ -19,7 +19,11 @@ function getOrInitApp(): FirebaseApp {
 
 export function getFirebaseAuth(): Auth {
   if (!auth) {
-    auth = getAuth(getOrInitApp());
+    // Email/password only: no popup/redirect resolver, so Firebase does not
+    // load scripts from apis.google.com (privacy, CSP) on every start.
+    auth = initializeAuth(getOrInitApp(), {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+    });
   }
   return auth;
 }

@@ -5,6 +5,7 @@ import { GAME } from '../config/constants';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
+import { t } from '../i18n';
 import './DuelPanel.css';
 
 interface Props {
@@ -13,11 +14,11 @@ interface Props {
 }
 
 function formatTimeLeft(ms: number): string {
-  if (ms <= 0) return 'Abgelaufen';
+  if (ms <= 0) return t('duel.expired');
   const hours = Math.floor(ms / (60 * 60 * 1000));
-  const mins = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
-  if (hours > 0) return `noch ${hours} Std. ${mins} Min.`;
-  return `noch ${mins} Min.`;
+  const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+  if (hours > 0) return t('duel.leftHours', { hours, minutes });
+  return t('duel.leftMinutes', { minutes });
 }
 
 function getDuelTimeoutMs(duel: Duel): number {
@@ -72,7 +73,7 @@ export function DuelPanel({ user, store }: Props) {
       haptic('light');
     } catch (e) {
       console.error('Duel decline error:', e);
-      setError('Das hat nicht geklappt. Versuch es nochmal.');
+      setError(t('common.tryAgain'));
     } finally {
       setBusyId(null);
     }
@@ -91,7 +92,7 @@ export function DuelPanel({ user, store }: Props) {
       haptic('heavy');
     } catch (e) {
       console.error('Duel accept error:', e);
-      setError('Annehmen hat nicht geklappt. Versuch es nochmal.');
+      setError(t('duel.errAccept'));
     } finally {
       setBusyId(null);
     }
@@ -102,8 +103,8 @@ export function DuelPanel({ user, store }: Props) {
   return (
     <section className="section duels" aria-labelledby="duels-title">
       <h2 className="section-title" id="duels-title">
-        Deine Duelle
-        <small className="num">{duels.length}/{GAME.DUEL_MAX_ACTIVE} aktiv</small>
+        {t('duel.title')}
+        <small className="num">{t('duel.active', { count: duels.length, max: GAME.DUEL_MAX_ACTIVE })}</small>
       </h2>
 
       <ul className="duel-list">
@@ -117,9 +118,9 @@ export function DuelPanel({ user, store }: Props) {
           const incoming = duel.status === 'pending' && !isChallenger;
 
           let statusChip: { label: string; cls: string };
-          if (duel.status === 'active') statusChip = { label: `⚔️ Läuft · Runde ${duel.roundCount}`, cls: 'chip-hot' };
-          else if (incoming) statusChip = { label: '🔔 Herausforderung!', cls: 'chip-accent' };
-          else statusChip = { label: '⏳ Wartet auf Antwort', cls: '' };
+          if (duel.status === 'active') statusChip = { label: t('duel.running', { round: duel.roundCount }), cls: 'chip-hot' };
+          else if (incoming) statusChip = { label: t('duel.challenge'), cls: 'chip-accent' };
+          else statusChip = { label: t('duel.waiting'), cls: '' };
 
           return (
             <li key={duel.id} className={`card duel duel-${duel.status}${incoming ? ' incoming' : ''}`}>
@@ -130,27 +131,27 @@ export function DuelPanel({ user, store }: Props) {
                 </span>
               </div>
 
-              <div className="duel-vs" aria-label={`${beerName(myBeerId)} gegen ${beerName(oppBeerId)}`}>
+              <div className="duel-vs" role="img" aria-label={t('duel.versus', { a: beerName(myBeerId), b: beerName(oppBeerId) })}>
                 <div className="duel-side">
                   <BeerBadge beerId={myBeerId} size="lg" />
                   <span className="duel-side-name">{beerName(myBeerId)}</span>
-                  <span className="duel-side-role">Du</span>
+                  <span className="duel-side-role">{t('duel.you')}</span>
                 </div>
                 <span className="duel-vs-mark" aria-hidden="true">VS</span>
                 <div className="duel-side">
                   <BeerBadge beerId={oppBeerId} size="lg" />
                   <span className="duel-side-name">{beerName(oppBeerId)}</span>
-                  <span className="duel-side-role">{isChallenger ? 'Verteidiger' : 'Herausforderer'}</span>
+                  <span className="duel-side-role">{isChallenger ? t('duel.defender') : t('duel.challenger')}</span>
                 </div>
               </div>
 
               {incoming && (
                 <div className="duel-actions">
                   <button type="button" className="btn btn-ghost" onClick={() => handleDecline(duel.id)} disabled={busy}>
-                    Ablehnen
+                    {t('duel.decline')}
                   </button>
                   <button type="button" className="btn btn-primary" onClick={() => handleAccept(duel.id)} disabled={busy}>
-                    {busy ? <span className="spinner" aria-hidden="true" /> : 'Duell annehmen'}
+                    {busy ? <span className="spinner" aria-hidden="true" /> : t('duel.accept')}
                   </button>
                 </div>
               )}

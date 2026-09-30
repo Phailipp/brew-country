@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource, type ExpressionSpecification } from 'maplibre-gl';
+import { AttributionControl, Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource, type ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 // Let Vite bundle MapLibre's module worker (incl. its shared chunk). MapLibre's
 // own URL guess breaks after bundling and under capacitor:// on iOS.
@@ -8,8 +8,9 @@ import type { FeatureCollection, Point } from 'geojson';
 import type { Vote, ViewportBounds } from '../domain/types';
 import type { TerritoryGeometry } from '../domain/territoryGeometry';
 import { BEERS, BEER_MAP } from '../domain/beers';
-import { MUNICH_CENTER } from '../domain/geo';
-import { loadMapStyle, TERRITORY_BEFORE_ID } from './map/mapStyle';
+import { DEFAULT_CENTER } from '../domain/geo';
+import { loadMapStyle, relabelMap, TERRITORY_BEFORE_ID } from './map/mapStyle';
+import { t, useLocale } from '../i18n';
 import { useBeerCatalog } from './kit/useBeerCatalog';
 import './MapView.css';
 
@@ -31,6 +32,22 @@ export interface FriendMarker {
   name?: string | null;
 }
 
+/** A pub/bar/beer garden as the map draws it. */
+export interface VenuePoint {
+  id: string;
+  lat: number;
+  lon: number;
+  name: string;
+  /** Ruling beer, null = unclaimed */
+  beerId: string | null;
+  /** Leader's points (drives size) */
+  points: number;
+  /** A challenger is within reach */
+  contested: boolean;
+  /** Player has visited this venue */
+  visited: boolean;
+}
+
 interface Props {
   geometry: TerritoryGeometry | null;
   votes: Vote[];
@@ -38,6 +55,9 @@ interface Props {
   friends: FriendMarker[];
   selectedPoint: { lat: number; lon: number } | null;
   onMapTap: (lat: number, lon: number) => void;
+  venues?: VenuePoint[];
+  selectedVenueId?: string | null;
+  onVenueTap?: (venueId: string) => void;
   /** Zoom is reported in the legacy (Leaflet/256px) scale used by the grid config. */
   onViewportChange: (bounds: ViewportBounds, zoom: number) => void;
 }
@@ -64,7 +84,11 @@ const COLOR_PROPS: [string, string][] = [
   ['territory-glow', 'line-color'],
   ['territory-line', 'line-color'],
   ['votes', 'circle-color'],
+  ['venue-glow', 'circle-color'],
+  ['venue-dot', 'circle-color'],
 ];
+
+const VENUE_LAYERS = ['venue-dot', 'venue-glow', 'venue-crest'];
 
 function shouldPlayIntro(): boolean {
   if (REDUCED_MOTION) return false;
@@ -102,10 +126,17 @@ function composeLogoCrest(img: HTMLImageElement, color: string): ImageData | nul
   return ctx.getImageData(0, 0, size, size);
 }
 
+/** Crests already drawn from a brand logo (monograms get upgraded once logos load). */
+const logoCrests = new WeakMap<MapLibreMap, Set<string>>();
+
 function loadBeerIcons(map: MapLibreMap) {
+  let withLogo = logoCrests.get(map);
+  if (!withLogo) logoCrests.set(map, (withLogo = new Set()));
   for (const beer of BEERS) {
     const id = `beer-${beer.id}`;
+    if (beer.logoUrl && !withLogo.has(id) && map.hasImage(id)) map.removeImage(id);
     if (map.hasImage(id)) continue;
+    if (beer.logoUrl) withLogo.add(id);
     const img = new Image(96, 96); // explicit size: the monogram SVGs have no intrinsic size
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -130,6 +161,7 @@ function addGameLayers(map: MapLibreMap) {
   map.addSource('votes', { type: 'geojson', data: EMPTY });
   map.addSource('pulse', { type: 'geojson', data: EMPTY });
   map.addSource('selected', { type: 'geojson', data: EMPTY });
+  map.addSource('venues', { type: 'geojson', data: EMPTY });
 
   // Territory = faint tint + light falling inward from the frontier (inner glow),
   // instead of a flat choropleth. d3-contour rings are counter-clockwise in
@@ -231,6 +263,77 @@ function addGameLayers(map: MapLibreMap) {
     },
   });
 
+  // ── Venues: every pub is a little fortress glowing in its ruler's colour
+  map.addLayer({
+    id: 'venue-glow',
+    type: 'circle',
+    source: 'venues',
+    minzoom: 12,
+    filter: ['!=', ['get', 'beerId'], ''],
+    paint: {
+      'circle-color': beerColorExpr,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'],
+        12, ['+', 5, ['*', ['get', 'strength'], 4]],
+        17, ['+', 18, ['*', ['get', 'strength'], 16]]],
+      'circle-blur': 1,
+      'circle-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.25, 16, 0.4],
+    },
+  });
+  map.addLayer({
+    id: 'venue-dot',
+    type: 'circle',
+    source: 'venues',
+    minzoom: 12,
+    paint: {
+      'circle-color': beerColorExpr,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2.5, 15, 5, 17, 8],
+      'circle-stroke-color': ['case',
+        ['get', 'contested'], '#ff6a3d',
+        ['get', 'visited'], '#fff6e8',
+        '#0b0a08'],
+      'circle-stroke-width': ['case', ['any', ['get', 'contested'], ['get', 'visited']], 2, 1.2],
+      'circle-opacity': ['case', ['==', ['get', 'beerId'], ''], 0.55, 1],
+    },
+  });
+  map.addLayer({
+    id: 'venue-crest',
+    type: 'symbol',
+    source: 'venues',
+    minzoom: 15,
+    layout: {
+      'icon-image': ['case', ['==', ['get', 'beerId'], ''], '', ['concat', 'beer-', ['get', 'beerId']]],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.26, 18, 0.4],
+      'icon-offset': [0, -46],
+      'icon-allow-overlap': false,
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 15, 10, 18, 13],
+      'text-offset': [0, 0.9],
+      'text-anchor': 'top',
+      'text-max-width': 9,
+      'text-optional': true,
+      'symbol-sort-key': ['-', 0, ['get', 'points']],
+    },
+    paint: {
+      'text-color': '#f3e7d3',
+      'text-halo-color': 'rgba(11,10,8,0.92)',
+      'text-halo-width': 1.4,
+    },
+  });
+  map.addLayer({
+    id: 'venue-selected',
+    type: 'circle',
+    source: 'venues',
+    minzoom: 12,
+    filter: ['==', ['get', 'id'], ''],
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 8, 17, 16],
+      'circle-color': 'rgba(0,0,0,0)',
+      'circle-stroke-color': '#fff6e8',
+      'circle-stroke-width': 2.5,
+    },
+  });
+
   map.addLayer({
     id: 'pulse',
     type: 'circle',
@@ -289,7 +392,8 @@ function makeHomeMarker(beerId: string): HTMLElement {
   const el = document.createElement('div');
   el.className = 'home-marker';
   el.style.setProperty('--beer', beer?.color ?? '#ffb020');
-  el.setAttribute('aria-label', 'Dein Zuhause');
+  el.setAttribute('role', 'img');
+  el.setAttribute('aria-label', t('map.homeMarker'));
   const badge = document.createElement('span');
   badge.className = 'home-marker-badge';
   if (beer) badge.style.backgroundImage = `url("${beer.logoUrl ?? beer.svgLogo}")`;
@@ -304,30 +408,44 @@ function makeFriendMarker(f: FriendMarker): HTMLElement {
   const el = document.createElement('div');
   el.className = `friend-marker${f.online ? ' online' : ''}`;
   el.style.setProperty('--beer', beer?.color ?? '#a39580');
-  el.title = f.name ?? 'Freund';
+  el.title = f.name ?? t('map.friend');
   const initial = document.createElement('span');
   initial.textContent = (f.name ?? '?').trim().charAt(0).toUpperCase() || '?';
   el.append(initial);
   return el;
 }
 
+/** Compact credits; pubs come from OSM even when the tile style is unavailable. */
+function osmAttribution(): AttributionControl {
+  return new AttributionControl({
+    compact: true,
+    customAttribution: `<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t('common.osmContributors')}</a>`,
+  });
+}
+
 export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
-  { geometry, votes, home, friends, selectedPoint, onMapTap, onViewportChange },
+  { geometry, votes, home, friends, selectedPoint, onMapTap, onViewportChange, venues, selectedVenueId, onVenueTap },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
   const tapRef = useRef(onMapTap);
+  const venueTapRef = useRef(onVenueTap);
   const viewportRef = useRef(onViewportChange);
   const pulseFrameRef = useRef<number | null>(null);
   const hasHotspotsRef = useRef(false);
   const introRef = useRef<boolean>(shouldPlayIntro());
+  // Read once at map creation; later home moves only move the marker
+  const homeRef = useRef(home);
+  const locale = useLocale();
+  const attributionRef = useRef<AttributionControl | null>(null);
 
   useEffect(() => {
     tapRef.current = onMapTap;
     viewportRef.current = onViewportChange;
-  }, [onMapTap, onViewportChange]);
+    venueTapRef.current = onVenueTap;
+  }, [onMapTap, onViewportChange, onVenueTap]);
 
   // ── Create map once
   useEffect(() => {
@@ -335,21 +453,27 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     let map: MapLibreMap | null = null;
     let hotspotFrame: number | null = null;
 
+    // Open over the player's home, wherever on Earth it is
+    const start = homeRef.current ?? DEFAULT_CENTER;
     loadMapStyle().then((style) => {
       if (cancelled || !containerRef.current) return;
       const m = new MapLibreMap({
         container: containerRef.current,
         style,
-        center: introRef.current ? [9, 38] : [MUNICH_CENTER.lon, MUNICH_CENTER.lat],
+        center: introRef.current ? [start.lon, Math.max(-60, Math.min(60, start.lat - 12))] : [start.lon, start.lat],
         zoom: introRef.current ? 1.4 : 10,
-        minZoom: 4.5,
+        minZoom: 1,
         maxZoom: 18,
         maxPitch: 65,
-        attributionControl: { compact: true },
+        attributionControl: false,
         fadeDuration: 150,
       });
+      attributionRef.current = osmAttribution();
+      m.addControl(attributionRef.current);
       map = m;
       mapRef.current = m;
+      // Dev builds: expose the map for automated UI checks
+      if (import.meta.env.DEV) (window as unknown as { __bcMap?: MapLibreMap }).__bcMap = m;
 
       const emitViewport = () => {
         const b = m.getBounds();
@@ -363,14 +487,13 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
         if (cancelled) return;
         loadBeerIcons(m);
         addGameLayers(m);
-        // Compact attribution stays collapsed until tapped (MapLibre re-opens
-        // it whenever a source adds attribution text, e.g. the terrain DEM)
+        // OSM attribution guidelines: show the credits expanded at first,
+        // collapse only once the player starts using the map.
         const attrib = containerRef.current?.querySelector('.maplibregl-ctrl-attrib');
-        let userOpened = false;
-        attrib?.addEventListener('click', () => { userOpened = true; }, { once: true });
-        const collapse = () => { if (!userOpened) attrib?.classList.remove('maplibregl-compact-show'); };
-        collapse();
-        m.on('sourcedata', collapse);
+        attrib?.classList.add('maplibregl-compact-show');
+        const collapse = () => attrib?.classList.remove('maplibregl-compact-show');
+        m.once('dragstart', collapse);
+        m.once('zoomstart', (e) => { if ((e as { originalEvent?: unknown }).originalEvent) collapse(); });
         setReady(true);
         emitViewport();
 
@@ -398,15 +521,28 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
           hotspotFrame = requestAnimationFrame(tick);
         }
 
-        // Cinematic entrance: from the globe down to Munich, once per session
+        // Cinematic entrance: from the globe down to the home turf, once per session
         if (introRef.current) {
-          m.flyTo({ center: [MUNICH_CENTER.lon, MUNICH_CENTER.lat], zoom: 10, duration: 4200, curve: 1.7, essential: true });
+          m.flyTo({ center: [start.lon, start.lat], zoom: 10, duration: 4200, curve: 1.7, essential: true });
         }
       });
 
       m.on('styleimagemissing', () => loadBeerIcons(m));
       m.on('moveend', emitViewport);
-      m.on('click', (e) => tapRef.current(e.lngLat.lat, e.lngLat.lng));
+      m.on('click', (e) => {
+        // Venues win over the territory below them; a generous hit box for thumbs
+        const pad = 14;
+        const hit = m.getLayer('venue-dot')
+          ? m.queryRenderedFeatures(
+            [[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]],
+            { layers: VENUE_LAYERS.filter((l) => m.getLayer(l)) },
+          )
+          : [];
+        const venueId = hit[0]?.properties?.id as string | undefined;
+        if (venueId && venueTapRef.current) venueTapRef.current(venueId);
+        else tapRef.current(e.lngLat.lat, e.lngLat.lng);
+      });
+      m.on('mousemove', 'venue-dot', () => { m.getCanvas().style.cursor = 'pointer'; });
       m.on('mousemove', 'territory-fill', () => { m.getCanvas().style.cursor = 'pointer'; });
       m.on('mouseleave', 'territory-fill', () => { m.getCanvas().style.cursor = ''; });
     });
@@ -463,6 +599,34 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     });
   }, [votes, ready]);
 
+  // ── Venues
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    (map.getSource('venues') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: (venues ?? []).map((v) => ({
+        type: 'Feature',
+        properties: {
+          id: v.id,
+          name: v.name,
+          beerId: v.beerId ?? '',
+          points: v.points,
+          strength: Math.min(1, v.points / 30),
+          contested: v.contested,
+          visited: v.visited,
+        },
+        geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
+      })),
+    });
+  }, [venues, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !map.getLayer('venue-selected')) return;
+    map.setFilter('venue-selected', ['==', ['get', 'id'], selectedVenueId ?? '']);
+  }, [selectedVenueId, ready]);
+
   // ── Selected point
   useEffect(() => {
     const map = mapRef.current;
@@ -473,8 +637,20 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     } : EMPTY);
   }, [selectedPoint, ready]);
 
+  // ── Language change: map labels and credits follow the UI language
+  const labelledRef = useRef(locale);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || labelledRef.current === locale) return;
+    labelledRef.current = locale;
+    relabelMap(map, locale);
+    if (attributionRef.current) map.removeControl(attributionRef.current);
+    attributionRef.current = osmAttribution();
+    map.addControl(attributionRef.current);
+  }, [locale, ready]);
+
   // ── Home marker
-  const homeKey = home ? `${home.lat},${home.lon},${home.beerId}` : '';
+  const homeKey = home ? `${home.lat},${home.lon},${home.beerId},${locale}` : '';
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !home) return;
@@ -486,7 +662,7 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   }, [homeKey, ready]);
 
   // ── Friend markers
-  const friendsKey = friends.map((f) => `${f.userId}:${f.lat},${f.lon},${f.beerId},${f.online}`).join('|');
+  const friendsKey = locale + friends.map((f) => `${f.userId}:${f.lat},${f.lon},${f.beerId},${f.online}`).join('|');
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
@@ -564,10 +740,10 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
 
   return (
     <div className="map-view">
-      <div ref={containerRef} className="map-canvas" role="application" aria-label="Territorien-Karte" />
+      <div ref={containerRef} className="map-canvas" role="application" aria-label={t('map.label')} />
       {!ready && (
         <div className="map-loading" aria-live="polite">
-          <span className="spinner" /> Karte lädt…
+          <span className="spinner" /> {t('map.loading')}
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { sendMessage, subscribeMessages } from '../services/firestoreService';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
+import { fmtDate, t } from '../i18n';
 import './ChatPanel.css';
 
 interface Props {
@@ -17,22 +18,19 @@ interface Props {
 }
 
 function formatTime(ts: number): string {
-  const d = new Date(ts);
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm}`;
+  return fmtDate(ts, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
 function formatDay(ts: number): string {
   const d = new Date(ts);
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) return 'Heute';
+  if (d.toDateString() === now.toDateString()) return t('chat.today');
   const y = new Date(now);
   y.setDate(now.getDate() - 1);
-  if (d.toDateString() === y.toDateString()) return 'Gestern';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mo = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mo}.${d.getFullYear() !== now.getFullYear() ? d.getFullYear() : ''}`;
+  if (d.toDateString() === y.toDateString()) return t('chat.yesterday');
+  return fmtDate(ts, d.getFullYear() !== now.getFullYear()
+    ? { day: '2-digit', month: '2-digit', year: 'numeric' }
+    : { day: '2-digit', month: '2-digit' });
 }
 
 export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBack }: Props) {
@@ -78,7 +76,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
       });
     } catch (e) {
       console.error('sendMessage error:', e);
-      setError('Nachricht nicht gesendet. Tippe nochmal auf Senden.');
+      setError(t('chat.errSend'));
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -88,9 +86,9 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
   const charsLeft = GAME.MAX_CHAT_MESSAGE_LENGTH - input.length;
 
   return (
-    <div className="chat" aria-label={`Chat mit ${friendName}`}>
+    <div className="chat" role="region" aria-label={t('friends.chatWith', { name: friendName })}>
       <header className="chat-header">
-        <button type="button" className="icon-btn" onClick={onBack} aria-label="Zurück zur Crew">
+        <button type="button" className="icon-btn" onClick={onBack} aria-label={t('chat.back')}>
           <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         <span className="chat-avatar">
@@ -100,17 +98,17 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
         <div className="chat-header-text">
           <span className="chat-header-name">{friendName}</span>
           <span className={`chat-header-status${isOnline ? ' online' : ''}`}>
-            {isOnline ? 'Online' : 'Offline'}
+            {isOnline ? t('common.online') : t('common.offline')}
           </span>
         </div>
       </header>
 
-      <div className="chat-messages" role="log" aria-live="polite" aria-label="Nachrichten">
+      <div className="chat-messages" role="log" aria-live="polite" aria-label={t('chat.messages')}>
         {messages.length === 0 && (
           <div className="empty chat-empty">
             <span className="empty-icon" aria-hidden="true">🍻</span>
-            <span className="empty-title">Sag Prost!</span>
-            <p>Noch keine Nachrichten mit {friendName}. Mach den ersten Schritt.</p>
+            <span className="empty-title">{t('chat.emptyTitle')}</span>
+            <p>{t('chat.emptyText', { name: friendName })}</p>
           </div>
         )}
         {messages.map((msg, i) => {
@@ -126,7 +124,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
               <div
                 className={`chat-bubble ${isMine ? 'mine' : 'theirs'}${groupedWithPrev ? ' grouped' : ''}${lastOfGroup ? ' tail' : ''}`}
               >
-                <span className="sr-only">{isMine ? 'Du' : friendName}: </span>
+                <span className="sr-only">{isMine ? t('chat.you') : friendName}: </span>
                 <span className="chat-bubble-text">{msg.text}</span>
                 <time className="chat-bubble-time" dateTime={new Date(msg.createdAt).toISOString()}>
                   {formatTime(msg.createdAt)}
@@ -144,14 +142,14 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
       >
         {error && <p className="chat-error" role="alert">{error}</p>}
         <div className="chat-composer-row">
-          <label htmlFor="chat-input" className="sr-only">Nachricht an {friendName}</label>
+          <label htmlFor="chat-input" className="sr-only">{t('chat.to', { name: friendName })}</label>
           <div className="chat-input-wrap">
             <input
               id="chat-input"
               ref={inputRef}
               type="text"
               className="chat-input"
-              placeholder="Nachricht …"
+              placeholder={t('chat.placeholder')}
               autoComplete="off"
               enterKeyHint="send"
               value={input}
@@ -166,7 +164,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
             type="submit"
             className="chat-send"
             disabled={!input.trim() || sending}
-            aria-label="Senden"
+            aria-label={t('chat.send')}
           >
             {sending ? (
               <span className="spinner" aria-hidden="true" />

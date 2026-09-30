@@ -1,3 +1,4 @@
+import { safeStorage } from './safeStorage';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -22,7 +23,7 @@ interface Props {
 
 function initialAuthState(): AuthState {
   // Without Firebase and without a saved session there is nothing to wait for
-  if (!isFirebaseConfigured() && !localStorage.getItem(LOCAL_AUTH_KEY)) {
+  if (!isFirebaseConfigured() && !safeStorage.get(LOCAL_AUTH_KEY)) {
     return { status: 'unauthenticated' };
   }
   return { status: 'loading' };
@@ -42,7 +43,7 @@ export function AuthProvider({ children, store }: Props) {
   }, [store]);
 
   useEffect(() => {
-    const savedId = localStorage.getItem(LOCAL_AUTH_KEY);
+    const savedId = safeStorage.get(LOCAL_AUTH_KEY);
 
     // Demo sessions live entirely in the local sandbox
     if (isDemoUserId(savedId)) {
@@ -60,7 +61,7 @@ export function AuthProvider({ children, store }: Props) {
         clearTimeout(fallback);
         if (!firebaseUser) {
           // Never clobber a demo session that was started in the meantime
-          if (!isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY))) localStorage.removeItem(LOCAL_AUTH_KEY);
+          if (!isDemoUserId(safeStorage.get(LOCAL_AUTH_KEY))) safeStorage.remove(LOCAL_AUTH_KEY);
           setAuth({ status: 'unauthenticated' });
           return;
         }
@@ -75,7 +76,7 @@ export function AuthProvider({ children, store }: Props) {
           return;
         }
 
-        localStorage.setItem(LOCAL_AUTH_KEY, firebaseUser.uid);
+        safeStorage.set(LOCAL_AUTH_KEY, firebaseUser.uid);
         resolveUser(firebaseUser.uid);
       });
       return () => {
@@ -95,8 +96,8 @@ export function AuthProvider({ children, store }: Props) {
   }, []);
 
   const login = useCallback((userId: string) => {
-    const wasDemo = isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY));
-    localStorage.setItem(LOCAL_AUTH_KEY, userId);
+    const wasDemo = isDemoUserId(safeStorage.get(LOCAL_AUTH_KEY));
+    safeStorage.set(LOCAL_AUTH_KEY, userId);
     // The storage backend is chosen at boot (main.tsx). Switching into the
     // demo sandbox therefore needs a reload, otherwise demo data would be
     // written to the production database.
@@ -153,7 +154,7 @@ export function AuthProvider({ children, store }: Props) {
     } catch (err) {
       if (!isDemoUserId(user.id)) throw err;
     }
-    localStorage.setItem(LOCAL_AUTH_KEY, user.id);
+    safeStorage.set(LOCAL_AUTH_KEY, user.id);
     setAuth({ status: 'authenticated', userId: user.id, user });
   }, [store]);
 
@@ -163,8 +164,8 @@ export function AuthProvider({ children, store }: Props) {
   }, [store]);
 
   const logout = useCallback(() => {
-    const wasDemo = isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY));
-    localStorage.removeItem(LOCAL_AUTH_KEY);
+    const wasDemo = isDemoUserId(safeStorage.get(LOCAL_AUTH_KEY));
+    safeStorage.remove(LOCAL_AUTH_KEY);
     if (isFirebaseConfigured()) {
       signOut(getFirebaseAuth()).catch(() => {});
     }

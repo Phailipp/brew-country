@@ -1,8 +1,11 @@
 import { useMemo, useState, type CSSProperties } from 'react';
+import { countryFlag } from '../domain/countries';
+import { localeCountry } from '../domain/worldCities';
 import { searchBeers } from '../domain/beers';
 import { BeerBadge } from './kit/BeerBadge';
 import { useBeerCatalog } from './kit/useBeerCatalog';
 import { haptic } from './kit/haptics';
+import { t } from '../i18n';
 import './BeerPicker.css';
 
 interface Props {
@@ -15,22 +18,23 @@ interface Props {
   onSuggest?: () => void;
   disabled?: boolean;
   label?: string;
+  /** Country whose beers come first (default: the browser locale's). */
+  country?: string | null;
 }
 
-const COUNTRY_FLAG: Record<string, string> = { DE: '🇩🇪', AT: '🇦🇹', CH: '🇨🇭' };
 
-export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSuggest, disabled, label = 'Bier auswählen' }: Props) {
+export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSuggest, disabled, label = t('picker.label'), country }: Props) {
   const catalogVersion = useBeerCatalog();
   const [query, setQuery] = useState('');
 
   const beers = useMemo(() => {
-    const list = searchBeers(query);
+    const list = searchBeers(query, country ?? localeCountry());
     if (query) return list;
     const pins = pinned.map((id) => list.find((b) => b.id === id)).filter((b) => b !== undefined);
     return [...pins, ...list.filter((b) => !pinned.includes(b.id))];
     // catalogVersion: re-run when community beers arrive
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, pinned.join(','), catalogVersion]);
+  }, [query, pinned.join(','), catalogVersion, country]);
 
   return (
     <div className={`bp bp-${layout}`}>
@@ -42,8 +46,8 @@ export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSu
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Bier, Brauerei oder Stadt suchen"
-          aria-label="Bier suchen"
+          placeholder={t('picker.placeholder')}
+          aria-label={t('picker.search')}
           disabled={disabled}
         />
       </div>
@@ -66,21 +70,21 @@ export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSu
               <BeerBadge beerId={beer.id} size="lg" />
               <span className="bp-name">{beer.name}</span>
               {layout === 'grid' && beer.city && (
-                <span className="bp-city">{COUNTRY_FLAG[beer.country ?? 'DE']} {beer.city}</span>
+                <span className="bp-city">{countryFlag(beer.country)} {beer.city}</span>
               )}
             </button>
           );
         })}
         {beers.length === 0 && (
           <div className="bp-empty">
-            <span>Kein Treffer für „{query}“.</span>
+            <span>{t('picker.noMatch', { query })}</span>
           </div>
         )}
       </div>
 
       {onSuggest && (
         <button type="button" className="bp-suggest" onClick={onSuggest}>
-          <span aria-hidden="true">＋</span> Dein Bier fehlt? Jetzt vorschlagen
+          <span aria-hidden="true">＋</span> {t('picker.suggest')}
         </button>
       )}
     </div>

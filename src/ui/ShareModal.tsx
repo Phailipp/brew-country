@@ -5,6 +5,7 @@ import { downloadShareCard } from '../domain/shareCard';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerColor } from './kit/beer';
 import { haptic } from './kit/haptics';
+import { fmtNumber, fmtPercent, t, tr } from '../i18n';
 import './ShareModal.css';
 
 interface Props {
@@ -20,8 +21,8 @@ export function ShareModal({ payload, onClose }: Props) {
   const link = useMemo(() => encodeShareLink(payload), [payload]);
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
-  const shareText = `${payload.beerName} regiert hier! 🍺 Welches Bier regiert dein Viertel?`;
-  const marginPct = Math.round(payload.avgMargin * 100);
+  const shareText = t('share.text', { beer: payload.beerName });
+  const margin = fmtPercent(Math.round(payload.avgMargin * 100) / 100);
 
   // Focus management + ESC to close + simple focus trap
   useEffect(() => {
@@ -98,8 +99,12 @@ export function ShareModal({ payload, onClose }: Props) {
 
   const handleDownload = useCallback(() => {
     haptic('light');
-    downloadShareCard(payload);
-  }, [payload]);
+    downloadShareCard(payload, {
+      subtitle: t('share.cardSubtitle'),
+      stats: t('share.cardStats', { cells: payload.cellCount, votes: payload.totalVotes, margin }),
+      rival: payload.runnerUpName ? t('share.cardRival', { name: payload.runnerUpName }) : null,
+    });
+  }, [payload, margin]);
 
   return (
     <div className="share-backdrop" onClick={onClose}>
@@ -114,8 +119,8 @@ export function ShareModal({ payload, onClose }: Props) {
       >
         <span className="share-grabber" aria-hidden="true" />
         <div className="share-head">
-          <h2 id="share-title" className="share-title">Revier teilen</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Schließen">
+          <h2 id="share-title" className="share-title">{t('share.title')}</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={t('common.close')}>
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
           </button>
         </div>
@@ -123,50 +128,50 @@ export function ShareModal({ payload, onClose }: Props) {
         <figure
           className="share-card"
           style={{ '--share-color': beerColor(payload.beerId) } as CSSProperties}
-          aria-label={`Vorschau: ${payload.beerName} regiert hier`}
+          aria-label={t('share.preview', { beer: payload.beerName })}
         >
           <div className="share-card-glow" aria-hidden="true" />
-          <span className="share-card-brand">Brew Country</span>
+          <span className="share-card-brand">{t('common.brand')}</span>
           <BeerBadge beerId={payload.beerId} size="xl" className="share-card-badge" />
           <p className="share-card-claim">
-            <span className="share-card-beer">{payload.beerName}</span> regiert hier
+            {tr('share.rules', { beer: <span className="share-card-beer">{payload.beerName}</span> })}
           </p>
           <dl className="share-card-stats">
             <div>
-              <dt>Felder</dt>
-              <dd className="num">{payload.cellCount.toLocaleString('de-DE')}</dd>
+              <dt>{t('share.cells')}</dt>
+              <dd className="num">{fmtNumber(payload.cellCount)}</dd>
             </div>
             <div>
-              <dt>Stimmen</dt>
-              <dd className="num">{payload.totalVotes.toLocaleString('de-DE')}</dd>
+              <dt>{t('share.votes')}</dt>
+              <dd className="num">{fmtNumber(payload.totalVotes)}</dd>
             </div>
             <div>
-              <dt>Vorsprung</dt>
-              <dd className="num">{marginPct} %</dd>
+              <dt>{t('share.lead')}</dt>
+              <dd className="num">{margin}</dd>
             </div>
           </dl>
           {payload.runnerUpName && (
-            <p className="share-card-rival">Größter Rivale: {payload.runnerUpName}</p>
+            <p className="share-card-rival">{t('share.rival', { name: payload.runnerUpName })}</p>
           )}
         </figure>
 
         <div className="share-actions">
           <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handleShare}>
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            {canNativeShare ? 'Teilen' : 'Link teilen'}
+            {canNativeShare ? t('share.share') : t('share.shareLink')}
           </button>
           <div className="share-actions-row">
             <button type="button" className={`btn btn-secondary${copied ? ' share-copied' : ''}`} onClick={handleCopy}>
-              {copied ? '✓ Kopiert' : 'Link kopieren'}
+              {copied ? t('share.copiedButton') : t('share.copy')}
             </button>
             <button type="button" className="btn btn-secondary" onClick={handleDownload}>
-              Bild speichern
+              {t('share.saveImage')}
             </button>
           </div>
-          <span className="sr-only" aria-live="polite">{copied ? 'Link kopiert' : ''}</span>
+          <span className="sr-only" aria-live="polite">{copied ? t('share.copied') : ''}</span>
         </div>
 
-        <label htmlFor="share-link" className="sr-only">Link zum Revier</label>
+        <label htmlFor="share-link" className="sr-only">{t('share.linkLabel')}</label>
         <input
           id="share-link"
           ref={inputRef}

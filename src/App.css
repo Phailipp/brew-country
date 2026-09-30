@@ -158,6 +158,9 @@
 /* ── Settings */
 .settings-row { display: flex; align-items: center; gap: var(--sp-3); }
 .settings-row .row-title, .settings-row .row-sub { display: block; }
+.settings-row + .settings-row { margin-top: var(--sp-2); }
+.settings-language { flex: none; }
+.settings-language button { padding: 0 var(--sp-3); min-width: 72px; }
 .settings-logout { margin-top: var(--sp-4); }
 .switch {
   flex: none;
@@ -186,3 +189,63 @@
 .settings-delete { margin-top: var(--sp-2); color: #ff8a80; }
 .settings-danger { margin-top: var(--sp-3); display: grid; gap: var(--sp-3); box-shadow: inset 0 0 0 1px rgba(255, 90, 78, 0.35); font-size: var(--fs-sm); color: var(--c-text-2); }
 .settings-danger-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+/* ── Venue status pill (loading / zoom hint), floats above the tab bar */
+.venue-hint-pill {
+  position: fixed;
+  z-index: 25;
+  left: 50%;
+  bottom: calc(108px + var(--safe-bottom));
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--c-text-2);
+  white-space: nowrap;
+  animation: fadeIn var(--dur-3) var(--ease-out) both;
+}
+.venue-hint-pill .spinner { width: 12px; height: 12px; }
+.venue-hint-pill button { color: var(--c-accent); font-weight: 700; text-decoration: underline; }
+.venue-hint-pill.is-error { color: #ffb3a3; }
+
+/* ── Entry to the brewery cockpit (Explore tab) */
+.cockpit-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  color: var(--c-text);
+  transition: transform 360ms var(--ease-spring);
+}
+.cockpit-entry:active { transform: scale(0.98); }
+.cockpit-entry-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  font-size: 22px;
+  background: var(--c-surface-3);
+}
+.cockpit-entry-text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.cockpit-entry-text span { font-size: var(--fs-sm); color: var(--c-text-2); }
+.cockpit-entry-go { font-size: 28px; color: var(--c-accent); line-height: 1; }
+
+/* Phones: the bottom sheet covers the pill's spot */
+@media (max-width: 899px) {
+  .app:has(.sheet.open) .venue-hint-pill { display: none; }
+}
+
+.settings-responsible { font-size: var(--fs-xs); margin: var(--sp-3) 0; }
+.settings-responsible a { color: var(--c-text-2); text-decoration: underline; }
+.settings-legal { margin-top: var(--sp-4); }
+.settings-version { text-align: center; font-size: var(--fs-xs); margin-top: var(--sp-2); }

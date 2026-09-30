@@ -1,7 +1,7 @@
 import { contours } from 'd3-contour';
 import type { Feature, FeatureCollection, MultiPolygon, Point, Position } from 'geojson';
 import type { CellResult, GridSpec, Region } from './types';
-import { cellStepDeg } from './geo';
+import { specStepDeg } from './geo';
 
 export interface TerritoryProps {
   beerId: string;
@@ -63,7 +63,7 @@ function contourToLonLat(
   }
 
   const [geom] = contours().size([pc, pr]).thresholds([0.5])(Array.from(padded));
-  const { dLat, dLon } = cellStepDeg(spec.cellSizeMeters);
+  const { dLat, dLon } = specStepDeg(spec);
   return geom.coordinates.map((poly) =>
     poly.map((ring) =>
       ring.map(([x, y]) => [

@@ -7,8 +7,9 @@ const MIN_MS = 60 * 1000;
 
 export interface ValidationResult {
   ok: boolean;
-  error?: string;
   errorCode?: 'cooldown' | 'same_place_beer' | 'daily_cap' | 'gps_accuracy';
+  /** Numbers for the UI message (accuracy/limit in m, minutes or hours to wait, cap). */
+  params?: Record<string, number>;
 }
 
 /**
@@ -31,8 +32,8 @@ export function validateDrinkVote(
   if (gpsAccuracyM > GAME.DRINK_GPS_MAX_ACCURACY_M) {
     return {
       ok: false,
-      error: `GPS zu ungenau (${Math.round(gpsAccuracyM)}m). Maximal ${GAME.DRINK_GPS_MAX_ACCURACY_M}m erlaubt.`,
       errorCode: 'gps_accuracy',
+      params: { accuracy: Math.round(gpsAccuracyM), max: GAME.DRINK_GPS_MAX_ACCURACY_M },
     };
   }
 
@@ -46,8 +47,8 @@ export function validateDrinkVote(
     const waitMin = Math.ceil((tooRecent.createdAt + GAME.DRINK_COOLDOWN_MIN * MIN_MS - now) / MIN_MS);
     return {
       ok: false,
-      error: `Cooldown: Warte noch ${waitMin} Min.`,
       errorCode: 'cooldown',
+      params: { minutes: waitMin },
     };
   }
 
@@ -60,8 +61,8 @@ export function validateDrinkVote(
     const waitH = Math.ceil((duplicate.createdAt + GAME.DRINK_SAME_PLACE_BEER_WINDOW_H * HOUR_MS - now) / HOUR_MS);
     return {
       ok: false,
-      error: `Gleiches Bier am gleichen Ort: Warte noch ${waitH}h.`,
       errorCode: 'same_place_beer',
+      params: { hours: waitH },
     };
   }
 
@@ -70,8 +71,8 @@ export function validateDrinkVote(
   if (dailyCount >= GAME.DRINK_DAILY_CAP) {
     return {
       ok: false,
-      error: `Tageslimit erreicht (${GAME.DRINK_DAILY_CAP}/${GAME.DRINK_DAILY_CAP}).`,
       errorCode: 'daily_cap',
+      params: { max: GAME.DRINK_DAILY_CAP },
     };
   }
 
