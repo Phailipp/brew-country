@@ -104,7 +104,7 @@ export function OnTheRoadButton({ user, store, onVoteCreated }: Props) {
           </div>
         </div>
 
-        <div className="otr-slots" aria-label={activeCount !== null ? `${activeCount} von ${GAME.OTR_MAX_ACTIVE} Flaggen aktiv` : undefined}>
+        <div className="otr-slots" role="img" aria-label={activeCount !== null ? `${activeCount} von ${GAME.OTR_MAX_ACTIVE} Flaggen aktiv` : undefined}>
           {activeCount !== null && Array.from({ length: GAME.OTR_MAX_ACTIVE }, (_, i) => (
             <span key={i} className={`otr-slot${i < activeCount ? ' used' : ''}`} aria-hidden="true" />
           ))}

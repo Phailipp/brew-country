@@ -104,7 +104,7 @@ export default function App({ store }: AppProps) {
       <div className="boot-screen" aria-live="polite">
         <img src="./favicon.svg" alt="" width="72" height="72" className="boot-logo" />
         <p className="boot-title">Brew Country</p>
-        <span className="spinner" aria-label="Lädt" />
+        <span className="spinner" role="status" aria-label="Lädt" />
       </div>
     );
   }
@@ -920,11 +920,11 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
         <div className="map-controls">
           {online && onlineCount > 0 && (
-            <span className="online-pill glass" aria-label={`${onlineCount} Spieler online`}>
+            <span className="online-pill glass" role="status" aria-label={`${onlineCount} Spieler online`}>
               <span className="online-dot" /> <span className="num">{onlineCount}</span>
             </span>
           )}
-          {computing && <span className="computing glass" aria-label="Karte wird berechnet"><span className="spinner" /></span>}
+          {computing && <span className="computing glass" role="status" aria-label="Karte wird berechnet"><span className="spinner" aria-hidden="true" /></span>}
           <button className="icon-btn glass" onClick={toggle3d} aria-pressed={is3d} aria-label="3D-Ansicht umschalten">
             <span className="ctrl-3d">{is3d ? '2D' : '3D'}</span>
           </button>

@@ -88,7 +88,7 @@ export function ChatPanel({ user, friendshipId, friendUser, friendPresence, onBa
   const charsLeft = GAME.MAX_CHAT_MESSAGE_LENGTH - input.length;
 
   return (
-    <div className="chat" aria-label={`Chat mit ${friendName}`}>
+    <div className="chat" role="region" aria-label={`Chat mit ${friendName}`}>
       <header className="chat-header">
         <button type="button" className="icon-btn" onClick={onBack} aria-label="Zurück zur Crew">
           <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

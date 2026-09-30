@@ -27,7 +27,7 @@ export function WeeklyPanel({ visits }: Props) {
               <div className="quest-head">
                 <h3 className="quest-title">{c.title}</h3>
                 {c.done ? (
-                  <span className="quest-check" aria-label="Erledigt">
+                  <span className="quest-check" role="img" aria-label="Erledigt">
                     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>

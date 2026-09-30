@@ -151,7 +151,7 @@ export function HomeStatus({ user, store, onUserUpdate }: Props) {
               Deine Stimmkraft konnte gerade nicht geladen werden. Schau gleich nochmal rein.
             </p>
           ) : (
-            <div className="hs-skeleton" aria-label="Lädt …">
+            <div className="hs-skeleton" role="status" aria-label="Lädt …">
               <span className="skeleton" style={{ width: 120, height: 40 }} />
               <span className="skeleton" style={{ width: '80%', height: 14 }} />
             </div>

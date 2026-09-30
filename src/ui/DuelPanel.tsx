@@ -130,7 +130,7 @@ export function DuelPanel({ user, store }: Props) {
                 </span>
               </div>
 
-              <div className="duel-vs" aria-label={`${beerName(myBeerId)} gegen ${beerName(oppBeerId)}`}>
+              <div className="duel-vs" role="img" aria-label={`${beerName(myBeerId)} gegen ${beerName(oppBeerId)}`}>
                 <div className="duel-side">
                   <BeerBadge beerId={myBeerId} size="lg" />
                   <span className="duel-side-name">{beerName(myBeerId)}</span>

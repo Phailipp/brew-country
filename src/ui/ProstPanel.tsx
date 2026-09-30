@@ -164,7 +164,7 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
         ) : (
           <div className="prost-meter">
             <span className="muted">Check-ins heute</span>
-            <span className="prost-dots" aria-label={`${dailyCount} von ${GAME.DRINK_DAILY_CAP}`}>
+            <span className="prost-dots" role="img" aria-label={`${dailyCount} von ${GAME.DRINK_DAILY_CAP}`}>
               {Array.from({ length: GAME.DRINK_DAILY_CAP }, (_, i) => (
                 <span key={i} className={i < dailyCount ? 'on' : ''} />
               ))}
