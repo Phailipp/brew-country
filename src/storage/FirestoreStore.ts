@@ -32,7 +32,7 @@ import { CHECKIN_STEPS, PUBLIC_HOME_STEPS, snapToLattice } from '../domain/priva
 import { GAME } from '../config/constants';
 import type { StorageInterface } from './StorageInterface';
 import { MAX_VISITS_PER_DAY, nextVisitSlot, utcDay, visitBlocker, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
-import { hourFloor, newVisitSalt, visitDocId, venuePlayerId } from '../domain/visitIds';
+import { hourFloor, newVisitSalt, PUBLIC_VISIT_TTL_MS, utcWeek, visitDocId, venuePlayerId } from '../domain/visitIds';
 
 const COLLECTIONS = {
   users: 'bc_users',
@@ -80,7 +80,8 @@ export class FirestoreStore implements StorageInterface {
 
   async saveUser(user: User): Promise<void> {
     const db = getFirestoreDb();
-    await setDoc(doc(db, COLLECTIONS.users, user.id), clean(user));
+    // merge: never wipe fields this client does not know about
+    await setDoc(doc(db, COLLECTIONS.users, user.id), clean(user), { merge: true });
   }
 
   /** Public (coarse) profiles of all players — private records are owner-only. */
@@ -313,7 +314,7 @@ export class FirestoreStore implements StorageInterface {
 
     const day = utcDay(now);
     const salt = await this.visitSalt(userId);
-    const pid = await venuePlayerId(salt, venue.id);
+    const pid = await venuePlayerId(salt, venue.id, utcWeek(now));
     // Another device may have used a slot already: try the next free one
     for (let slot = nextVisitSlot(mine, now); slot >= 0 && slot < MAX_VISITS_PER_DAY; slot++) {
       const id = await visitDocId(salt, day, slot);
@@ -321,6 +322,7 @@ export class FirestoreStore implements StorageInterface {
       const batch = writeBatch(db);
       batch.set(doc(db, COLLECTIONS.venueVisits, id), {
         venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: hourFloor(now), pid, day, slot,
+        expiresAt: Timestamp.fromMillis(now + PUBLIC_VISIT_TTL_MS),
       });
       batch.set(doc(db, COLLECTIONS.users, userId, 'visits', id), {
         venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now,
@@ -342,12 +344,21 @@ export class FirestoreStore implements StorageInterface {
     const cached = this.saltCache.get(userId);
     if (cached) return cached;
     const db = getFirestoreDb();
-    const ref = doc(db, COLLECTIONS.users, userId);
-    const snap = await getDoc(ref);
-    let salt = snap.exists() ? (snap.data().visitSalt as string | undefined) : undefined;
+    const ref = doc(db, 'bc_secrets', userId);
+    const read = async () => {
+      const snap = await getDoc(ref);
+      return snap.exists() ? (snap.data().visitSalt as string | undefined) : undefined;
+    };
+    let salt = await read();
     if (!salt) {
-      salt = newVisitSalt();
-      await updateDoc(ref, { visitSalt: salt });
+      try {
+        salt = newVisitSalt();
+        await setDoc(ref, { visitSalt: salt });
+      } catch {
+        // another device created it first (set-once rule): use theirs
+        salt = await read();
+        if (!salt) throw new Error('Pseudonym konnte nicht angelegt werden.');
+      }
     }
     this.saltCache.set(userId, salt);
     return salt;

@@ -35,7 +35,7 @@ import { weeklyChallenges } from './domain/weeklyChallenges';
 import { BreweryCockpit } from './ui/BreweryCockpit';
 import { WeeklyPanel } from './ui/WeeklyPanel';
 import { useVenues, VENUE_MIN_ZOOM } from './hooks/useVenues';
-import { venuePlayerId } from './domain/visitIds';
+import { utcWeek, venuePlayerId } from './domain/visitIds';
 import { nearestCity } from './domain/worldCities';
 import { CHECKIN_RADIUS_M, tilesForViewport, type VenueCheckin } from './domain/venues';
 import { loadVenues } from './services/venueService';
@@ -702,7 +702,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       const rival = pool[Math.floor(Math.random() * pool.length)].id;
       const n = Math.floor(Math.random() * 7);
       for (let i = 0; i < n; i++) {
-        const player = await venuePlayerId(`sim_${Math.floor(Math.random() * 40)}`, v.id);
+        const player = await venuePlayerId(`sim_${Math.floor(Math.random() * 40)}`, v.id, utcWeek(now));
         visits.push({
           id: `sim_${v.id}_${now}_${i}`,
           player,
@@ -1010,7 +1010,7 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
       } else {
         // Confirm first, so we never end up with half-deleted data
         await reauthenticate(password);
-        await deleteMyAccount(user.id, user.beerId);
+        await deleteMyAccount(user.id);
         await deleteLocalData();
       }
       showToast('👋', 'Dein Konto und alle Daten wurden gelöscht.', 'success');

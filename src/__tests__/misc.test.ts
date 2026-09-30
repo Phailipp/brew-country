@@ -26,7 +26,8 @@ describe('visit ids', () => {
     expect(a).toMatch(/^[0-9A-F]{64}$/);
     expect(await visitDocId(salt, 20361, 0)).toBe(a);
     expect(await visitDocId('b'.repeat(64), 20361, 0)).not.toBe(a);
-    expect(await venuePlayerId(salt, 'n1')).not.toBe(await venuePlayerId(salt, 'n2'));
+    expect(await venuePlayerId(salt, 'n1', 2908)).not.toBe(await venuePlayerId(salt, 'n2', 2908));
+    expect(await venuePlayerId(salt, 'n1', 2908)).not.toBe(await venuePlayerId(salt, 'n1', 2909));
   });
   it('generates 64-char lowercase hex salts that differ', () => {
     const a = newVisitSalt();

@@ -23,9 +23,10 @@ Reihenfolge von oben nach unten. ✅ = im Code erledigt, ☐ = Aufgabe für den 
   - Email-Enumeration-Protection aktivieren und eine Passwort-Richtlinie setzen.
   - Den Telefon-Provider **aus** lassen.
 - ☐ App Check aktivieren (Web: reCAPTCHA Enterprise, iOS: App Attest). Zuerst im Monitor-Modus, nach 3–7 Tagen erzwingen.
-- ☐ PITR und tägliche Backups. TTL-Policies setzen:
-  - `bc_drinkVotes.expiresAt` und `bc_otrVotes.expiresAt`
-  - optional `bc_clientErrors.at` (30 Tage)
+- ☐ PITR und tägliche Backups. TTL-Policies setzen (Pflicht, die Datenschutzerklärung verspricht die Löschung):
+  - `bc_venueVisits.expiresAt` (öffentliche Besuche, 35 Tage)
+  - `bc_clientErrors.expiresAt` (Crash-Reports, 30 Tage)
+  - `bc_drinkVotes.expiresAt` und `bc_otrVotes.expiresAt` (Legacy)
 - ☐ Storage nicht aktivieren oder mit deny-all-Regeln betreiben.
 - ☐ Service Account mit den Rollen „Firebase Rules Admin“ und „Cloud Datastore Index Admin“ als Repository-Secret `FIREBASE_SERVICE_ACCOUNT` hinterlegen. Dann deployt `deploy.yml` Regeln und Indexe automatisch nach dem Client.
 

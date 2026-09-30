@@ -16,6 +16,8 @@ import {
   orderBy,
   limitToLast,
   arrayRemove,
+  updateDoc,
+  writeBatch,
   onSnapshot,
   serverTimestamp,
   type Unsubscribe,
@@ -510,45 +512,57 @@ export async function reauthenticate(password: string): Promise<void> {
   await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
 }
 
-export async function deleteMyAccount(uid: string, beerId: string): Promise<void> {
+export async function deleteMyAccount(uid: string): Promise<void> {
   const db = getFirestoreDb();
-  const del = (path: string, id: string) => deleteDoc(doc(db, path, id)).catch(() => {});
+  const failures: unknown[] = [];
+  // Every step is attempted; the profile, the pseudonym salt and the login are
+  // only removed when everything else is gone, so a retry can finish the job.
+  const attempt = (p: Promise<unknown>) => p.catch((e) => { failures.push(e); });
 
   // Friendships incl. chat history
   const friends = await getDocs(query(collection(db, 'friendships'), where('userIds', 'array-contains', uid)));
   for (const f of friends.docs) {
     const msgs = await getDocs(collection(db, 'friendships', f.id, 'messages'));
-    await Promise.all(msgs.docs.map((m) => deleteDoc(m.ref).catch(() => {})));
-    await deleteDoc(f.ref).catch(() => {});
+    await Promise.all(msgs.docs.map((m) => attempt(deleteDoc(m.ref))));
+    await attempt(deleteDoc(f.ref));
   }
 
-  // Check-ins and flags
+  // Legacy check-ins and flags
   for (const coll of ['bc_drinkVotes', 'bc_otrVotes']) {
     const mine = await getDocs(query(collection(db, coll), where('userId', '==', uid)));
-    await Promise.all(mine.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+    await Promise.all(mine.docs.map((d) => attempt(deleteDoc(d.ref))));
   }
 
   // Venue visits: the private passport lists the ids of the public visits
+  // (the public delete rule needs the salt, so it goes before the salt)
   const visits = await getDocs(collection(db, 'bc_users', uid, 'visits'));
   for (const v of visits.docs) {
-    await deleteDoc(doc(db, 'bc_venueVisits', v.id)).catch(() => {});
-    await deleteDoc(v.ref).catch(() => {});
+    await attempt(deleteDoc(doc(db, 'bc_venueVisits', v.id)));
+    await attempt(deleteDoc(v.ref));
   }
 
   // Own beer suggestions
   const subs = await getDocs(query(collection(db, 'beerSubmissions'), where('submittedBy', '==', uid)));
-  await Promise.all(subs.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+  await Promise.all(subs.docs.map((d) => attempt(deleteDoc(d.ref))));
 
-  // Team membership
-  await setDoc(doc(db, 'bc_teams', `team_${beerId}`), { memberUserIds: arrayRemove(uid) }, { merge: true }).catch(() => {});
+  // Every team the player ever joined
+  const teams = await getDocs(query(collection(db, 'bc_teams'), where('memberUserIds', 'array-contains', uid)));
+  await Promise.all(teams.docs.map((t) => attempt(updateDoc(t.ref, { memberUserIds: arrayRemove(uid) }))));
 
-  await Promise.all([
-    del('presence', uid),
-    del('questStates', uid),
-    del('bc_userStats', uid),
-    del('users', uid),
-  ]);
-  await del('bc_users', uid);
+  await Promise.all(['presence', 'questStates', 'users'].map((c) => attempt(deleteDoc(doc(db, c, uid)))));
+
+  if (failures.length > 0) {
+    console.warn('[account] deletion incomplete:', failures);
+    throw Object.assign(new Error('Account deletion incomplete'), { code: 'brew/deletion-incomplete' });
+  }
+
+  // Profile, rate-limit counter and salt together (the rules allow deleting
+  // the counter only in the same write as the profile)
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'bc_userStats', uid));
+  batch.delete(doc(db, 'bc_secrets', uid));
+  batch.delete(doc(db, 'bc_users', uid));
+  await batch.commit();
 
   const current = getFirebaseAuth().currentUser;
   if (current && current.uid === uid) await deleteUser(current);

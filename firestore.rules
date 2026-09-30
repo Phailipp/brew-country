@@ -42,6 +42,15 @@ service cloud.firestore {
     function friendshipId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
 
     // ── private profile (exact home, email) ──────────────
+    // Secret pseudonym salt: readable by its owner only, not even by admins,
+    // so nobody can map public visits back to a person. Set once, never changed.
+    match /bc_secrets/{uid} {
+      allow read: if isUser(uid);
+      allow create: if isUser(uid) && incoming().keys().hasOnly(['visitSalt']) && validSalt(incoming().visitSalt);
+      allow update: if false;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
     // Private passport: the player's own visits (venue names included)
     match /bc_users/{uid}/visits/{visit} {
       allow read, delete: if signedIn() && request.auth.uid == uid;
@@ -49,7 +58,13 @@ service cloud.firestore {
         && incoming().keys().hasOnly(['venueId', 'venueName', 'tile', 'beerId', 'alcoholFree', 'createdAt'])
         && validVisitCore(incoming())
         && incoming().venueName is string && incoming().venueName.size() <= 80
-        && existsAfter(/databases/$(database)/documents/bc_venueVisits/$(visit));
+        // must mirror the player's own public visit written in the same batch
+        && existsAfter(/databases/$(database)/documents/bc_venueVisits/$(visit))
+        && visit == visitId(mySalt(), publicVisit(visit).day, publicVisit(visit).slot)
+        && publicVisit(visit).venueId == incoming().venueId
+        && publicVisit(visit).beerId == incoming().beerId
+        && publicVisit(visit).tile == incoming().tile
+        && publicVisit(visit).alcoholFree == incoming().alcoholFree;
       allow update: if false;
     }
 
@@ -57,18 +72,14 @@ service cloud.firestore {
       allow read: if isUser(uid) || isAdmin();
       allow create: if isUser(uid)
         && incoming().keys().hasOnly(['id', 'phone', 'email', 'nickname', 'createdAt', 'lastActiveAt',
-            'homeLat', 'homeLon', 'beerId', 'standYourGroundEnabled', 'ageVerified', 'homeChangedAt', 'visitSalt'])
+            'homeLat', 'homeLon', 'beerId', 'standYourGroundEnabled', 'ageVerified', 'homeChangedAt'])
         && incoming().id == uid
-        && (!('visitSalt' in incoming()) || validSalt(incoming().visitSalt))
         && near(incoming().createdAt, 10 * 60 * 1000)
         && incoming().ageVerified == true
         && validBeerId(incoming().beerId)
         && onEarth(incoming().homeLat, incoming().homeLon);
       allow update: if isUser(uid)
         && !changed().hasAny(['id', 'createdAt', 'ageVerified'])
-        // the visit salt is set once and never changes (it keys all pseudonyms)
-        && (!changed().hasAny(['visitSalt'])
-            || (existing().get('visitSalt', null) == null && validSalt(incoming().visitSalt)))
         // homeChangedAt may only move together with the home itself
         && (!changed().hasAny(['homeChangedAt']) || changed().hasAny(['homeLat', 'homeLon']))
         && validBeerId(incoming().beerId)
@@ -118,13 +129,16 @@ service cloud.firestore {
         && incoming().dayCount is int
         && incoming().dayCount == ((resource != null && existing().day == incoming().day) ? existing().dayCount + 1 : 1)
         && incoming().dayCount <= 12;
-      // deleting would reset cooldown + daily cap → admin/server only
-      allow delete: if isAdmin();
+      // deleting would reset cooldown + daily cap → admin, or together with
+      // the player's own profile (account deletion, same batch)
+      allow delete: if isAdmin()
+        || (isUser(uid) && !existsAfter(/databases/$(database)/documents/bc_users/$(uid)));
     }
 
     // ── check-ins (drink votes) ──────────────────────────
     match /bc_drinkVotes/{voteId} {
-      allow read: if verified();
+      // uid + position: only the owner (territories come from pubs + coarse homes)
+      allow read: if (verified() && existing().userId == request.auth.uid) || isAdmin();
       allow create: if isUser(incoming().userId)
         && incoming().keys().hasOnly(['id', 'userId', 'beerId', 'lat', 'lon', 'placeKey', 'createdAt',
             'expiresAt', 'gpsAccuracyM', 'proofType', 'proofPhotoUrl'])
@@ -146,18 +160,22 @@ service cloud.firestore {
     }
 
     // ── venue visits (pubs, bars, beer gardens from OpenStreetMap) ──
-    // Public and pseudonymous. Every player has a secret random salt in their
-    // private profile (readable only by them). The public document never
+    // Public and pseudonymous. Every player has a secret random salt in
+    // bc_secrets/{uid} (readable only by them). The public document never
     // carries the uid:
     //   id  = sha256(salt_day_slot)  → max 2 visits per UTC day (slots 0–1)
-    //   pid = sha256(salt|venueId)   → one visit per player/venue/day countable,
-    //                                  but not linkable across venues or to a uid
+    //   pid = sha256(salt|venueId|week) → one visit per player/venue/day countable,
+    //                                  not linkable across venues, weeks or to a uid
     // The public time is rounded down to the hour.
     function validSalt(s) { return s is string && s.matches('^[0-9a-f]{64}$'); }
-    function mySalt() { return get(/databases/$(database)/documents/bc_users/$(request.auth.uid)).data.get('visitSalt', null); }
+    function mySalt() { return get(/databases/$(database)/documents/bc_secrets/$(request.auth.uid)).data.get('visitSalt', null); }
+    // int(): '/' on ints may yield a float or an int; days are positive, so truncation = floor
+    function utcWeek(day) { return int((day + 3) / 7); }
+    function publicVisit(id) { return getAfter(/databases/$(database)/documents/bc_venueVisits/$(id)).data; }
     function utcDay() { return math.floor(nowMs() / 86400000); }
     function visitId(salt, day, slot) { return hashing.sha256(salt + '_' + string(day) + '_' + string(slot)).toHexString(); }
-    function venuePid(salt, venueId) { return hashing.sha256(salt + '|' + venueId).toHexString(); }
+    // Weekly pseudonym: countable per week, never a long-term regular's profile
+    function venuePid(salt, venueId, week) { return hashing.sha256(salt + '|' + venueId + '|' + string(week)).toHexString(); }
     function validVisitFields(v) {
       return v.venueId is string && v.venueId.matches('^[nwr][0-9]{1,15}$')
         && v.tile is string && v.tile.matches('^-?[0-9]{1,5}_-?[0-9]{1,5}$')
@@ -171,14 +189,18 @@ service cloud.firestore {
     match /bc_venueVisits/{visit} {
       allow read: if verified();
       allow create: if verified()
-        && incoming().keys().hasOnly(['venueId', 'tile', 'beerId', 'alcoholFree', 'createdAt', 'pid', 'day', 'slot'])
+        && incoming().keys().hasOnly(['venueId', 'tile', 'beerId', 'alcoholFree', 'createdAt', 'pid', 'day', 'slot', 'expiresAt'])
+        // deleted by a Firestore TTL policy after ~35 days (scoring uses 30)
+        && incoming().expiresAt is timestamp
+        && incoming().expiresAt > request.time + duration.value(34, 'd')
+        && incoming().expiresAt < request.time + duration.value(36, 'd')
         && validVisitFields(incoming())
         && hourNow(incoming().createdAt)
         && incoming().day == utcDay()
         && incoming().slot is int && incoming().slot >= 0 && incoming().slot <= 1
         && validSalt(mySalt())
         && visit == visitId(mySalt(), incoming().day, incoming().slot)
-        && incoming().pid == venuePid(mySalt(), incoming().venueId);
+        && incoming().pid == venuePid(mySalt(), incoming().venueId, utcWeek(incoming().day));
       allow update: if false;
       allow delete: if (verified() && validSalt(mySalt()) && visit == visitId(mySalt(), existing().day, existing().slot))
         || isAdmin();
@@ -196,7 +218,7 @@ service cloud.firestore {
           && near(incoming().createdAt, 2 * 60 * 1000)
           && incoming().expiresAt == incoming().createdAt + 14 * 24 * 3600 * 1000;
       }
-      allow read: if verified();
+      allow read: if (verified() && existing().userId == request.auth.uid) || isAdmin();
       allow create: if isUser(incoming().userId) && validOtr();
       // a slot can be reused once its flag has expired
       allow update: if isUser(incoming().userId) && existing().userId == incoming().userId
@@ -336,8 +358,11 @@ service cloud.firestore {
 
     // ── client crash reports (no user id, no location; admin-readable only) ──
     match /bc_clientErrors/{id} {
-      allow create: if signedIn()
-        && incoming().keys().hasOnly(['kind', 'message', 'stack', 'version', 'ua', 'at'])
+      allow create: if verified()
+        && incoming().keys().hasOnly(['kind', 'message', 'stack', 'version', 'ua', 'at', 'expiresAt'])
+        && incoming().expiresAt is timestamp
+        && incoming().expiresAt > request.time + duration.value(29, 'd')
+        && incoming().expiresAt < request.time + duration.value(31, 'd')
         && incoming().kind in ['error', 'rejection', 'render']
         && incoming().message is string && incoming().message.size() <= 500
         && incoming().stack is string && incoming().stack.size() <= 4000

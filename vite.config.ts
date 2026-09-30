@@ -14,11 +14,12 @@ const CSP = [
   "script-src 'self'",
   // React inline style attributes and MapLibre's dynamic styles
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://tiles.openfreemap.org https://s3.amazonaws.com",
+  "img-src 'self' data: blob: https://tiles.openfreemap.org https://s3.amazonaws.com/elevation-tiles-prod/",
   "font-src 'self' data:",
   "worker-src 'self' blob:",
-  "connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com https://overpass-api.de https://overpass.kumi.systems https://*.googleapis.com https://brew-country.firebaseapp.com",
-  "frame-src https://brew-country.firebaseapp.com",
+  // Only the exact Google endpoints (a wildcard would allow any Cloud Storage bucket)
+  "connect-src 'self' https://tiles.openfreemap.org https://s3.amazonaws.com/elevation-tiles-prod/ https://overpass-api.de https://overpass.kumi.systems https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+  "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

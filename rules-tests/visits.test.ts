@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, collection, setDoc, deleteDoc, writeBatch, type Firestore } from 'firebase/firestore';
-import { createEnv, userDb, unverifiedDb, anonDb, seed, privateProfile } from './helpers';
-import { visitDocId, venuePlayerId, hourFloor } from '../src/domain/visitIds';
+import { doc, getDoc, getDocs, collection, setDoc, deleteDoc, writeBatch, Timestamp, type Firestore } from 'firebase/firestore';
+import { adminDb, createEnv, userDb, unverifiedDb, anonDb, seed, privateProfile } from './helpers';
+import { visitDocId, venuePlayerId, hourFloor, utcWeek, PUBLIC_VISIT_TTL_MS } from '../src/domain/visitIds';
 
 let env: RulesTestEnvironment;
 beforeAll(async () => { env = await createEnv(); });
@@ -13,8 +13,10 @@ beforeEach(async () => {
   await env.clearFirestore();
   // Players have a secret salt in their private profile
   await seed(env, async (db) => {
-    await setDoc(doc(db, 'bc_users/alice'), privateProfile('alice', { visitSalt: SALT.alice }));
-    await setDoc(doc(db, 'bc_users/bob'), privateProfile('bob', { visitSalt: SALT.bob }));
+    for (const uid of ['alice', 'bob']) {
+      await setDoc(doc(db, `bc_users/${uid}`), privateProfile(uid));
+      await setDoc(doc(db, `bc_secrets/${uid}`), { visitSalt: SALT[uid] });
+    }
   });
 });
 
@@ -30,7 +32,8 @@ async function publicVisit(uid: string, slot: number, over: Record<string, unkno
       beerId: 'augustiner',
       alcoholFree: false,
       createdAt: hourFloor(Date.now()),
-      pid: await venuePlayerId(salt, venueId),
+      pid: await venuePlayerId(salt, venueId, utcWeek(Date.now())),
+      expiresAt: Timestamp.fromMillis(Date.now() + PUBLIC_VISIT_TTL_MS),
       day: today(),
       slot,
       ...over,
@@ -68,7 +71,6 @@ describe('bc_venueVisits', () => {
     await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_venueVisits', v.id), v.data));
   });
   it('denies visits before a salt exists', async () => {
-    await seed(env, (db) => setDoc(doc(db, 'bc_users/carol'), privateProfile('carol')));
     const v = await publicVisit('carol', 0, {}, 'c'.repeat(64));
     await assertFails(setDoc(doc(userDb(env, 'carol'), 'bc_venueVisits', v.id), v.data));
   });
@@ -86,7 +88,7 @@ describe('bc_venueVisits', () => {
     await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_venueVisits', v.id), v.data));
   });
   it('denies a forged pseudonym', async () => {
-    const v = await publicVisit('alice', 0, { pid: await venuePlayerId(SALT.bob, 'n123') });
+    const v = await publicVisit('alice', 0, { pid: await venuePlayerId(SALT.bob, 'n123', utcWeek(Date.now())) });
     await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_venueVisits', v.id), v.data));
   });
   it('denies another day', async () => {
@@ -149,18 +151,46 @@ describe('private passport (bc_users/{uid}/visits)', () => {
   });
 });
 
-describe('visit salt in the private profile', () => {
-  it('can be set once by the owner', async () => {
-    await seed(env, (db) => setDoc(doc(db, 'bc_users/carol'), privateProfile('carol')));
+describe('visit salt (bc_secrets)', () => {
+  it('can be set once by the owner and never changed', async () => {
     const db = userDb(env, 'carol');
-    await assertSucceeds(setDoc(doc(db, 'bc_users/carol'), { visitSalt: 'c'.repeat(64) }, { merge: true }));
-    await assertFails(setDoc(doc(db, 'bc_users/carol'), { visitSalt: 'd'.repeat(64) }, { merge: true }));
+    await assertSucceeds(setDoc(doc(db, 'bc_secrets/carol'), { visitSalt: 'c'.repeat(64) }));
+    await assertFails(setDoc(doc(db, 'bc_secrets/carol'), { visitSalt: 'd'.repeat(64) }));
   });
-  it('must be 64 hex chars', async () => {
-    await seed(env, (db) => setDoc(doc(db, 'bc_users/carol'), privateProfile('carol')));
-    await assertFails(setDoc(doc(userDb(env, 'carol'), 'bc_users/carol'), { visitSalt: 'carol' }, { merge: true }));
+  it('must be 64 hex chars and cannot be set for someone else', async () => {
+    await assertFails(setDoc(doc(userDb(env, 'carol'), 'bc_secrets/carol'), { visitSalt: 'carol' }));
+    await assertFails(setDoc(doc(userDb(env, 'carol'), 'bc_secrets/dave'), { visitSalt: 'c'.repeat(64) }));
   });
-  it('is not readable by others', async () => {
-    await assertFails(getDoc(doc(userDb(env, 'bob'), 'bc_users/alice')));
+  it('is readable by its owner only, not by other players or admins', async () => {
+    await assertSucceeds(getDoc(doc(userDb(env, 'alice'), 'bc_secrets/alice')));
+    await assertFails(getDoc(doc(userDb(env, 'bob'), 'bc_secrets/alice')));
+    await assertFails(getDoc(doc(adminDb(env), 'bc_secrets/alice')));
+  });
+});
+
+describe('public visit hardening', () => {
+  it('requires an expiry for the TTL policy', async () => {
+    const v = await publicVisit('alice', 0);
+    const { expiresAt: _drop, ...noTtl } = v.data;
+    void _drop;
+    await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_venueVisits', v.id), noTtl));
+    await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_venueVisits', v.id), { ...v.data, expiresAt: Timestamp.fromMillis(Date.now() + 400 * 86_400_000) }));
+  });
+  it('uses a weekly pseudonym (last week\u2019s pid is rejected)', async () => {
+    const v = await publicVisit('alice', 0, { pid: await venuePlayerId(SALT.alice, 'n123', utcWeek(Date.now()) - 1) });
+    await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_venueVisits', v.id), v.data));
+  });
+  it('denies a passport entry that points at somebody else\u2019s visit or lies about it', async () => {
+    const bobVisit = await publicVisit('bob', 0);
+    await seed(env, (db) => setDoc(doc(db, 'bc_venueVisits', bobVisit.id), bobVisit.data));
+    const entry = { venueId: 'n123', venueName: 'Fake', tile: '962_231', beerId: 'augustiner', alcoholFree: false, createdAt: Date.now() };
+    await assertFails(setDoc(doc(userDb(env, 'alice'), `bc_users/alice/visits/${bobVisit.id}`), entry));
+    // own visit, but a different beer in the passport than in the public record
+    const db = userDb(env, 'alice');
+    const own = await publicVisit('alice', 0);
+    const b = writeBatch(db);
+    b.set(doc(db, 'bc_venueVisits', own.id), own.data);
+    b.set(doc(db, `bc_users/alice/visits/${own.id}`), { ...entry, beerId: 'paulaner' });
+    await assertFails(b.commit());
   });
 });

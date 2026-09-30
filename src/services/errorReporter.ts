@@ -4,7 +4,7 @@
  * to `bc_clientErrors` (create-only, admin-readable, no user id, no location).
  * At most a few reports per session, so a crash loop cannot run up costs.
  */
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { getFirebaseAuth } from '../config/firebaseAuth';
 import { getFirestoreDb } from '../config/firestore';
 
@@ -28,6 +28,8 @@ async function report(kind: Kind, message: string, stack?: string): Promise<void
       version: __APP_VERSION__.slice(0, 40),
       ua: navigator.userAgent.slice(0, 200),
       at: serverTimestamp(),
+      // deleted by a Firestore TTL policy
+      expiresAt: Timestamp.fromMillis(Date.now() + 30 * 86_400_000),
     });
   } catch {
     // reporting must never throw

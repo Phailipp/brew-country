@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 import type { User, OnTheRoadVote, DrinkVote, Duel, DuelMessage, Team, DuelOutcome } from '../domain/types';
 import type { StorageInterface } from './StorageInterface';
 import { nextVisitSlot, visitBlocker, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
-import { venuePlayerId } from '../domain/visitIds';
+import { utcWeek, venuePlayerId } from '../domain/visitIds';
 import { getNow } from '../domain/clock';
 
 class BrewCountryDB extends Dexie {
@@ -180,7 +180,7 @@ export class IndexedDBStore implements StorageInterface {
     const id = `${userId}_${Math.floor(now / 86_400_000)}_${slot}`;
     const visit: MyVisit = { id, venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now };
     // Hash first: a pending non-IndexedDB promise would auto-commit the transaction
-    const player = await venuePlayerId(userId, venue.id);
+    const player = await venuePlayerId(userId, venue.id, utcWeek(now));
     await this.db.transaction('rw', this.db.venueVisits, this.db.myVisits, async () => {
       await this.db.venueVisits.put({
         id, player, venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: now,
