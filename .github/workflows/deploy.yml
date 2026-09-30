@@ -48,3 +48,33 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Firestore rules + indexes, strictly AFTER the new client is live (older
+  # clients would be rejected by stricter rules). Runs only when the app is
+  # online and a service account is configured as a repository secret
+  # FIREBASE_SERVICE_ACCOUNT (roles: Firebase Rules Admin, Cloud Datastore Index Admin).
+  deploy-firestore:
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SITE_ONLINE == 'true' && env.FIREBASE_SERVICE_ACCOUNT != ''
+      - uses: actions/setup-node@v4
+        if: env.SITE_ONLINE == 'true' && env.FIREBASE_SERVICE_ACCOUNT != ''
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        if: env.SITE_ONLINE == 'true' && env.FIREBASE_SERVICE_ACCOUNT != ''
+        with:
+          distribution: temurin
+          java-version: 21
+      - if: env.SITE_ONLINE == 'true' && env.FIREBASE_SERVICE_ACCOUNT != ''
+        run: npm ci && npm run test:rules
+      - name: Deploy rules and indexes
+        if: env.SITE_ONLINE == 'true' && env.FIREBASE_SERVICE_ACCOUNT != ''
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" npx firebase deploy --only firestore:rules,firestore:indexes --project brew-country --non-interactive

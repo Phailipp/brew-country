@@ -332,6 +332,20 @@ service cloud.firestore {
       allow delete: if isAdmin() || (signedIn() && existing().submittedBy == request.auth.uid);
     }
 
+    // ── client crash reports (no user id, no location; admin-readable only) ──
+    match /bc_clientErrors/{id} {
+      allow create: if signedIn()
+        && incoming().keys().hasOnly(['kind', 'message', 'stack', 'version', 'ua', 'at'])
+        && incoming().kind in ['error', 'rejection', 'render']
+        && incoming().message is string && incoming().message.size() <= 500
+        && incoming().stack is string && incoming().stack.size() <= 4000
+        && incoming().version is string && incoming().version.size() <= 40
+        && incoming().ua is string && incoming().ua.size() <= 200
+        && incoming().at == request.time;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
     // ── dev simulation votes ─────────────────────────────
     match /legacyVotes/{id} {
       allow read: if verified();
