@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { User, Friendship, UserPresence } from '../domain/types';
 import type { StorageInterface } from '../storage/StorageInterface';
-import { isFirebaseConfigured } from '../config/firebase';
 import { GAME } from '../config/constants';
 import { BEER_MAP } from '../domain/beers';
 import { appEvents } from '../domain/events';
@@ -10,7 +9,6 @@ import {
   removeFriend,
   acceptFriend,
   declineFriend,
-  subscribeFriends,
   makeFriendshipId,
   getUserProfile,
 } from '../services/firestoreService';
@@ -19,9 +17,10 @@ import './FriendsPanel.css';
 interface Props {
   user: User;
   store: StorageInterface;
+  /** Live friendships, subscribed once in the app shell. */
+  friendships: Friendship[];
   onOpenChat: (friendshipId: string, friendUser: User) => void;
   friendPresence: Map<string, UserPresence>;
-  onFriendIdsChange: (ids: string[]) => void;
   unreadCounts?: Map<string, number>;
   onLocateFriend?: (lat: number, lon: number) => void;
 }
@@ -34,42 +33,21 @@ function formatLastActive(lastSeen: number): string {
   return `Vor ${Math.floor(diff / 86400_000)} Tagen`;
 }
 
-export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriendIdsChange, unreadCounts, onLocateFriend }: Props) {
-  const [friendships, setFriendships] = useState<Friendship[]>([]);
+export function FriendsPanel({ user, store, friendships, onOpenChat, friendPresence, unreadCounts, onLocateFriend }: Props) {
   const [friendUsers, setFriendUsers] = useState<Map<string, User>>(new Map());
   const [addInput, setAddInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
-  const prevFriendIdsRef = useRef<string>('');
-
-  // Gate: Firebase not configured
-  if (!isFirebaseConfigured()) {
-    return (
-      <div className="friends-panel">
-        <h3>Freunde</h3>
-        <p className="friends-disabled">Firebase nicht konfiguriert</p>
-      </div>
-    );
-  }
-
-  // Subscribe to friendships (real-time)
-  useEffect(() => {
-    const unsub = subscribeFriends(user.id, (fs) => {
-      setFriendships(fs);
-    });
-    return () => unsub();
-  }, [user.id]);
 
   // Resolve friend user data from Firestore when friendships change
   useEffect(() => {
+    let cancelled = false;
     const loadFriendUsers = async () => {
       const map = new Map<string, User>();
-      const friendIds: string[] = [];
 
       for (const fs of friendships) {
         const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
-        friendIds.push(friendId);
 
         let friendUser = await store.getUser(friendId);
         if (!friendUser) {
@@ -93,17 +71,14 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
         }
       }
 
-      setFriendUsers(map);
-
-      const idsStr = friendIds.sort().join(',');
-      if (idsStr !== prevFriendIdsRef.current) {
-        prevFriendIdsRef.current = idsStr;
-        onFriendIdsChange(friendIds);
-      }
+      if (!cancelled) setFriendUsers(map);
     };
 
-    loadFriendUsers();
-  }, [friendships, user.id, store, onFriendIdsChange]);
+    loadFriendUsers().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [friendships, user.id, store]);
 
   // Split friendships into categories
   const incomingRequests = friendships.filter(

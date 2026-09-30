@@ -26,8 +26,7 @@ export function haversineDistanceKm(
  */
 export const DACH_CENTER = { lat: 48.5, lon: 11.5 };
 
-/** @deprecated Use DACH_CENTER instead */
-export const MUNICH_CENTER = DACH_CENTER;
+export const MUNICH_CENTER = { lat: 48.137, lon: 11.575 };
 
 /**
  * Default bounding box: entire DACH region
@@ -49,30 +48,59 @@ export function getDefaultBoundingBox(): GridSpec {
 }
 
 /**
- * Precompute all grid cells for a given GridSpec.
+ * Reference latitude for the longitude step of the global grid.
+ * Using one fixed reference (instead of the viewport centre) keeps every
+ * cell boundary anchored to the same global lattice, so territories no
+ * longer shift when the map is panned.
+ */
+export const GRID_REF_LAT = 48.5;
+
+/** Degree step of one grid cell (lat / lon) for a given cell size. */
+export function cellStepDeg(cellSizeMeters: number): { dLat: number; dLon: number } {
+  return {
+    dLat: cellSizeMeters / METERS_PER_DEG_LAT,
+    dLon: cellSizeMeters / (METERS_PER_DEG_LAT * Math.cos(GRID_REF_LAT * DEG_TO_RAD)),
+  };
+}
+
+/** Grid dimensions for a spec. */
+export function gridDims(spec: GridSpec): { rows: number; cols: number; dLat: number; dLon: number } {
+  const { dLat, dLon } = cellStepDeg(spec.cellSizeMeters);
+  return {
+    rows: Math.max(0, Math.round((spec.maxLat - spec.minLat) / dLat)),
+    cols: Math.max(0, Math.round((spec.maxLon - spec.minLon) / dLon)),
+    dLat,
+    dLon,
+  };
+}
+
+/** Row/col of the cell containing a point, or null if outside the grid. */
+export function cellAt(
+  spec: GridSpec, rows: number, cols: number, lat: number, lon: number,
+): { row: number; col: number } | null {
+  const { dLat, dLon } = cellStepDeg(spec.cellSizeMeters);
+  const row = Math.floor((lat - spec.minLat) / dLat);
+  const col = Math.floor((lon - spec.minLon) / dLon);
+  if (row < 0 || row >= rows || col < 0 || col >= cols) return null;
+  return { row, col };
+}
+
+/**
+ * Precompute all grid cells for a given GridSpec (uniform lat/lon lattice).
  */
 export function precomputeGrid(spec: GridSpec): { rows: number; cols: number; cells: GridCell[] } {
-  const dLat = spec.cellSizeMeters / METERS_PER_DEG_LAT;
-  const rows = Math.floor((spec.maxLat - spec.minLat) / dLat);
-
-  // Compute columns based on center latitude
-  const centerLat = (spec.minLat + spec.maxLat) / 2;
-  const dLon = spec.cellSizeMeters / (METERS_PER_DEG_LAT * Math.cos(centerLat * DEG_TO_RAD));
-  const cols = Math.floor((spec.maxLon - spec.minLon) / dLon);
-
-  const cells: GridCell[] = [];
+  const { rows, cols, dLat, dLon } = gridDims(spec);
+  const cells: GridCell[] = new Array(rows * cols);
 
   for (let r = 0; r < rows; r++) {
     const cellLat = spec.minLat + (r + 0.5) * dLat;
-    const rowDLon = spec.cellSizeMeters / (METERS_PER_DEG_LAT * Math.cos(cellLat * DEG_TO_RAD));
-
     for (let c = 0; c < cols; c++) {
-      cells.push({
+      cells[r * cols + c] = {
         row: r,
         col: c,
         centerLat: cellLat,
-        centerLon: spec.minLon + (c + 0.5) * rowDLon,
-      });
+        centerLon: spec.minLon + (c + 0.5) * dLon,
+      };
     }
   }
 
@@ -147,22 +175,25 @@ export function getViewportGridSpec(
 
   let cellSizeMeters = getCellSizeForZoom(zoom);
 
-  // Estimate cell count and auto-coarsen if necessary
-  const dLat = cellSizeMeters / METERS_PER_DEG_LAT;
-  const dLon = cellSizeMeters / (METERS_PER_DEG_LAT * Math.cos(centerLat * DEG_TO_RAD));
-  let rows = Math.floor((maxLat - minLat) / dLat);
-  let cols = Math.floor((maxLon - minLon) / dLon);
-  let estimated = rows * cols;
-
-  // Auto-coarsen: double cell size until under the cap
-  while (estimated > GAME.MAX_GRID_CELLS && cellSizeMeters < 10_000) {
+  // Auto-coarsen until under the cap
+  const estimate = (size: number) => {
+    const { dLat, dLon } = cellStepDeg(size);
+    return ((maxLat - minLat) / dLat) * ((maxLon - minLon) / dLon);
+  };
+  while (estimate(cellSizeMeters) > GAME.MAX_GRID_CELLS && cellSizeMeters < 10_000) {
     cellSizeMeters = Math.round(cellSizeMeters * 1.5);
-    const newDLat = cellSizeMeters / METERS_PER_DEG_LAT;
-    const newDLon = cellSizeMeters / (METERS_PER_DEG_LAT * Math.cos(centerLat * DEG_TO_RAD));
-    rows = Math.floor((maxLat - minLat) / newDLat);
-    cols = Math.floor((maxLon - minLon) / newDLon);
-    estimated = rows * cols;
   }
 
-  return { minLat, maxLat, minLon, maxLon, cellSizeMeters };
+  // Snap to the global lattice anchored at the DACH origin
+  const { dLat, dLon } = cellStepDeg(cellSizeMeters);
+  const snap = (v: number, origin: number, step: number, fn: (x: number) => number) =>
+    origin + fn((v - origin) / step) * step;
+
+  return {
+    minLat: snap(minLat, dach.minLat, dLat, Math.floor),
+    maxLat: snap(maxLat, dach.minLat, dLat, Math.ceil),
+    minLon: snap(minLon, dach.minLon, dLon, Math.floor),
+    maxLon: snap(maxLon, dach.minLon, dLon, Math.ceil),
+    cellSizeMeters,
+  };
 }

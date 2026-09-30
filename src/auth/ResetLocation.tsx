@@ -132,8 +132,8 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       };
 
       // Save to Firestore
-      if (isFirebaseConfigured()) {
-        await saveUserProfile(user.id, user.beerId, location.lat, location.lon);
+      if (isFirebaseConfigured() && !user.id.startsWith('dev_')) {
+        await saveUserProfile(user.id, user.beerId, location.lat, location.lon, user.createdAt);
       }
 
       onLocationSet(updatedUser);

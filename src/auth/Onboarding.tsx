@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { User } from '../domain/types';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './authContext';
 import { BEERS } from '../domain/beers';
 import { GAME } from '../config/constants';
 import { isFirebaseConfigured } from '../config/firebase';
@@ -158,8 +158,8 @@ export function Onboarding() {
     await completeOnboarding(user);
 
     // Also save public profile to Firestore so other users can see us on the map
-    if (isFirebaseConfigured() && location) {
-      saveUserProfile(userId, selectedBeerId, location.lat, location.lon).catch((e) =>
+    if (isFirebaseConfigured() && location && !userId.startsWith('dev_')) {
+      saveUserProfile(userId, selectedBeerId, location.lat, location.lon, now).catch((e) =>
         console.error('Failed to save profile to Firestore:', e)
       );
     }

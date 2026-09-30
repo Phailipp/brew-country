@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FirebaseError } from 'firebase/app';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './authContext';
 import { isFirebaseConfigured } from '../config/firebase';
 import './Auth.css';
 

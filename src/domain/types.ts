@@ -1,3 +1,5 @@
+import type { TerritoryGeometry } from './territoryGeometry';
+
 export interface Beer {
   id: string;
   name: string;
@@ -67,17 +69,26 @@ export interface OverlaySettings {
 }
 
 export interface WorkerInput {
+  /** Monotonic id; the UI drops results of superseded requests. */
+  requestId: number;
   votes: Vote[];
   weightedVotes?: WeightedVote[];
   gridSpec: GridSpec;
   radiusKm: number;
   smoothingIterations: number;
   mergeIslandSize: number;
+  closeMarginThreshold: number;
+  closeMarginMinWeight: number;
 }
 
 export interface WorkerOutput {
   type: 'result';
+  requestId: number;
   data: DominanceResult;
+  regions: Region[];
+  /** Per-cell index into `regions` (-1 = none). */
+  labels: Int32Array;
+  geometry: TerritoryGeometry;
 }
 
 // ── Regions ──────────────────────────────────────────────

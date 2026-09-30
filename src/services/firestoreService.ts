@@ -14,7 +14,7 @@ import {
   query,
   where,
   orderBy,
-  limit,
+  limitToLast,
   onSnapshot,
   serverTimestamp,
   type Unsubscribe,
@@ -47,22 +47,21 @@ export interface FirestoreUserProfile {
 export async function saveUserProfile(
   userId: string,
   beerId: string,
-  homeLat?: number,
-  homeLon?: number,
+  homeLat: number,
+  homeLon: number,
+  createdAt: number,
 ): Promise<void> {
   const db = getFirestoreDb();
-  const data: Record<string, unknown> = {
+  // createdAt comes from the canonical user record — never "now", otherwise
+  // every app start would restart the new-player home boost.
+  await setDoc(doc(db, 'users', userId), {
     userId,
     beerId,
+    homeLat,
+    homeLon,
+    createdAt,
     lastActiveAt: Date.now(),
-  };
-  // Only set location + createdAt on first write (onboarding)
-  if (homeLat !== undefined && homeLon !== undefined) {
-    data.homeLat = homeLat;
-    data.homeLon = homeLon;
-    data.createdAt = Date.now();
-  }
-  await setDoc(doc(db, 'users', userId), data, { merge: true });
+  }, { merge: true });
 }
 
 /**
@@ -243,7 +242,8 @@ export function subscribeMessages(
   const q = query(
     collection(db, 'friendships', friendshipId, 'messages'),
     orderBy('createdAt', 'asc'),
-    limit(GAME.CHAT_PAGE_SIZE),
+    // Newest page — `limit` would pin the chat to the oldest messages
+    limitToLast(GAME.CHAT_PAGE_SIZE),
   );
 
   return onSnapshot(q, (snapshot) => {

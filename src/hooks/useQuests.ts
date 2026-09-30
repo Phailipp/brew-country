@@ -1,20 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useEffectEvent } from 'react';
 import type { AppEvent, QuestState, OverlaySettings } from '../domain/types';
 import { QUEST_CATALOG } from '../domain/quests';
 import { evaluateEvent } from '../domain/questEngine';
 import { getQuestStateForUser, saveQuestStateForUser } from '../services/firestoreService';
 import { appEvents } from '../domain/events';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/toastContext';
 
 export function useQuests(userId: string, overlaySettings: OverlaySettings) {
   const [questState, setQuestState] = useState<QuestState>({ progress: {} });
-  const settingsRef = useRef(overlaySettings);
-  settingsRef.current = overlaySettings;
+  // Latest committed state for the (synchronous) event handler below
   const stateRef = useRef(questState);
-  stateRef.current = questState;
   const { showToast } = useToast();
-  const showToastRef = useRef(showToast);
-  showToastRef.current = showToast;
 
   useEffect(() => {
     // Dev-bypass users: skip Firestore, start with empty state immediately
@@ -38,13 +34,12 @@ export function useQuests(userId: string, overlaySettings: OverlaySettings) {
     };
   }, [userId]);
 
-  useEffect(() => {
-    const handler = (event: AppEvent) => {
+  const handleEvent = useEffectEvent((event: AppEvent) => {
       const { newState, completions } = evaluateEvent(
         event,
         stateRef.current,
         QUEST_CATALOG,
-        settingsRef.current
+        overlaySettings
       );
 
       // Only update if something changed
@@ -56,12 +51,11 @@ export function useQuests(userId: string, overlaySettings: OverlaySettings) {
 
       // Fire toasts for completed quests
       for (const quest of completions) {
-        showToastRef.current(quest.icon, `${quest.title} abgeschlossen!`);
+        showToast(quest.icon, `Quest geschafft: ${quest.title}`, 'success');
       }
-    };
+  });
 
-    return appEvents.on(handler);
-  }, [userId]);
+  useEffect(() => appEvents.on(handleEvent), []);
 
   return { questState, catalog: QUEST_CATALOG };
 }
