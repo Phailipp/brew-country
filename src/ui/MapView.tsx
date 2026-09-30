@@ -31,6 +31,22 @@ export interface FriendMarker {
   name?: string | null;
 }
 
+/** A pub/bar/beer garden as the map draws it. */
+export interface VenuePoint {
+  id: string;
+  lat: number;
+  lon: number;
+  name: string;
+  /** Ruling beer, null = unclaimed */
+  beerId: string | null;
+  /** Leader's points (drives size) */
+  points: number;
+  /** A challenger is within reach */
+  contested: boolean;
+  /** Player has visited this venue */
+  visited: boolean;
+}
+
 interface Props {
   geometry: TerritoryGeometry | null;
   votes: Vote[];
@@ -38,6 +54,9 @@ interface Props {
   friends: FriendMarker[];
   selectedPoint: { lat: number; lon: number } | null;
   onMapTap: (lat: number, lon: number) => void;
+  venues?: VenuePoint[];
+  selectedVenueId?: string | null;
+  onVenueTap?: (venueId: string) => void;
   /** Zoom is reported in the legacy (Leaflet/256px) scale used by the grid config. */
   onViewportChange: (bounds: ViewportBounds, zoom: number) => void;
 }
@@ -64,7 +83,11 @@ const COLOR_PROPS: [string, string][] = [
   ['territory-glow', 'line-color'],
   ['territory-line', 'line-color'],
   ['votes', 'circle-color'],
+  ['venue-glow', 'circle-color'],
+  ['venue-dot', 'circle-color'],
 ];
+
+const VENUE_LAYERS = ['venue-dot', 'venue-glow', 'venue-crest'];
 
 function shouldPlayIntro(): boolean {
   if (REDUCED_MOTION) return false;
@@ -130,6 +153,7 @@ function addGameLayers(map: MapLibreMap) {
   map.addSource('votes', { type: 'geojson', data: EMPTY });
   map.addSource('pulse', { type: 'geojson', data: EMPTY });
   map.addSource('selected', { type: 'geojson', data: EMPTY });
+  map.addSource('venues', { type: 'geojson', data: EMPTY });
 
   // Territory = faint tint + light falling inward from the frontier (inner glow),
   // instead of a flat choropleth. d3-contour rings are counter-clockwise in
@@ -231,6 +255,77 @@ function addGameLayers(map: MapLibreMap) {
     },
   });
 
+  // ── Venues: every pub is a little fortress glowing in its ruler's colour
+  map.addLayer({
+    id: 'venue-glow',
+    type: 'circle',
+    source: 'venues',
+    minzoom: 12,
+    filter: ['!=', ['get', 'beerId'], ''],
+    paint: {
+      'circle-color': beerColorExpr,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'],
+        12, ['+', 5, ['*', ['get', 'strength'], 4]],
+        17, ['+', 18, ['*', ['get', 'strength'], 16]]],
+      'circle-blur': 1,
+      'circle-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.25, 16, 0.4],
+    },
+  });
+  map.addLayer({
+    id: 'venue-dot',
+    type: 'circle',
+    source: 'venues',
+    minzoom: 12,
+    paint: {
+      'circle-color': beerColorExpr,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2.5, 15, 5, 17, 8],
+      'circle-stroke-color': ['case',
+        ['get', 'contested'], '#ff6a3d',
+        ['get', 'visited'], '#fff6e8',
+        '#0b0a08'],
+      'circle-stroke-width': ['case', ['any', ['get', 'contested'], ['get', 'visited']], 2, 1.2],
+      'circle-opacity': ['case', ['==', ['get', 'beerId'], ''], 0.55, 1],
+    },
+  });
+  map.addLayer({
+    id: 'venue-crest',
+    type: 'symbol',
+    source: 'venues',
+    minzoom: 15,
+    layout: {
+      'icon-image': ['case', ['==', ['get', 'beerId'], ''], '', ['concat', 'beer-', ['get', 'beerId']]],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.26, 18, 0.4],
+      'icon-offset': [0, -46],
+      'icon-allow-overlap': false,
+      'text-field': ['get', 'name'],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 15, 10, 18, 13],
+      'text-offset': [0, 0.9],
+      'text-anchor': 'top',
+      'text-max-width': 9,
+      'text-optional': true,
+      'symbol-sort-key': ['-', 0, ['get', 'points']],
+    },
+    paint: {
+      'text-color': '#f3e7d3',
+      'text-halo-color': 'rgba(11,10,8,0.92)',
+      'text-halo-width': 1.4,
+    },
+  });
+  map.addLayer({
+    id: 'venue-selected',
+    type: 'circle',
+    source: 'venues',
+    minzoom: 12,
+    filter: ['==', ['get', 'id'], ''],
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 8, 17, 16],
+      'circle-color': 'rgba(0,0,0,0)',
+      'circle-stroke-color': '#fff6e8',
+      'circle-stroke-width': 2.5,
+    },
+  });
+
   map.addLayer({
     id: 'pulse',
     type: 'circle',
@@ -312,13 +407,14 @@ function makeFriendMarker(f: FriendMarker): HTMLElement {
 }
 
 export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
-  { geometry, votes, home, friends, selectedPoint, onMapTap, onViewportChange },
+  { geometry, votes, home, friends, selectedPoint, onMapTap, onViewportChange, venues, selectedVenueId, onVenueTap },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
   const tapRef = useRef(onMapTap);
+  const venueTapRef = useRef(onVenueTap);
   const viewportRef = useRef(onViewportChange);
   const pulseFrameRef = useRef<number | null>(null);
   const hasHotspotsRef = useRef(false);
@@ -329,7 +425,8 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   useEffect(() => {
     tapRef.current = onMapTap;
     viewportRef.current = onViewportChange;
-  }, [onMapTap, onViewportChange]);
+    venueTapRef.current = onVenueTap;
+  }, [onMapTap, onViewportChange, onVenueTap]);
 
   // ── Create map once
   useEffect(() => {
@@ -410,7 +507,20 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
 
       m.on('styleimagemissing', () => loadBeerIcons(m));
       m.on('moveend', emitViewport);
-      m.on('click', (e) => tapRef.current(e.lngLat.lat, e.lngLat.lng));
+      m.on('click', (e) => {
+        // Venues win over the territory below them; a generous hit box for thumbs
+        const pad = 14;
+        const hit = m.getLayer('venue-dot')
+          ? m.queryRenderedFeatures(
+            [[e.point.x - pad, e.point.y - pad], [e.point.x + pad, e.point.y + pad]],
+            { layers: VENUE_LAYERS.filter((l) => m.getLayer(l)) },
+          )
+          : [];
+        const venueId = hit[0]?.properties?.id as string | undefined;
+        if (venueId && venueTapRef.current) venueTapRef.current(venueId);
+        else tapRef.current(e.lngLat.lat, e.lngLat.lng);
+      });
+      m.on('mousemove', 'venue-dot', () => { m.getCanvas().style.cursor = 'pointer'; });
       m.on('mousemove', 'territory-fill', () => { m.getCanvas().style.cursor = 'pointer'; });
       m.on('mouseleave', 'territory-fill', () => { m.getCanvas().style.cursor = ''; });
     });
@@ -466,6 +576,34 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       })),
     });
   }, [votes, ready]);
+
+  // ── Venues
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    (map.getSource('venues') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: (venues ?? []).map((v) => ({
+        type: 'Feature',
+        properties: {
+          id: v.id,
+          name: v.name,
+          beerId: v.beerId ?? '',
+          points: v.points,
+          strength: Math.min(1, v.points / 30),
+          contested: v.contested,
+          visited: v.visited,
+        },
+        geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
+      })),
+    });
+  }, [venues, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !map.getLayer('venue-selected')) return;
+    map.setFilter('venue-selected', ['==', ['get', 'id'], selectedVenueId ?? '']);
+  }, [selectedVenueId, ready]);
 
   // ── Selected point
   useEffect(() => {

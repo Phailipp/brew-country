@@ -149,7 +149,7 @@ export interface WeightedVote {
   beerId: string;
   weight: number;
   radiusKm: number;
-  source: 'home' | 'otr' | 'drink';
+  source: 'home' | 'otr' | 'drink' | 'venue';
 }
 
 // ── On The Road Vote ────────────────────────────────────

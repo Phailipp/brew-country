@@ -6,7 +6,7 @@ import type {
 import { getDefaultBoundingBox, getViewportGridSpec, cellAt, specStepDeg } from './domain/geo';
 import { GAME } from './config/constants';
 import type { StorageInterface } from './storage/StorageInterface';
-import { BEER_MAP, registerBeers } from './domain/beers';
+import { BEERS, BEER_MAP, registerBeers } from './domain/beers';
 import { findRegionForCell } from './domain/regions';
 import { appEvents } from './domain/events';
 import { buildWeightedVotes } from './domain/weights';
@@ -15,7 +15,7 @@ import { useAuth, isDemoUserId } from './auth/authContext';
 import { GoogleLogin } from './auth/GoogleLogin';
 import { Onboarding } from './auth/Onboarding';
 import { ResetLocation } from './auth/ResetLocation';
-import { MapView, type MapViewHandle, type FriendMarker } from './ui/MapView';
+import { MapView, type MapViewHandle, type FriendMarker, type VenuePoint } from './ui/MapView';
 import { Sheet } from './ui/shell/Sheet';
 import { TabBar, type TabId } from './ui/shell/TabBar';
 import { ProstPanel } from './ui/ProstPanel';
@@ -23,6 +23,13 @@ import { Celebration, type CelebrationData } from './ui/Celebration';
 import { TerritoryCard } from './ui/TerritoryCard';
 import { Leaderboard, type LeaderboardEntry } from './ui/Leaderboard';
 import { SimulationPanel } from './ui/SimulationPanel';
+import { VenueCard } from './ui/VenueCard';
+import { VENUE_KIND } from './ui/kit/venueKind';
+import { PassportPanel } from './ui/PassportPanel';
+import { useVenues, VENUE_MIN_ZOOM } from './hooks/useVenues';
+import { venuePlayerId } from './domain/visitIds';
+import { nearestCity } from './domain/worldCities';
+import type { VenueCheckin } from './domain/venues';
 import { QuestsPanel } from './ui/QuestsPanel';
 import { ExploreFeed } from './ui/ExploreFeed';
 import { ShareModal } from './ui/ShareModal';
@@ -119,7 +126,8 @@ interface GameAppProps {
 type SheetMode =
   | { kind: 'tab'; tab: TabId }
   | { kind: 'prost' }
-  | { kind: 'territory' };
+  | { kind: 'territory' }
+  | { kind: 'venue'; venueId: string };
 
 interface DominanceState {
   result: WorkerOutput;
@@ -152,6 +160,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const [dominance, setDominance] = useState<DominanceState | null>(null);
   const [computing, setComputing] = useState(false);
   const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
+  const [viewZoom, setViewZoom] = useState(11);
   const [gridSpec, setGridSpec] = useState<GridSpec>(fallbackGridSpec);
   const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
   const [chatTarget, setChatTarget] = useState<{ friendshipId: string; friendUser: User } | null>(null);
@@ -275,6 +284,10 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     return () => clearInterval(id);
   }, [store]);
 
+  // ── Venues (pubs, bars, beer gardens from OpenStreetMap)
+  const venueState = useVenues(store, user.id, viewportBounds, viewZoom);
+  const { venueVotes } = venueState;
+
   // ── Dominance worker
   useEffect(() => {
     const worker = new Worker(new URL('./workers/dominanceWorker.ts', import.meta.url), { type: 'module' });
@@ -295,13 +308,13 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     const input: WorkerInput = {
       requestId,
       votes,
-      weightedVotes,
+      weightedVotes: venueVotes.length > 0 ? [...weightedVotes, ...venueVotes] : weightedVotes,
       gridSpec,
       radiusKm: GAME.HOME_RADIUS_KM,
       ...OVERLAY,
     };
     worker.postMessage(input);
-  }, [votes, weightedVotes, gridSpec]);
+  }, [votes, weightedVotes, venueVotes, gridSpec]);
 
   const regions = useMemo(() => dominance?.result.regions ?? [], [dominance]);
   const dominanceData = dominance?.result.data ?? null;
@@ -338,6 +351,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   // ── Viewport → grid spec
   const handleViewportChange = useCallback((bounds: ViewportBounds, zoom: number) => {
     setViewportBounds(bounds);
+    setViewZoom(zoom);
     mapCenterRef.current = { lat: (bounds.south + bounds.north) / 2, lon: (bounds.west + bounds.east) / 2 };
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
@@ -425,6 +439,24 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     return out;
   }, [friendships, remoteUsers, friendPresence, user.id]);
 
+  const visitedVenueIds = useMemo(() => new Set(venueState.myVisits.map((v) => v.venueId)), [venueState.myVisits]);
+  const venuePoints = useMemo<VenuePoint[]>(() => venueState.venues.map((v) => {
+    const st = venueState.standings.get(v.id);
+    return {
+      id: v.id,
+      lat: v.lat,
+      lon: v.lon,
+      name: v.name,
+      beerId: st?.ownerBeerId ?? null,
+      points: st?.scores[0]?.points ?? 0,
+      contested: !!st?.ownerBeerId && !!st.challengerBeerId && st.toFlip > 0 && st.toFlip <= 6,
+      visited: visitedVenueIds.has(v.id),
+    };
+  }), [venueState.venues, venueState.standings, visitedVenueIds]);
+
+  const selectedVenueId = sheet?.kind === 'venue' ? sheet.venueId : null;
+  const selectedVenue = selectedVenueId ? venueState.venues.find((v) => v.id === selectedVenueId) ?? null : null;
+
   const home = useMemo(() => ({ lat: user.homeLat, lon: user.homeLon, beerId: user.beerId }),
     [user.homeLat, user.homeLon, user.beerId]);
 
@@ -445,6 +477,12 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const closeSheet = useCallback(() => {
     setSheet(null);
     setSelectedPoint(null);
+  }, []);
+
+  const handleVenueTap = useCallback((venueId: string) => {
+    haptic('light');
+    setSelectedPoint(null);
+    setSheet({ kind: 'venue', venueId });
   }, []);
 
   const handleMapTap = useCallback((lat: number, lon: number) => {
@@ -518,6 +556,77 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     loadWeightedVotes().catch(() => {});
   }, [dominance, loadWeightedVotes]);
 
+  const { checkIn: venueCheckIn, addCheckins } = venueState;
+  const handleVenueCheckIn = useCallback(async (beerId: string, alcoholFree: boolean) => {
+    if (!selectedVenue) return;
+    const { before, after } = await venueCheckIn(selectedVenue, beerId, alcoholFree);
+    const v = selectedVenue;
+    mapRef.current?.pulseAt(v.lat, v.lon, beerColor(beerId));
+    if (after.ownerBeerId === beerId && before.ownerBeerId !== beerId) {
+      haptic('heavy');
+      conquer();
+      setCelebration({
+        id: Date.now(),
+        beerId,
+        title: 'Übernommen!',
+        subtitle: before.ownerBeerId
+          ? `${v.name} schenkt jetzt ${beerName(beerId)} aus. ${beerName(before.ownerBeerId)} ist raus.`
+          : `${v.name} gehört jetzt ${beerName(beerId)}.`,
+        epic: true,
+      });
+    } else {
+      const flip = after.ownerBeerId !== beerId && after.challengerBeerId === beerId && after.toFlip > 0
+        ? ` Noch ${after.toFlip.toLocaleString('de-DE')} Punkte bis zur Übernahme.`
+        : '';
+      setCelebration({
+        id: Date.now(),
+        beerId,
+        title: 'Prost!',
+        subtitle: after.ownerBeerId === beerId
+          ? `Du verteidigst ${v.name} für ${beerName(beerId)}.`
+          : `+3 für ${beerName(beerId)} im ${v.name}.${flip}`,
+      });
+    }
+  }, [selectedVenue, venueCheckIn]);
+
+  // Demo: a crowd of simulated regulars visits the venues on screen
+  const simulateVenueCrowd = useCallback(async () => {
+    if (!devTools) return;
+    const bounds = viewportBounds;
+    const inView = venueState.venues.filter((v) => !bounds
+      || (v.lat >= bounds.south && v.lat <= bounds.north && v.lon >= bounds.west && v.lon <= bounds.east));
+    if (inView.length === 0) {
+      showToast('🔍', `Zoom näher ran (bis Straßen sichtbar sind), dann laden die Kneipen.`);
+      return;
+    }
+    const country = nearestCity(mapCenterRef.current.lat, mapCenterRef.current.lon).country;
+    const local = BEERS.filter((b) => b.country === country);
+    const pool = local.length >= 3 ? local : BEERS;
+    const now = Date.now();
+    const visits: VenueCheckin[] = [];
+    for (const v of inView) {
+      const favourite = v.beerIds[0] ?? pool[Math.floor(Math.random() * pool.length)].id;
+      const rival = pool[Math.floor(Math.random() * pool.length)].id;
+      const n = Math.floor(Math.random() * 7);
+      for (let i = 0; i < n; i++) {
+        const player = await venuePlayerId(`sim_${Math.floor(Math.random() * 40)}`, v.id);
+        visits.push({
+          id: `sim_${v.id}_${now}_${i}`,
+          player,
+          venueId: v.id,
+          tile: v.tile,
+          beerId: Math.random() < 0.55 ? rival : favourite,
+          alcoholFree: Math.random() < 0.12,
+          createdAt: now - Math.floor(Math.random() * 20 * 86_400_000),
+        });
+      }
+    }
+    const demoStore = store as StorageInterface & { simulateVenueCrowd?: (v: VenueCheckin[]) => Promise<void> };
+    await demoStore.simulateVenueCrowd?.(visits).catch(() => {});
+    addCheckins(visits);
+    showToast('🍻', `${visits.length} Besuche in ${inView.length} Kneipen simuliert.`);
+  }, [devTools, viewportBounds, venueState.venues, store, addCheckins, showToast]);
+
   const endCelebration = useCallback(() => setCelebration(null), []);
 
   const toggle3d = () => {
@@ -537,6 +646,22 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         onCheckedIn={handleCheckedIn}
         demoLocation={isDemo ? mapCenterRef.current : null}
       />
+    );
+  } else if (sheet?.kind === 'venue') {
+    const standing = selectedVenue ? venueState.standings.get(selectedVenue.id) : undefined;
+    sheetTitle = selectedVenue ? VENUE_KIND[selectedVenue.kind].label : 'Kneipe';
+    sheetBody = selectedVenue && standing ? (
+      <VenueCard
+        key={selectedVenue.id}
+        venue={selectedVenue}
+        standing={standing}
+        myVisits={venueState.myVisits}
+        playerBeerId={user.beerId}
+        isDemo={isDemo}
+        onCheckIn={handleVenueCheckIn}
+      />
+    ) : (
+      <div className="empty"><span className="spinner" /> Lädt…</div>
     );
   } else if (sheet?.kind === 'territory') {
     sheetTitle = selected.cell?.winnerBeerId ? 'Territorium' : 'Freies Land';
@@ -593,6 +718,10 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       case 'profile':
         sheetBody = (
           <>
+            <PassportPanel visits={venueState.myVisits} onLocate={(venueId: string) => {
+              const v = venueState.venues.find((x) => x.id === venueId);
+              if (v) { mapRef.current?.flyTo(v.lat, v.lon, 16); handleVenueTap(v.id); }
+            }} />
             <HomeStatus user={user} store={store} onUserUpdate={handleUserUpdate} />
             <OnTheRoadButton user={user} store={store} onVoteCreated={() => loadWeightedVotes().catch(() => {})} />
             <DuelPanel user={user} store={store} />
@@ -604,6 +733,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                 onDemoBeerChange={setDemoBeerId}
                 voteCount={votes.length}
                 getCenter={getMapCenter}
+                onSimulateVenues={simulateVenueCrowd}
               />
             )}
             <LogoutSection isDemo={isDemo} user={user} />
@@ -612,6 +742,12 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         break;
     }
   }
+
+  // Small status pill: where are the pubs?
+  let venueHint: ReactNode = null;
+  if (venueState.status === 'loading') venueHint = <><span className="spinner" /> Kneipen laden…</>;
+  else if (venueState.status === 'error') venueHint = <>Kneipen nicht erreichbar · <button onClick={venueState.reload}>Nochmal</button></>;
+  else if (venueState.status === 'zoom' && viewZoom >= VENUE_MIN_ZOOM - 2.5) venueHint = <>🍺 Näher ranzoomen: Kneipen erscheinen</>;
 
   const homeShare = homeCell && homeCell.totalCount > 0 && homeCell.winnerBeerId
     ? Math.round((homeCell.winnerCount / homeCell.totalCount) * 100)
@@ -628,6 +764,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         selectedPoint={selectedPoint}
         onMapTap={handleMapTap}
         onViewportChange={handleViewportChange}
+        venues={venuePoints}
+        selectedVenueId={selectedVenueId}
+        onVenueTap={handleVenueTap}
       />
 
       <div className="map-vignette" aria-hidden="true" />
@@ -681,11 +820,17 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       </header>
 
 
+      {!sheet && venueHint && (
+        <div className={`venue-hint-pill glass${venueState.status === 'error' ? ' is-error' : ''}`} role="status">
+          {venueHint}
+        </div>
+      )}
+
       <Sheet
         open={sheet !== null}
         title={sheetTitle}
         onClose={closeSheet}
-        contentKey={sheet ? (sheet.kind === 'tab' ? sheet.tab : sheet.kind) : 'none'}
+        contentKey={sheet ? (sheet.kind === 'tab' ? sheet.tab : sheet.kind === 'venue' ? `venue-${sheet.venueId}` : sheet.kind) : 'none'}
         initialSnap={sheet?.kind === 'prost' ? 'full' : 'half'}
       >
         {sheetBody}

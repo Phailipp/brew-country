@@ -14,6 +14,8 @@ interface Props {
   voteCount: number;
   /** Current map centre (simulations around "here"). */
   getCenter: () => { lat: number; lon: number };
+  /** Let simulated regulars visit the pubs on screen. */
+  onSimulateVenues: () => void;
 }
 
 type Spread = 'here' | 'world';
@@ -65,7 +67,7 @@ function generateRandomVotes(count: number, spread: Spread, center: { lat: numbe
   return votes;
 }
 
-export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBeerChange, voteCount, getCenter }: Props) {
+export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBeerChange, voteCount, getCenter, onSimulateVenues }: Props) {
   const [count, setCount] = useState(300);
   const [spread, setSpread] = useState<Spread>('here');
 
@@ -102,6 +104,12 @@ export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBe
           </button>
         </div>
         <p className="muted sim-hint num">{voteCount.toLocaleString('de-DE')} Demo-Stimmen auf der Karte</p>
+      </div>
+
+      <div className="card">
+        <p className="eyebrow">Kneipen-Leben</p>
+        <p className="muted">Zoom in ein Viertel, bis die Kneipen erscheinen. Dann besuchen simulierte Stammgäste die Lokale auf dem Bildschirm, und Kneipen wechseln die Farbe.</p>
+        <button className="btn btn-secondary" onClick={onSimulateVenues}>Stammgäste simulieren</button>
       </div>
 
       <div className="card">
