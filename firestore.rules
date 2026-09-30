@@ -235,20 +235,16 @@ service cloud.firestore {
     match /bc_duels/{duelId} {
       allow read: if verified()
         && request.auth.uid in [existing().challengerUserId, existing().defenderUserId];
-      allow create: if verified() && incoming().challengerUserId == request.auth.uid && incoming().status == 'pending';
-      allow update: if verified()
-        && request.auth.uid in [existing().challengerUserId, existing().defenderUserId]
-        && !changed().hasAny(['challengerUserId', 'defenderUserId', 'challengerBeerId', 'defenderBeerId', 'createdAt']);
+      // Duels are a legacy experiment (hidden at launch). Results would need a
+      // server authority, so clients cannot create or change them.
+      allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
     match /bc_duelMessages/{msgId} {
       function duel(id) { return get(/databases/$(database)/documents/bc_duels/$(id)).data; }
       allow read: if verified()
         && request.auth.uid in [duel(existing().duelId).challengerUserId, duel(existing().duelId).defenderUserId];
-      allow create: if verified()
-        && incoming().senderUserId == request.auth.uid
-        && request.auth.uid in [duel(incoming().duelId).challengerUserId, duel(incoming().duelId).defenderUserId];
-      allow update, delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
     match /bc_duelOutcomes/{id} {
       allow read: if verified();
@@ -304,7 +300,13 @@ service cloud.firestore {
 
     // ── quests (cosmetic progress, owner only) ───────────
     match /questStates/{uid} {
-      allow read, write: if isUser(uid);
+      allow read, delete: if isUser(uid);
+      // bounded: one progress map with a handful of quests
+      allow create, update: if isUser(uid)
+        && incoming().keys().hasOnly(['state', 'updatedAt'])
+        && incoming().state is map && incoming().state.keys().hasOnly(['progress'])
+        && incoming().state.progress is map && incoming().state.progress.size() <= 20
+        && incoming().updatedAt is number;
     }
 
     // ── beer catalogue: community submissions + approved beers ──
