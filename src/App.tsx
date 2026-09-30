@@ -1,32 +1,41 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Vote, DominanceResult, GridSpec, OverlaySettings, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship } from './domain/types';
-import { getDefaultBoundingBox, getViewportGridSpec } from './domain/geo';
+import { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties, type ReactNode } from 'react';
+import type {
+  Vote, GridSpec, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship,
+  WorkerInput, WorkerOutput, DrinkVote, CellResult,
+} from './domain/types';
+import { getDefaultBoundingBox, getViewportGridSpec, cellAt, cellStepDeg, MUNICH_CENTER } from './domain/geo';
 import { GAME } from './config/constants';
 import type { StorageInterface } from './storage/StorageInterface';
 import { BEER_MAP } from './domain/beers';
-import { extractRegions } from './domain/regions';
+import { findRegionForCell } from './domain/regions';
 import { appEvents } from './domain/events';
 import { buildWeightedVotes } from './domain/weights';
 import { decodeShareLink, clearShareParams } from './domain/shareLink';
-import { useAuth } from './auth/AuthProvider';
+import { useAuth, isDemoUserId } from './auth/authContext';
 import { GoogleLogin } from './auth/GoogleLogin';
 import { Onboarding } from './auth/Onboarding';
 import { ResetLocation } from './auth/ResetLocation';
-import { MapView, type MapViewHandle } from './ui/MapView';
-import { BeerPicker } from './ui/BeerPicker';
+import { MapView, type MapViewHandle, type FriendMarker } from './ui/MapView';
+import { Sheet } from './ui/shell/Sheet';
+import { TabBar, type TabId } from './ui/shell/TabBar';
+import { ProstPanel } from './ui/ProstPanel';
+import { Celebration, type CelebrationData } from './ui/Celebration';
+import { TerritoryCard } from './ui/TerritoryCard';
+import { Leaderboard, type LeaderboardEntry } from './ui/Leaderboard';
 import { SimulationPanel } from './ui/SimulationPanel';
-import { Legend } from './ui/Legend';
 import { QuestsPanel } from './ui/QuestsPanel';
 import { ExploreFeed } from './ui/ExploreFeed';
 import { ShareModal } from './ui/ShareModal';
 import { HomeStatus } from './ui/HomeStatus';
 import { DuelPanel } from './ui/DuelPanel';
 import { OnTheRoadButton } from './ui/OnTheRoadButton';
-import { DrinkVoteButton } from './ui/DrinkVoteButton';
 import { TeamPanel } from './ui/TeamPanel';
 import { FriendsPanel } from './ui/FriendsPanel';
 import { ChatPanel } from './ui/ChatPanel';
-import { useToast } from './ui/Toast';
+import { BeerBadge } from './ui/kit/BeerBadge';
+import { beerColor, beerName } from './ui/kit/beer';
+import { haptic } from './ui/kit/haptics';
+import { useToast } from './ui/toastContext';
 import { useQuests } from './hooks/useQuests';
 import { useFeed } from './hooks/useFeed';
 import { usePresence } from './hooks/usePresence';
@@ -45,36 +54,35 @@ import {
 import './App.css';
 
 const fallbackGridSpec: GridSpec = getDefaultBoundingBox();
-const RADIUS_KM = GAME.HOME_RADIUS_KM;
 
-const FIXED_OVERLAY_SETTINGS: OverlaySettings = {
+const OVERLAY = {
+  smoothingIterations: GAME.SMOOTHING_ITERATIONS,
+  mergeIslandSize: GAME.MERGE_ISLAND_SIZE,
+  closeMarginThreshold: GAME.CLOSE_MARGIN_THRESHOLD,
+  closeMarginMinWeight: GAME.CLOSE_MARGIN_MIN_WEIGHT,
+};
+
+const QUEST_SETTINGS = {
   showBorders: true,
   showLogos: true,
   showSwords: true,
   borderWidth: GAME.BORDER_WIDTH,
-  closeMarginThreshold: GAME.CLOSE_MARGIN_THRESHOLD,
-  closeMarginMinWeight: GAME.CLOSE_MARGIN_MIN_WEIGHT,
-  smoothingIterations: GAME.SMOOTHING_ITERATIONS,
-  mergeIslandSize: GAME.MERGE_ISLAND_SIZE,
+  ...OVERLAY,
 };
 
 interface AppProps {
   store: StorageInterface;
 }
 
-const isDevUser = (id: string) => id.startsWith('dev_');
-
 export default function App({ store }: AppProps) {
   const { auth, updateUser, updateLastActive } = useAuth();
 
-  // Show auth screens if not authenticated
   if (auth.status === 'loading') {
     return (
-      <div className="auth-screen">
-        <div className="auth-card" style={{ textAlign: 'center' }}>
-          <h1 className="auth-title">Brew Country</h1>
-          <p className="auth-subtitle">Laden...</p>
-        </div>
+      <div className="boot-screen" aria-live="polite">
+        <img src="./favicon.svg" alt="" width="72" height="72" className="boot-logo" />
+        <p className="boot-title">Brew Country</p>
+        <span className="spinner" aria-label="Lädt" />
       </div>
     );
   }
@@ -87,22 +95,15 @@ export default function App({ store }: AppProps) {
     return <Onboarding />;
   }
 
-  // User authenticated but home location missing (e.g. admin wiped data)
+  // Authenticated but home location missing (e.g. admin wiped data)
   if (auth.user.homeLat === 0 && auth.user.homeLon === 0) {
-    return (
-      <ResetLocation
-        user={auth.user}
-        onLocationSet={async (updatedUser) => {
-          await updateUser(updatedUser);
-        }}
-      />
-    );
+    return <ResetLocation user={auth.user} onLocationSet={updateUser} />;
   }
 
-  return <GameApp user={auth.user} store={store} onActivity={updateLastActive} />;
+  return <GameApp key={auth.user.id} user={auth.user} store={store} onActivity={updateLastActive} />;
 }
 
-// ── Main game app (after auth) ──────────────────────────
+// ── Main game (after auth) ──────────────────────────────
 
 interface GameAppProps {
   user: User;
@@ -110,131 +111,117 @@ interface GameAppProps {
   onActivity: () => Promise<void>;
 }
 
+type SheetMode =
+  | { kind: 'tab'; tab: TabId }
+  | { kind: 'prost' }
+  | { kind: 'territory' };
+
+interface DominanceState {
+  result: WorkerOutput;
+  /** Grid spec the result belongs to. */
+  spec: GridSpec;
+}
+
+const SHEET_TITLES: Record<TabId, string> = {
+  explore: 'Entdecken',
+  crew: 'Deine Crew',
+  quests: 'Quests',
+  profile: 'Profil',
+};
+
+function winnerAt(state: DominanceState | null, lat: number, lon: number): CellResult | null {
+  if (!state) return null;
+  const { data } = state.result;
+  const pos = cellAt(data.gridSpec, data.rows, data.cols, lat, lon);
+  return pos ? data.cells[pos.row * data.cols + pos.col] ?? null : null;
+}
+
 function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
+  const isDemo = isDemoUserId(initialUser.id);
+  const online = isFirebaseConfigured() && !isDemo;
+  const devTools = isDemo || import.meta.env.DEV;
+
   const [user, setUser] = useState<User>(initialUser);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [weightedVotes, setWeightedVotes] = useState<WeightedVote[]>([]);
-  const [selectedBeerId, setSelectedBeerId] = useState<string | null>(user.beerId);
-  const [dominanceData, setDominanceData] = useState<DominanceResult | null>(null);
+  const [dominance, setDominance] = useState<DominanceState | null>(null);
   const [computing, setComputing] = useState(false);
-  const [overlaySettings] = useState<OverlaySettings>(FIXED_OVERLAY_SETTINGS);
   const [viewportBounds, setViewportBounds] = useState<ViewportBounds | null>(null);
   const [gridSpec, setGridSpec] = useState<GridSpec>(fallbackGridSpec);
   const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
   const [chatTarget, setChatTarget] = useState<{ friendshipId: string; friendUser: User } | null>(null);
-  const [activeTab, setActiveTab] = useState<string | null>(null);
-  const workerRef = useRef<Worker | null>(null);
-  const mapRef = useRef<MapViewHandle>(null);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Toast system
-  const { showToast } = useToast();
-
-  // Presence hook (heartbeat + online count + friend presence)
-  const { onlineCount, friendPresence, setFriendIds } = usePresence(user.id);
-
-  // All remote users from Firestore (for shared map)
+  const [sheet, setSheet] = useState<SheetMode | null>(() =>
+    window.innerWidth >= 900 ? { kind: 'tab', tab: 'explore' } : null);
+  const [selectedPoint, setSelectedPoint] = useState<{ lat: number; lon: number } | null>(null);
+  const [celebration, setCelebration] = useState<CelebrationData | null>(null);
+  const [demoBeerId, setDemoBeerId] = useState<string | null>(initialUser.beerId);
+  const [is3d, setIs3d] = useState(false);
   const [remoteUsers, setRemoteUsers] = useState<FirestoreUserProfile[]>([]);
-
-  // Friendships state (for chat notifications)
   const [friendships, setFriendships] = useState<Friendship[]>([]);
 
-  // Subscribe to friendships for notification tracking
-  useEffect(() => {
-    if (!isFirebaseConfigured() || isDevUser(user.id)) return;
-    const unsub = subscribeFriends(user.id, (fs) => {
-      setFriendships(fs);
-    });
-    return () => unsub();
-  }, [user.id]);
+  const workerRef = useRef<Worker | null>(null);
+  const requestIdRef = useRef(0);
+  const mapRef = useRef<MapViewHandle>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingFlipRef = useRef<{ lat: number; lon: number; beerId: string; prevWinner: string | null } | null>(null);
+  const mapCenterRef = useRef<{ lat: number; lon: number }>({ lat: MUNICH_CENTER.lat, lon: MUNICH_CENTER.lon });
 
-  // Chat notifications — toast on new message + unread badge
+  const { showToast } = useToast();
+  const { onlineCount, friendPresence, setFriendIds } = usePresence(user.id);
+
+  // Player's beer colour drives the accent of the whole UI
+  useEffect(() => {
+    document.documentElement.style.setProperty('--c-beer', beerColor(user.beerId));
+  }, [user.beerId]);
+
+  // ── Firestore subscriptions (shared world)
+  useEffect(() => {
+    if (!online) return;
+    return subscribeFriends(user.id, setFriendships);
+  }, [user.id, online]);
+
+  useEffect(() => {
+    const ids = friendships
+      .filter((f) => f.status === 'accepted')
+      .map((f) => (f.userIds[0] === user.id ? f.userIds[1] : f.userIds[0]));
+    setFriendIds(ids);
+  }, [friendships, user.id, setFriendIds]);
+
   const { unreadCounts } = useChatNotifications({
     userId: user.id,
     friendships,
     openChatFriendshipId: chatTarget?.friendshipId ?? null,
     onNewMessage: useCallback((_friendshipId: string, message: { text: string }) => {
-      // Truncate long messages for the toast
-      const preview = message.text.length > 60
-        ? message.text.slice(0, 57) + '...'
-        : message.text;
+      const preview = message.text.length > 60 ? `${message.text.slice(0, 57)}…` : message.text;
       showToast('💬', preview);
     }, [showToast]),
   });
 
-  // Sync user profile to Firestore (with location) so other users see us on the map
   useEffect(() => {
-    if (isFirebaseConfigured() && !isDevUser(user.id) && user.beerId) {
-      saveUserProfile(user.id, user.beerId, user.homeLat, user.homeLon).catch(() => {});
+    if (online && user.beerId) {
+      saveUserProfile(user.id, user.beerId, user.homeLat, user.homeLon, user.createdAt).catch(() => {});
     }
-  }, [user.id, user.beerId, user.homeLat, user.homeLon]);
+  }, [online, user.id, user.beerId, user.homeLat, user.homeLon, user.createdAt]);
 
-  // Subscribe to all users from Firestore for shared map
   useEffect(() => {
-    if (!isFirebaseConfigured() || isDevUser(user.id)) return;
-    const unsub = subscribeAllUsers((users) => {
-      setRemoteUsers(users);
-    });
-    return () => unsub();
-  }, [user.id]);
+    if (!online) return;
+    return subscribeAllUsers(setRemoteUsers);
+  }, [online]);
 
-  // Subscribe to legacy simulation votes in Firestore
   useEffect(() => {
-    if (!isFirebaseConfigured() || isDevUser(user.id)) return;
-    const unsub = subscribeLegacyVotes((serverVotes) => {
-      setVotes(serverVotes);
-    });
-    return () => unsub();
-  }, [user.id]);
+    if (!online) return;
+    return subscribeLegacyVotes(setVotes);
+  }, [online]);
 
-  const userId = user.id;
-  const userVotePosition = { lat: user.homeLat, lon: user.homeLon };
-
-  // Build friend locations for map markers (accepted friends only)
-  const friendLocations = useMemo(() => {
-    const accepted = friendships.filter((f) => f.status === 'accepted');
-    const locations: { userId: string; lat: number; lon: number; beerId: string; online: boolean }[] = [];
-
-    for (const fs of accepted) {
-      const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
-      const profile = remoteUsers.find((u) => u.userId === friendId);
-      if (!profile || (profile.homeLat === 0 && profile.homeLon === 0)) continue;
-
-      const presence = friendPresence.get(friendId);
-      const online = presence ? Date.now() - presence.lastSeen < GAME.PRESENCE_ONLINE_THRESHOLD_MS : false;
-
-      locations.push({
-        userId: friendId,
-        lat: profile.homeLat,
-        lon: profile.homeLon,
-        beerId: profile.beerId,
-        online,
-      });
-    }
-
-    return locations;
-  }, [friendships, remoteUsers, friendPresence, user.id]);
-
-  // Extract regions whenever dominance data changes
-  const regions: Region[] = useMemo(() => {
-    if (!dominanceData) return [];
-    return extractRegions(dominanceData);
-  }, [dominanceData]);
-
-  // Quests hook
-  const { questState, catalog } = useQuests(user.id, overlaySettings);
-
-  // Feed hook
-  const feedItems = useFeed(dominanceData, regions, votes, viewportBounds);
-
-  // Update last active on mount
   useEffect(() => {
-    onActivity();
+    onActivity().catch(() => {});
   }, [onActivity]);
 
-  // Build weighted votes from Firestore users (shared map) + local data
+  // ── Weighted votes (debounced, latest-wins)
+  const weightsSeqRef = useRef(0);
   const loadWeightedVotes = useCallback(async () => {
-    // Convert remote Firestore profiles to User objects for weight calculation
+    const seq = ++weightsSeqRef.current;
+
     const firestoreUsers: User[] = remoteUsers.map((p) => ({
       id: p.userId,
       phone: null,
@@ -247,173 +234,239 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       ageVerified: true,
     }));
 
-    // Merge: use Firestore users as base, overlay local user data for self
-    const localUsers = await store.getAllUsers();
-    const mergedMap = new Map<string, User>();
-    for (const u of firestoreUsers) {
-      mergedMap.set(u.id, u);
-    }
-    // Local user data takes priority for the current user (has more fields)
-    for (const u of localUsers) {
-      mergedMap.set(u.id, u);
-    }
-    const allUsers = Array.from(mergedMap.values());
+    const [localUsers, allOTR, allTeams, allDrink] = await Promise.all([
+      store.getAllUsers(),
+      store.getAllOTRVotes(),
+      store.getAllTeams(),
+      store.getAllDrinkVotes(),
+    ]);
 
-    const allOTR = await store.getAllOTRVotes();
-    const allTeams = await store.getAllTeams();
-    const allDrink = await store.getAllDrinkVotes();
+    // Full records (with Stand-Your-Ground etc.) win over public profiles
+    const merged = new Map<string, User>();
+    for (const u of firestoreUsers) merged.set(u.id, u);
+    for (const u of localUsers) merged.set(u.id, u);
+    const allUsers = Array.from(merged.values()).filter((u) => u.homeLat !== 0 || u.homeLon !== 0);
 
-    // Build outcomes map
-    const outcomesMap = new Map<string, Awaited<ReturnType<typeof store.getDuelOutcomes>>>();
-    for (const u of allUsers) {
-      const o = await store.getDuelOutcomes(u.id);
-      outcomesMap.set(u.id, o);
-    }
+    const outcomeLists = await Promise.all(allUsers.map((u) => store.getDuelOutcomes(u.id)));
+    const outcomesMap = new Map(allUsers.map((u, i) => [u.id, outcomeLists[i]]));
 
-    const wv = buildWeightedVotes(allUsers, allOTR, allTeams, outcomesMap, allDrink);
-    setWeightedVotes(wv);
+    if (seq !== weightsSeqRef.current) return; // superseded
+    setWeightedVotes(buildWeightedVotes(allUsers, allOTR, allTeams, outcomesMap, allDrink));
   }, [store, remoteUsers]);
 
-  // Reload weighted votes when remote users or local user changes
   useEffect(() => {
-    loadWeightedVotes();
+    const t = setTimeout(() => { loadWeightedVotes().catch(() => {}); }, 400);
+    return () => clearTimeout(t);
   }, [loadWeightedVotes, user]);
 
-  // Periodic cleanup of expired votes/outcomes (every 5 min + on mount)
+  // Periodic cleanup of expired votes/outcomes
   useEffect(() => {
-    const cleanup = async () => {
-      await store.removeExpiredOTRVotes();
-      await store.removeExpiredDrinkVotes();
-      await store.removeExpiredOutcomes();
-    };
+    const cleanup = () => Promise.all([
+      store.removeExpiredOTRVotes(),
+      store.removeExpiredDrinkVotes(),
+      store.removeExpiredOutcomes(),
+    ]).catch(() => {});
     cleanup();
     const id = setInterval(cleanup, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [store]);
 
-  // Worker lifecycle
+  // ── Dominance worker
   useEffect(() => {
-    const worker = new Worker(
-      new URL('./workers/dominanceWorker.ts', import.meta.url),
-      { type: 'module' }
-    );
-
-    worker.onmessage = (e: MessageEvent) => {
-      if (e.data.type === 'result') {
-        const d = e.data.data;
-        setDominanceData(d);
-        setComputing(false);
-      }
+    const worker = new Worker(new URL('./workers/dominanceWorker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (e: MessageEvent<WorkerOutput>) => {
+      if (e.data.type !== 'result' || e.data.requestId !== requestIdRef.current) return; // stale
+      setDominance({ result: e.data, spec: e.data.data.gridSpec });
+      setComputing(false);
     };
-
     workerRef.current = worker;
-
-    return () => {
-      worker.terminate();
-    };
+    return () => worker.terminate();
   }, []);
 
-  // Emit dominance:computed event when data + regions change
-  useEffect(() => {
-    if (dominanceData && regions.length > 0) {
-      appEvents.emit({ type: 'dominance:computed', data: dominanceData, regions });
-    }
-  }, [dominanceData, regions]);
-
-  // ── Debounced viewport/zoom → dynamic gridSpec ──────────
-  const handleViewportChange = useCallback(
-    (bounds: ViewportBounds, zoom: number) => {
-      // Always store raw values for feed etc.
-      setViewportBounds(bounds);
-
-      // Debounce the heavy grid recomputation
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(() => {
-        const newSpec = getViewportGridSpec(bounds, zoom);
-        setGridSpec(newSpec);
-      }, GAME.VIEWPORT_DEBOUNCE_MS);
-    },
-    [],
-  );
-
-  // Recompute dominance when gridSpec, votes, or weighted votes change
   useEffect(() => {
     const worker = workerRef.current;
     if (!worker) return;
-
+    const requestId = ++requestIdRef.current;
     setComputing(true);
-    worker.postMessage({
+    const input: WorkerInput = {
+      requestId,
       votes,
-      weightedVotes: weightedVotes.length > 0 ? weightedVotes : undefined,
+      weightedVotes,
       gridSpec,
-      radiusKm: RADIUS_KM,
-      smoothingIterations: overlaySettings.smoothingIterations,
-      mergeIslandSize: overlaySettings.mergeIslandSize,
-    });
-  }, [votes, weightedVotes, gridSpec, overlaySettings.smoothingIterations, overlaySettings.mergeIslandSize]);
+      radiusKm: GAME.HOME_RADIUS_KM,
+      ...OVERLAY,
+    };
+    worker.postMessage(input);
+  }, [votes, weightedVotes, gridSpec]);
 
-  // Handle share link on load
+  const regions = useMemo(() => dominance?.result.regions ?? [], [dominance]);
+  const dominanceData = dominance?.result.data ?? null;
+
+  useEffect(() => {
+    if (dominance && regions.length > 0) {
+      appEvents.emit({ type: 'dominance:computed', data: dominance.result.data, regions });
+    }
+  }, [dominance, regions]);
+
+  // Territory flip after a check-in → the big moment
+  useEffect(() => {
+    const pending = pendingFlipRef.current;
+    if (!pending || !dominance) return;
+    const cell = winnerAt(dominance, pending.lat, pending.lon);
+    if (!cell) return;
+    pendingFlipRef.current = null;
+    if (cell.winnerBeerId === pending.beerId && pending.prevWinner !== pending.beerId) {
+      haptic('heavy');
+      mapRef.current?.pulseAt(pending.lat, pending.lon, beerColor(pending.beerId));
+      setCelebration({
+        id: Date.now(),
+        beerId: pending.beerId,
+        title: 'Erobert!',
+        subtitle: pending.prevWinner
+          ? `${beerName(pending.beerId)} hat ${beerName(pending.prevWinner)} hier verdrängt.`
+          : `${beerName(pending.beerId)} hat hier jetzt das Sagen.`,
+        epic: true,
+      });
+    }
+  }, [dominance]);
+
+  // ── Viewport → grid spec
+  const handleViewportChange = useCallback((bounds: ViewportBounds, zoom: number) => {
+    setViewportBounds(bounds);
+    mapCenterRef.current = { lat: (bounds.south + bounds.north) / 2, lon: (bounds.west + bounds.east) / 2 };
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setGridSpec(getViewportGridSpec(bounds, zoom));
+    }, GAME.VIEWPORT_DEBOUNCE_MS);
+  }, []);
+
+  useEffect(() => () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+  }, []);
+
+  // Share link on load
   useEffect(() => {
     const shareData = decodeShareLink();
-    if (shareData) {
-      setTimeout(() => {
-        mapRef.current?.flyTo(shareData.centroidLat, shareData.centroidLon, shareData.zoom);
-      }, 500);
-      clearShareParams();
-    }
+    if (!shareData) return;
+    const t = setTimeout(() => mapRef.current?.flyTo(shareData.centroidLat, shareData.centroidLon, shareData.zoom), 800);
+    clearShareParams();
+    return () => clearTimeout(t);
   }, []);
 
-  // Map click: DEV build can click anywhere; prod dev-bypass users can also place votes (local only)
-  const handleMapClick = useCallback(
-    (lat: number, lon: number) => {
-      const devAllowed = import.meta.env.DEV || isDevUser(userId);
-      if (!devAllowed) return;
-      if (!selectedBeerId) return;
+  // ── Derived UI data
+  const questState = useQuests(user.id, QUEST_SETTINGS);
+  const feedItems = useFeed(dominanceData, regions, votes, viewportBounds);
+  const questsDone = Object.values(questState.questState.progress).filter((p) => p.completed).length;
 
-      const vote: Vote = {
-        id: `${userId}_${Date.now()}`,
-        lat,
-        lon,
-        beerId: selectedBeerId,
-        timestamp: Date.now(),
-      };
-
-      if (!isDevUser(userId)) {
-        saveLegacyVote(vote).catch(() => {});
+  const leaderboard = useMemo<LeaderboardEntry[]>(() => {
+    if (!dominance || !viewportBounds) return [];
+    const { data } = dominance.result;
+    const { dLat, dLon } = cellStepDeg(data.gridSpec.cellSizeMeters);
+    const counts = new Map<string, number>();
+    let total = 0;
+    for (let r = 0; r < data.rows; r++) {
+      const lat = data.gridSpec.minLat + (r + 0.5) * dLat;
+      if (lat < viewportBounds.south || lat > viewportBounds.north) continue;
+      for (let c = 0; c < data.cols; c++) {
+        const lon = data.gridSpec.minLon + (c + 0.5) * dLon;
+        if (lon < viewportBounds.west || lon > viewportBounds.east) continue;
+        const w = data.cells[r * data.cols + c].winnerBeerId;
+        if (!w) continue;
+        counts.set(w, (counts.get(w) ?? 0) + 1);
+        total++;
       }
-      setVotes((prev) => [...prev, vote]);
-      appEvents.emit({ type: 'vote:saved', vote });
-    },
-    [selectedBeerId, userId]
-  );
+    }
+    return Array.from(counts, ([beerId, n]) => ({ beerId, share: n / total }))
+      .sort((a, b) => b.share - a.share);
+  }, [dominance, viewportBounds]);
+
+  const homeCell = winnerAt(dominance, user.homeLat, user.homeLon);
+
+  const selected = useMemo(() => {
+    if (!selectedPoint || !dominance) return { cell: null, region: null };
+    const { data, regions: rs, labels } = dominance.result;
+    const pos = cellAt(data.gridSpec, data.rows, data.cols, selectedPoint.lat, selectedPoint.lon);
+    if (!pos) return { cell: null, region: null };
+    return {
+      cell: data.cells[pos.row * data.cols + pos.col] ?? null,
+      region: findRegionForCell(pos.row, pos.col, { regions: rs, labels }, data),
+    };
+  }, [selectedPoint, dominance]);
+
+  const friendMarkers = useMemo<FriendMarker[]>(() => {
+    const out: FriendMarker[] = [];
+    for (const fs of friendships) {
+      if (fs.status !== 'accepted') continue;
+      const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
+      const profile = remoteUsers.find((u) => u.userId === friendId);
+      if (!profile || (profile.homeLat === 0 && profile.homeLon === 0)) continue;
+      const presence = friendPresence.get(friendId);
+      out.push({
+        userId: friendId,
+        lat: profile.homeLat,
+        lon: profile.homeLon,
+        beerId: profile.beerId,
+        online: presence ? Date.now() - presence.lastSeen < GAME.PRESENCE_ONLINE_THRESHOLD_MS : false,
+      });
+    }
+    return out;
+  }, [friendships, remoteUsers, friendPresence, user.id]);
+
+  const home = useMemo(() => ({ lat: user.homeLat, lon: user.homeLon, beerId: user.beerId }),
+    [user.homeLat, user.homeLon, user.beerId]);
+
+  const hasUnread = Array.from(unreadCounts.values()).some((c) => c > 0);
+
+  // ── Actions
+  const openTab = useCallback((tab: TabId) => {
+    haptic('light');
+    setSelectedPoint(null);
+    setSheet((prev) => (prev?.kind === 'tab' && prev.tab === tab ? null : { kind: 'tab', tab }));
+  }, []);
+
+  const openProst = useCallback(() => {
+    haptic('medium');
+    setSheet((prev) => (prev?.kind === 'prost' ? null : { kind: 'prost' }));
+  }, []);
+
+  const closeSheet = useCallback(() => {
+    setSheet(null);
+    setSelectedPoint(null);
+  }, []);
+
+  const handleMapTap = useCallback((lat: number, lon: number) => {
+    setSelectedPoint({ lat, lon });
+    setSheet({ kind: 'territory' });
+  }, []);
+
+  const placeDemoVote = useCallback(() => {
+    if (!devTools || !demoBeerId || !selectedPoint) return;
+    const vote: Vote = {
+      id: `${user.id}_${Date.now()}`,
+      lat: selectedPoint.lat,
+      lon: selectedPoint.lon,
+      beerId: demoBeerId,
+      timestamp: Date.now(),
+    };
+    if (online) saveLegacyVote(vote).catch(() => {});
+    setVotes((prev) => [...prev, vote]);
+    appEvents.emit({ type: 'vote:saved', vote });
+    haptic('light');
+    mapRef.current?.pulseAt(vote.lat, vote.lon, beerColor(vote.beerId));
+  }, [devTools, demoBeerId, selectedPoint, user.id, online]);
 
   const handleAddVotes = useCallback((newVotes: Vote[]) => {
-    const devAllowed = import.meta.env.DEV || isDevUser(userId);
-    if (!devAllowed) return;
-
-    if (!isDevUser(userId)) {
-      saveLegacyVotes(newVotes).catch(() => {});
-    }
+    if (!devTools) return;
+    if (online) saveLegacyVotes(newVotes).catch(() => {});
     setVotes((prev) => [...prev, ...newVotes]);
-
-    for (const v of newVotes) {
-      appEvents.emit({ type: 'vote:saved', vote: v });
-    }
-  }, [userId]);
+    for (const v of newVotes) appEvents.emit({ type: 'vote:saved', vote: v });
+  }, [devTools, online]);
 
   const handleClearVotes = useCallback(() => {
-    const devAllowed = import.meta.env.DEV || isDevUser(userId);
-    if (!devAllowed) return;
-    if (!isDevUser(userId)) {
-      clearLegacyVotes().catch(() => {});
-    }
+    if (!devTools) return;
+    if (online) clearLegacyVotes().catch(() => {});
     setVotes([]);
-    setDominanceData(null);
-  }, [userId]);
-
-  const handleFeedNavigate = useCallback((lat: number, lon: number, zoom: number) => {
-    mapRef.current?.flyTo(lat, lon, zoom);
-  }, []);
+  }, [devTools, online]);
 
   const handleShareRegion = useCallback((region: Region) => {
     const beer = BEER_MAP.get(region.beerId);
@@ -434,70 +487,204 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   const handleUserUpdate = useCallback((updated: User) => {
     setUser(updated);
-    loadWeightedVotes();
-  }, [loadWeightedVotes]);
+  }, []);
 
-  const handleOTRCreated = useCallback(() => {
-    loadWeightedVotes();
-  }, [loadWeightedVotes]);
+  const handleCheckedIn = useCallback((vote: DrinkVote) => {
+    const prev = winnerAt(dominance, vote.lat, vote.lon);
+    pendingFlipRef.current = { lat: vote.lat, lon: vote.lon, beerId: vote.beerId, prevWinner: prev?.winnerBeerId ?? null };
+    setSheet(null);
+    mapRef.current?.flyTo(vote.lat, vote.lon, 13);
+    setTimeout(() => mapRef.current?.pulseAt(vote.lat, vote.lon, beerColor(vote.beerId)), 900);
+    setCelebration({
+      id: Date.now(),
+      beerId: vote.beerId,
+      title: 'Prost!',
+      subtitle: `Dein Check-in für ${beerName(vote.beerId)} zählt jetzt 24 Stunden.`,
+    });
+    loadWeightedVotes().catch(() => {});
+  }, [dominance, loadWeightedVotes]);
 
-  const handleDrinkVoteCreated = useCallback(() => {
-    loadWeightedVotes();
-  }, [loadWeightedVotes]);
+  const endCelebration = useCallback(() => setCelebration(null), []);
 
-  const tabConfig = [
-    { id: 'actions', icon: '⚡', label: 'Aktionen', title: 'Aktionen' },
-    { id: 'map',     icon: '🗺️', label: 'Karte',    title: 'Karte & Legende' },
-    { id: 'social',  icon: '👥', label: 'Sozial',   title: 'Freunde & Teams' },
-    { id: 'quests',  icon: '🏆', label: 'Quests',   title: 'Quests' },
-    ...(import.meta.env.DEV || isDevUser(user.id)
-      ? [{ id: 'dev', icon: '🔧', label: 'Dev', title: 'Dev Tools' }]
-      : []),
-  ];
+  const toggle3d = () => {
+    haptic('light');
+    setIs3d(mapRef.current?.toggle3d() ?? false);
+  };
 
-  const hasUnread = Object.values(unreadCounts).some((c) => c > 0);
-  const toggleTab = (id: string) => setActiveTab((prev) => (prev === id ? null : id));
-  const currentTabTitle = tabConfig.find((t) => t.id === activeTab)?.title ?? '';
+  // ── Sheet content
+  let sheetTitle: string = '';
+  let sheetBody: ReactNode = null;
+  if (sheet?.kind === 'prost') {
+    sheetTitle = 'Prost! Einchecken';
+    sheetBody = (
+      <ProstPanel
+        user={user}
+        store={store}
+        onCheckedIn={handleCheckedIn}
+        demoLocation={isDemo ? mapCenterRef.current : null}
+      />
+    );
+  } else if (sheet?.kind === 'territory') {
+    sheetTitle = selected.cell?.winnerBeerId ? 'Territorium' : 'Freies Land';
+    sheetBody = (
+      <TerritoryCard
+        cell={selected.cell}
+        region={selected.region}
+        isDemo={devTools}
+        demoBeerId={demoBeerId}
+        onShare={handleShareRegion}
+        onProst={() => setSheet({ kind: 'prost' })}
+        onDemoVote={placeDemoVote}
+      />
+    );
+  } else if (sheet?.kind === 'tab') {
+    sheetTitle = SHEET_TITLES[sheet.tab];
+    switch (sheet.tab) {
+      case 'explore':
+        sheetBody = (
+          <>
+            <Leaderboard entries={leaderboard} ownBeerId={user.beerId} computing={computing} />
+            <ExploreFeed items={feedItems} onNavigate={(lat, lon, zoom) => mapRef.current?.flyTo(lat, lon, zoom)} />
+          </>
+        );
+        break;
+      case 'crew':
+        sheetBody = online ? (
+          <>
+            <FriendsPanel
+              user={user}
+              store={store}
+              friendships={friendships}
+              onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
+              friendPresence={friendPresence}
+              unreadCounts={unreadCounts}
+              onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
+            />
+            <TeamPanel user={user} store={store} />
+          </>
+        ) : (
+          <>
+            <div className="empty">
+              <span className="empty-icon" aria-hidden="true">🍻</span>
+              <span className="empty-title">Crew gibt’s mit Konto</span>
+              <span>In der Demo spielst du allein. Mit Konto siehst du Freunde auf der Karte und chattest mit ihnen.</span>
+            </div>
+            <TeamPanel user={user} store={store} />
+          </>
+        );
+        break;
+      case 'quests':
+        sheetBody = <QuestsPanel questState={questState.questState} catalog={questState.catalog} />;
+        break;
+      case 'profile':
+        sheetBody = (
+          <>
+            <HomeStatus user={user} store={store} onUserUpdate={handleUserUpdate} />
+            <OnTheRoadButton user={user} store={store} onVoteCreated={() => loadWeightedVotes().catch(() => {})} />
+            <DuelPanel user={user} store={store} />
+            {devTools && (
+              <SimulationPanel
+                onAddVotes={handleAddVotes}
+                onClearVotes={handleClearVotes}
+                demoBeerId={demoBeerId}
+                onDemoBeerChange={setDemoBeerId}
+                voteCount={votes.length}
+              />
+            )}
+            <LogoutSection isDemo={isDemo} />
+          </>
+        );
+        break;
+    }
+  }
+
+  const homeShare = homeCell && homeCell.totalCount > 0 && homeCell.winnerBeerId
+    ? Math.round((homeCell.winnerCount / homeCell.totalCount) * 100)
+    : null;
 
   return (
-    <div className="app">
-      {/* ── Full-screen map */}
-      <div className="map-wrapper">
-        <MapView
-          ref={mapRef}
-          votes={votes}
-          dominanceData={dominanceData}
-          regions={regions}
-          gridSpec={gridSpec}
-          userVotePosition={userVotePosition}
-          onMapClick={handleMapClick}
-          overlaySettings={overlaySettings}
-          onViewportChange={handleViewportChange}
-          onShareRegion={handleShareRegion}
-          friendLocations={friendLocations}
-        />
-      </div>
+    <div className="app" style={{ '--c-beer': beerColor(user.beerId) } as CSSProperties}>
+      <MapView
+        ref={mapRef}
+        geometry={dominance?.result.geometry ?? null}
+        votes={votes}
+        home={home}
+        friends={friendMarkers}
+        selectedPoint={selectedPoint}
+        onMapTap={handleMapTap}
+        onViewportChange={handleViewportChange}
+      />
 
-      {/* ── Floating header pill */}
-      <header className="app-header">
-        <div className="header-brand">
-          <span className="header-logo">🍺</span>
-          <h1>Brew Country</h1>
-        </div>
-        <div className="header-badges">
-          {computing && <span className="computing-badge">⟳ Karte</span>}
-          {isFirebaseConfigured() && onlineCount > 0 && (
-            <span className="online-badge">
-              <span className="online-dot" />
-              {onlineCount}
+      <div className="map-vignette" aria-hidden="true" />
+
+      {/* ── Top bar: home status + map controls */}
+      <header className="topbar">
+        <button
+          className="status-chip glass"
+          onClick={() => mapRef.current?.flyTo(user.homeLat, user.homeLon, 12)}
+          aria-label="Zu deinem Revier fliegen"
+        >
+          <BeerBadge beerId={homeCell?.winnerBeerId ?? user.beerId} size="sm" />
+          <span className="status-chip-text">
+            <span className="status-chip-label">
+              Dein Revier
+              {homeCell?.winnerBeerId && homeCell.winnerBeerId !== user.beerId && (
+                <span className="status-chip-alert"> · Unter Druck</span>
+              )}
+            </span>
+            <span className="status-chip-value">
+              {homeCell?.winnerBeerId
+                ? <>{beerName(homeCell.winnerBeerId)}{homeShare !== null && <span className="num"> · {homeShare}&nbsp;%</span>}</>
+                : 'Wird berechnet…'}
+            </span>
+          </span>
+        </button>
+
+        <div className="map-controls">
+          {online && onlineCount > 0 && (
+            <span className="online-pill glass" aria-label={`${onlineCount} Spieler online`}>
+              <span className="online-dot" /> <span className="num">{onlineCount}</span>
             </span>
           )}
+          {computing && <span className="computing glass" aria-label="Karte wird berechnet"><span className="spinner" /></span>}
+          <button className="icon-btn glass" onClick={toggle3d} aria-pressed={is3d} aria-label="3D-Ansicht umschalten">
+            <span className="ctrl-3d">{is3d ? '2D' : '3D'}</span>
+          </button>
+          <button
+            className="icon-btn glass"
+            onClick={() => mapRef.current?.flyTo(user.homeLat, user.homeLon, 12)}
+            aria-label="Zu deinem Zuhause"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" fill="currentColor" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+            </svg>
+          </button>
         </div>
       </header>
 
-      {/* ── Content panel (chat or tab content) */}
-      {chatTarget ? (
-        <div className="content-panel">
+      {isDemo && <div className="demo-ribbon" role="note">Demo-Modus</div>}
+
+      <Sheet
+        open={sheet !== null}
+        title={sheetTitle}
+        onClose={closeSheet}
+        contentKey={sheet ? (sheet.kind === 'tab' ? sheet.tab : sheet.kind) : 'none'}
+        initialSnap={sheet?.kind === 'prost' ? 'full' : 'half'}
+      >
+        {sheetBody}
+      </Sheet>
+
+      <TabBar
+        active={sheet?.kind === 'tab' ? sheet.tab : null}
+        onSelect={openTab}
+        onProst={openProst}
+        prostActive={sheet?.kind === 'prost'}
+        unreadCrew={hasUnread}
+        questsDone={questsDone}
+      />
+
+      {chatTarget && (
+        <div className="chat-screen" role="dialog" aria-modal="true" aria-label="Chat">
           <ChatPanel
             user={user}
             friendshipId={chatTarget.friendshipId}
@@ -506,71 +693,21 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
             onBack={() => setChatTarget(null)}
           />
         </div>
-      ) : activeTab ? (
-        <div className="content-panel">
-          <div className="panel-header">
-            <span className="panel-title">{currentTabTitle}</span>
-            <button className="panel-close" onClick={() => setActiveTab(null)}>✕</button>
-          </div>
-          <div className="panel-scroll">
-            {activeTab === 'actions' && (
-              <>
-                <HomeStatus user={user} store={store} onUserUpdate={handleUserUpdate} />
-                <OnTheRoadButton user={user} store={store} onVoteCreated={handleOTRCreated} />
-                <DrinkVoteButton user={user} store={store} onVoteCreated={handleDrinkVoteCreated} />
-                <DuelPanel user={user} store={store} />
-              </>
-            )}
-            {activeTab === 'map' && (
-              <>
-                <BeerPicker selectedBeerId={selectedBeerId} onSelect={setSelectedBeerId} />
-                <Legend voteCount={votes.length} showSwords={overlaySettings.showSwords} />
-                <ExploreFeed items={feedItems} onNavigate={handleFeedNavigate} />
-              </>
-            )}
-            {activeTab === 'social' && (
-              <>
-                <FriendsPanel
-                  user={user}
-                  store={store}
-                  onOpenChat={(friendshipId, friendUser) => setChatTarget({ friendshipId, friendUser })}
-                  friendPresence={friendPresence}
-                  onFriendIdsChange={setFriendIds}
-                  unreadCounts={unreadCounts}
-                  onLocateFriend={(lat, lon) => mapRef.current?.flyTo(lat, lon, 12)}
-                />
-                <TeamPanel user={user} store={store} />
-              </>
-            )}
-            {activeTab === 'quests' && (
-              <QuestsPanel questState={questState} catalog={catalog} />
-            )}
-            {activeTab === 'dev' && (import.meta.env.DEV || isDevUser(user.id)) && (
-              <SimulationPanel onAddVotes={handleAddVotes} onClearVotes={handleClearVotes} />
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── Bottom navigation */}
-      <nav className="bottom-nav">
-        {tabConfig.map((tab) => (
-          <button
-            key={tab.id}
-            className={`nav-item${activeTab === tab.id ? ' active' : ''}`}
-            onClick={() => toggleTab(tab.id)}
-            title={tab.title}
-          >
-            <span className="nav-icon">{tab.icon}</span>
-            <span className="nav-label">{tab.label}</span>
-            {tab.id === 'social' && hasUnread && <span className="nav-badge" />}
-          </button>
-        ))}
-      </nav>
-
-      {sharePayload && (
-        <ShareModal payload={sharePayload} onClose={() => setSharePayload(null)} />
       )}
+
+      {sharePayload && <ShareModal payload={sharePayload} onClose={() => setSharePayload(null)} />}
+      {celebration && <Celebration key={celebration.id} data={celebration} onDone={endCelebration} />}
     </div>
+  );
+}
+
+function LogoutSection({ isDemo }: { isDemo: boolean }) {
+  const { logout } = useAuth();
+  return (
+    <section className="section">
+      <button className="btn btn-secondary btn-block" onClick={logout}>
+        {isDemo ? 'Demo beenden' : 'Abmelden'}
+      </button>
+    </section>
   );
 }

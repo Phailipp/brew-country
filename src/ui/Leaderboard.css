@@ -1,0 +1,23 @@
+.leaderboard { list-style: none; display: grid; gap: var(--sp-1); }
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 22px 28px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 52px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+}
+.lb-row.own { background: var(--c-accent-soft); box-shadow: inset 0 0 0 1px var(--c-accent-line); }
+
+.lb-rank { font-family: var(--font-display); font-weight: 800; color: var(--c-text-3); text-align: center; }
+.lb-rank.first { color: var(--c-accent); }
+
+.lb-main { display: grid; gap: 6px; min-width: 0; }
+.lb-name { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); font-weight: 650; }
+.lb-you { min-height: 22px; padding: 0 8px; font-size: 11px; }
+.lb-track { height: 6px; border-radius: var(--r-full); background: var(--c-surface-3); overflow: hidden; }
+.lb-track span { display: block; height: 100%; border-radius: inherit; transition: width var(--dur-3) var(--ease-out); }
+
+.lb-pct { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 800; letter-spacing: -0.02em; }

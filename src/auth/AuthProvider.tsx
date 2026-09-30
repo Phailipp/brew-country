@@ -51,7 +51,13 @@ export function AuthProvider({ children, store }: Props) {
     }
 
     if (isFirebaseConfigured()) {
+      // Never leave people staring at a spinner when Firebase is unreachable;
+      // a late auth event still upgrades the state.
+      const fallback = setTimeout(() => {
+        setAuth((prev) => (prev.status === 'loading' ? { status: 'unauthenticated' } : prev));
+      }, 8000);
       const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (firebaseUser) => {
+        clearTimeout(fallback);
         if (!firebaseUser) {
           localStorage.removeItem(LOCAL_AUTH_KEY);
           setAuth({ status: 'unauthenticated' });
@@ -71,7 +77,10 @@ export function AuthProvider({ children, store }: Props) {
         localStorage.setItem(LOCAL_AUTH_KEY, firebaseUser.uid);
         resolveUser(firebaseUser.uid);
       });
-      return () => unsubscribe();
+      return () => {
+        clearTimeout(fallback);
+        unsubscribe();
+      };
     }
 
     if (savedId) resolveUser(savedId);

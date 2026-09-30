@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { BEER_MAP } from '../domain/beers';
+import { BeerBadge } from './kit/BeerBadge';
 import type { Vote } from '../domain/types';
 import { BEERS } from '../domain/beers';
 import { getDefaultBoundingBox } from '../domain/geo';
@@ -7,6 +9,10 @@ import './SimulationPanel.css';
 interface Props {
   onAddVotes: (votes: Vote[]) => void;
   onClearVotes: () => void;
+  /** Beer used when placing a demo vote by tapping the map. */
+  demoBeerId: string | null;
+  onDemoBeerChange: (beerId: string) => void;
+  voteCount: number;
 }
 
 /** Always use the full DACH region for vote generation, not the viewport grid */
@@ -70,54 +76,64 @@ function generateRandomVotes(count: number, clustered: boolean): Vote[] {
   return votes;
 }
 
-export function SimulationPanel({ onAddVotes, onClearVotes }: Props) {
-  const [count, setCount] = useState(100);
+export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBeerChange, voteCount }: Props) {
+  const [count, setCount] = useState(300);
   const [clustered, setClustered] = useState(true);
 
-  const handleGenerate = () => {
-    const votes = generateRandomVotes(count, clustered);
-    onAddVotes(votes);
-  };
-
-  const handleAddOne = () => {
-    const votes = generateRandomVotes(1, clustered);
-    onAddVotes(votes);
-  };
-
   return (
-    <div className="simulation-panel">
-      <h3>Simulation</h3>
-      <div className="sim-controls">
-        <label>
-          Anzahl:
+    <section className="section sim">
+      <h2 className="section-title">
+        Demo-Werkzeuge <small>nur lokal, nichts wird gespeichert</small>
+      </h2>
+
+      <div className="card">
+        <p className="eyebrow">Stimmen simulieren</p>
+        <div className="sim-count">
           <input
-            type="number"
-            min={1}
-            max={1000}
+            type="range"
+            min={10}
+            max={2000}
+            step={10}
             value={count}
-            onChange={(e) => setCount(Math.max(1, Math.min(1000, Number(e.target.value))))}
+            onChange={(e) => setCount(Number(e.target.value))}
+            aria-label="Anzahl Stimmen"
           />
-        </label>
-        <label className="sim-checkbox">
-          <input
-            type="checkbox"
-            checked={clustered}
-            onChange={(e) => setClustered(e.target.checked)}
-          />
-          Geclustert (Ballungszentren)
-        </label>
+          <span className="num sim-count-value">{count}</span>
+        </div>
+        <div className="segmented" role="group" aria-label="Verteilung">
+          <button aria-pressed={clustered} onClick={() => setClustered(true)}>Städte</button>
+          <button aria-pressed={!clustered} onClick={() => setClustered(false)}>Zufällig</button>
+        </div>
+        <div className="sim-actions">
+          <button className="btn btn-primary" onClick={() => onAddVotes(generateRandomVotes(count, clustered))}>
+            {count} Stimmen erzeugen
+          </button>
+          <button className="btn btn-danger" onClick={onClearVotes} disabled={voteCount === 0}>
+            Zurücksetzen
+          </button>
+        </div>
+        <p className="muted sim-hint num">{voteCount.toLocaleString('de-DE')} Demo-Stimmen auf der Karte</p>
       </div>
-      <div className="sim-buttons">
-        <button className="sim-btn primary" onClick={handleGenerate}>
-          Generate {count} Votes
-        </button>
-        <button className="sim-btn" onClick={handleAddOne}>
-          +1 Random Vote
-        </button>
-        <button className="sim-btn danger" onClick={onClearVotes}>
-          Clear All Votes
-        </button>
+
+      <div className="card">
+        <p className="eyebrow">Per Tipp auf die Karte abstimmen</p>
+        <div className="sim-beers" role="radiogroup" aria-label="Bier für Demo-Stimmen">
+          {Array.from(BEER_MAP.values()).map((b) => (
+            <button
+              key={b.id}
+              role="radio"
+              aria-checked={demoBeerId === b.id}
+              className={`sim-beer${demoBeerId === b.id ? ' selected' : ''}`}
+              onClick={() => onDemoBeerChange(b.id)}
+              title={b.name}
+            >
+              <BeerBadge beerId={b.id} size="md" />
+              <span className="sr-only">{b.name}</span>
+            </button>
+          ))}
+        </div>
+        <p className="muted">Tipp auf die Karte → Gebiet ansehen → „Demo: Stimme setzen“.</p>
       </div>
-    </div>
+    </section>
   );
 }

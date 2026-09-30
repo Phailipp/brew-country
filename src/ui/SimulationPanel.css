@@ -1,119 +1,17 @@
-/* ─── Simulation Panel ──────────────────────────────── */
-.simulation-panel {
-  background: rgba(168, 85, 247, 0.05);
-  border: 1px solid rgba(168, 85, 247, 0.15);
-  border-radius: var(--radius-lg);
-  margin-bottom: 8px;
-  overflow: hidden;
+.sim .card { display: grid; gap: var(--sp-3); }
+.sim-count { display: flex; align-items: center; gap: var(--sp-3); }
+.sim-count input[type="range"] { flex: 1; accent-color: var(--c-accent); min-height: var(--tap); }
+.sim-count-value { min-width: 3.5ch; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 800; text-align: right; }
+.sim-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.sim-actions .btn-primary { flex: 1; }
+.sim-hint { font-size: var(--fs-xs); }
+.sim-beers { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sim-beer {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  transition: transform 300ms var(--ease-spring), box-shadow var(--dur-2);
 }
-
-.simulation-panel-header {
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(168, 85, 247, 0.12);
-  background: rgba(168, 85, 247, 0.05);
-}
-
-.simulation-panel h3 {
-  margin: 0;
-  font-size: 9px;
-  font-weight: 800;
-  color: var(--purple);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.simulation-panel-body {
-  padding: 12px 14px;
-}
-
-.sim-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.sim-controls label {
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-200);
-}
-
-.sim-controls input[type="number"] {
-  width: 70px;
-  padding: 5px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-100);
-  outline: none;
-  font-family: inherit;
-  transition: border-color var(--transition-fast);
-}
-
-.sim-controls input[type="number"]:focus {
-  border-color: rgba(168, 85, 247, 0.5);
-  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.1);
-}
-
-.sim-checkbox {
-  cursor: pointer;
-}
-
-.sim-checkbox input[type="checkbox"] {
-  cursor: pointer;
-  accent-color: var(--purple);
-}
-
-.sim-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sim-btn {
-  padding: 7px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-200);
-  transition: all var(--transition-fast);
-  text-align: left;
-  font-family: inherit;
-  letter-spacing: 0.2px;
-}
-
-.sim-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-100);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.sim-btn.primary {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
-}
-
-.sim-btn.primary:hover {
-  background: rgba(59, 130, 246, 0.25);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
-}
-
-.sim-btn.danger {
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.25);
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.sim-btn.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.35);
-}
+.sim-beer.selected { transform: scale(1.08); box-shadow: 0 0 0 2px var(--c-accent); }
