@@ -9,7 +9,6 @@ import { overpassQuery, parseOverpass, tileBounds, type Venue } from '../domain/
 const MIRRORS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 const TTL_MS = 7 * 24 * 3600 * 1000;
 const TIMEOUT_MS = 30_000;

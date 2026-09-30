@@ -181,6 +181,9 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
         </div>
       </div>
 
+      <p className="muted venue-osm">
+        Kneipendaten: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap-Mitwirkende</a> (ODbL)
+      </p>
     </div>
   );
 }

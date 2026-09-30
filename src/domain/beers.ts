@@ -1,6 +1,4 @@
 import type { Beer } from './types';
-// Brand logos dropped into src/assets/logos (see beerLogos.ts)
-import { LOGO_URLS } from './beerLogos';
 
 /** Two-letter monogram, e.g. "Hacker-Pschorr" → "HP", "Augustiner" → "AU". */
 function monogram(name: string): string {
@@ -167,6 +165,9 @@ const SEED: BeerSeed[] = [
   { id: "star", name: "Star Lager", brewery: "Nigerian Breweries", city: "Lagos", country: 'NG', color: '#e84545' },
 ];
 
+/** Approved brand logos by beer id (filled by loadBrandLogos). */
+const LOGO_URLS: Record<string, string> = {};
+
 function hydrate(seed: BeerSeed & { logoUrl?: string }): Beer {
   return {
     ...seed,
@@ -194,6 +195,30 @@ export function registerBeers(beers: (BeerSeed & { logoUrl?: string })[]): void 
     else BEERS.push(beer);
     BEER_MAP.set(beer.id, beer);
     changed = true;
+  }
+  if (changed) {
+    version++;
+    listeners.forEach((l) => l());
+  }
+}
+
+/**
+ * Load brand logos (a separate chunk that only exists in builds where the
+ * logos are approved) and attach them to the catalogue.
+ */
+export async function loadBrandLogos(): Promise<void> {
+  // Inline env check (not the shared flag) so the bundler can drop the chunk
+  if (!(import.meta.env.DEV || import.meta.env.VITE_BRAND_LOGOS === 'true')) return;
+  const { LOGO_FILES } = await import('./beerLogos');
+  Object.assign(LOGO_URLS, LOGO_FILES);
+  let changed = false;
+  for (let i = 0; i < BEERS.length; i++) {
+    const url = LOGO_URLS[BEERS[i].id];
+    if (url && BEERS[i].logoUrl !== url) {
+      BEERS[i] = { ...BEERS[i], logoUrl: url };
+      BEER_MAP.set(BEERS[i].id, BEERS[i]);
+      changed = true;
+    }
   }
   if (changed) {
     version++;

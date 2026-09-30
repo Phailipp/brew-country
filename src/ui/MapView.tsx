@@ -125,10 +125,17 @@ function composeLogoCrest(img: HTMLImageElement, color: string): ImageData | nul
   return ctx.getImageData(0, 0, size, size);
 }
 
+/** Crests already drawn from a brand logo (monograms get upgraded once logos load). */
+const logoCrests = new WeakMap<MapLibreMap, Set<string>>();
+
 function loadBeerIcons(map: MapLibreMap) {
+  let withLogo = logoCrests.get(map);
+  if (!withLogo) logoCrests.set(map, (withLogo = new Set()));
   for (const beer of BEERS) {
     const id = `beer-${beer.id}`;
+    if (beer.logoUrl && !withLogo.has(id) && map.hasImage(id)) map.removeImage(id);
     if (map.hasImage(id)) continue;
+    if (beer.logoUrl) withLogo.add(id);
     const img = new Image(96, 96); // explicit size: the monogram SVGs have no intrinsic size
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -447,7 +454,11 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
         minZoom: 1,
         maxZoom: 18,
         maxPitch: 65,
-        attributionControl: { compact: true },
+        attributionControl: {
+          compact: true,
+          // Pubs come from OSM even when the tile style is unavailable
+          customAttribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap-Mitwirkende</a>',
+        },
         fadeDuration: 150,
       });
       map = m;
@@ -467,14 +478,13 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
         if (cancelled) return;
         loadBeerIcons(m);
         addGameLayers(m);
-        // Compact attribution stays collapsed until tapped (MapLibre re-opens
-        // it whenever a source adds attribution text, e.g. the terrain DEM)
+        // OSM attribution guidelines: show the credits expanded at first,
+        // collapse only once the player starts using the map.
         const attrib = containerRef.current?.querySelector('.maplibregl-ctrl-attrib');
-        let userOpened = false;
-        attrib?.addEventListener('click', () => { userOpened = true; }, { once: true });
-        const collapse = () => { if (!userOpened) attrib?.classList.remove('maplibregl-compact-show'); };
-        collapse();
-        m.on('sourcedata', collapse);
+        attrib?.classList.add('maplibregl-compact-show');
+        const collapse = () => attrib?.classList.remove('maplibregl-compact-show');
+        m.once('dragstart', collapse);
+        m.once('zoomstart', (e) => { if ((e as { originalEvent?: unknown }).originalEvent) collapse(); });
         setReady(true);
         emitViewport();
 

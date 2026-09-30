@@ -1,7 +1,11 @@
+// Self-hosted fonts: no request to Google (GDPR), works offline
+import '@fontsource-variable/inter';
+import '@fontsource-variable/bricolage-grotesque/opsz.css';
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { loadBrandLogos } from './domain/beers.ts'
 import { ToastProvider } from './ui/Toast.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { FirestoreStore } from './storage/FirestoreStore.ts'
@@ -40,3 +44,5 @@ if (ADMIN_ENABLED && window.location.hash === '#admin') {
     </StrictMode>,
   );
 }
+
+loadBrandLogos().catch(() => {});

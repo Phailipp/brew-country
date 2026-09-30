@@ -147,7 +147,7 @@ export function BreweryCockpit({ initialBeerId, venues, standings, onOpenVenue }
 
       <p className="muted cockpit-foot">
         Basis: {r.venuesTotal.toLocaleString('de-DE')} Kneipen im geladenen Kartenbereich, Besuche der letzten 30 Tage.
-        Spielerdaten nur pseudonym.
+        Spielerdaten nur pseudonym. Kneipendaten © OpenStreetMap-Mitwirkende (ODbL).
       </p>
     </div>
   );
