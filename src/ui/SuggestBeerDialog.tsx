@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { countryFlag, sortedCountries } from '../domain/countries';
+import { localeCountry } from '../domain/worldCities';
 import { isDemoUserId } from '../auth/authContext';
 import { submitBeerSuggestion, type BeerSubmissionInput } from '../services/firestoreService';
 import { haptic } from './kit/haptics';
@@ -10,7 +12,7 @@ interface Props {
   userId: string;
 }
 
-const EMPTY: BeerSubmissionInput = { name: '', brewery: '', city: '', country: 'DE', website: '', note: '' };
+const EMPTY: BeerSubmissionInput = { name: '', brewery: '', city: '', country: localeCountry() ?? 'DE', website: '', note: '' };
 
 /**
  * "Your beer is missing?" — players suggest a brand; it is reviewed by the
@@ -100,9 +102,9 @@ export function SuggestBeerDialog({ open, onClose, userId }: Props) {
             <label className="field suggest-country">
               <span className="field-label">Land</span>
               <select value={form.country} onChange={(e) => set('country')(e.target.value)}>
-                <option value="DE">Deutschland</option>
-                <option value="AT">Österreich</option>
-                <option value="CH">Schweiz</option>
+                {sortedCountries().map((c) => (
+                  <option key={c.code} value={c.code}>{countryFlag(c.code)} {c.name}</option>
+                ))}
               </select>
             </label>
           </div>

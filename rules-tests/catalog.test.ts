@@ -40,8 +40,11 @@ describe('beerSubmissions', () => {
   it('denies a name longer than 60 chars', async () => {
     await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { name: 'x'.repeat(61) })));
   });
-  it('denies a country outside DACH', async () => {
-    await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { country: 'FR' })));
+  it('allows any ISO country code', async () => {
+    await assertSucceeds(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { country: 'JP' })));
+  });
+  it('denies a malformed country code', async () => {
+    await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { country: 'Japan' })));
   });
   it('denies a client-side createdAt', async () => {
     await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { createdAt: Date.now() })));

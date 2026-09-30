@@ -414,7 +414,8 @@ export interface BeerSubmission {
   name: string;
   brewery: string;
   city: string;
-  country: 'DE' | 'AT' | 'CH';
+  /** ISO 3166-1 alpha-2 */
+  country: string;
   website: string;
   note: string;
   submittedBy: string;
@@ -453,7 +454,8 @@ export interface CatalogBeer {
   name: string;
   brewery: string;
   city: string;
-  country: 'DE' | 'AT' | 'CH';
+  /** ISO 3166-1 alpha-2 */
+  country: string;
   color: string;
   logoUrl?: string;
 }

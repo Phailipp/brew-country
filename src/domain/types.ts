@@ -9,8 +9,11 @@ export interface Beer {
   logoUrl?: string;
   brewery?: string;
   city?: string;
-  country?: 'DE' | 'AT' | 'CH';
-  /** Shown first in pickers (Munich core brands) */
+  /** ISO 3166-1 alpha-2 country code of the brewery */
+  country?: string;
+  /** Other spellings used in OpenStreetMap `brewery=*` tags */
+  aliases?: string[];
+  /** Shown first in pickers of players from the same country */
   featured?: boolean;
   /** 'community' = added via an approved submission */
   source?: 'builtin' | 'community';
@@ -30,6 +33,8 @@ export interface GridSpec {
   minLon: number;
   maxLon: number;
   cellSizeMeters: number;
+  /** Reference latitude of the lon step (see geo.refLatFor). */
+  refLat?: number;
 }
 
 export interface GridCell {

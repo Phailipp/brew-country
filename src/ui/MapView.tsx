@@ -8,7 +8,7 @@ import type { FeatureCollection, Point } from 'geojson';
 import type { Vote, ViewportBounds } from '../domain/types';
 import type { TerritoryGeometry } from '../domain/territoryGeometry';
 import { BEERS, BEER_MAP } from '../domain/beers';
-import { MUNICH_CENTER } from '../domain/geo';
+import { DEFAULT_CENTER } from '../domain/geo';
 import { loadMapStyle, TERRITORY_BEFORE_ID } from './map/mapStyle';
 import { useBeerCatalog } from './kit/useBeerCatalog';
 import './MapView.css';
@@ -323,6 +323,8 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   const pulseFrameRef = useRef<number | null>(null);
   const hasHotspotsRef = useRef(false);
   const introRef = useRef<boolean>(shouldPlayIntro());
+  // Read once at map creation; later home moves only move the marker
+  const homeRef = useRef(home);
 
   useEffect(() => {
     tapRef.current = onMapTap;
@@ -335,14 +337,16 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     let map: MapLibreMap | null = null;
     let hotspotFrame: number | null = null;
 
+    // Open over the player's home, wherever on Earth it is
+    const start = homeRef.current ?? DEFAULT_CENTER;
     loadMapStyle().then((style) => {
       if (cancelled || !containerRef.current) return;
       const m = new MapLibreMap({
         container: containerRef.current,
         style,
-        center: introRef.current ? [9, 38] : [MUNICH_CENTER.lon, MUNICH_CENTER.lat],
+        center: introRef.current ? [start.lon, Math.max(-60, Math.min(60, start.lat - 12))] : [start.lon, start.lat],
         zoom: introRef.current ? 1.4 : 10,
-        minZoom: 4.5,
+        minZoom: 1,
         maxZoom: 18,
         maxPitch: 65,
         attributionControl: { compact: true },
@@ -398,9 +402,9 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
           hotspotFrame = requestAnimationFrame(tick);
         }
 
-        // Cinematic entrance: from the globe down to Munich, once per session
+        // Cinematic entrance: from the globe down to the home turf, once per session
         if (introRef.current) {
-          m.flyTo({ center: [MUNICH_CENTER.lon, MUNICH_CENTER.lat], zoom: 10, duration: 4200, curve: 1.7, essential: true });
+          m.flyTo({ center: [start.lon, start.lat], zoom: 10, duration: 4200, curve: 1.7, essential: true });
         }
       });
 

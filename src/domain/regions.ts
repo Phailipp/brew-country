@@ -1,5 +1,5 @@
 import type { DominanceResult, Region } from './types';
-import { cellStepDeg, getDefaultBoundingBox } from './geo';
+import { specStepDeg, GRID_ORIGIN } from './geo';
 
 export interface RegionExtraction {
   regions: Region[];
@@ -17,11 +17,10 @@ export function extractRegions(data: DominanceResult): Region[] {
 
 export function extractRegionsWithLabels(data: DominanceResult): RegionExtraction {
   const { rows, cols, cells, gridSpec: gs } = data;
-  const { dLat: cellDLat, dLon: cellDLon } = cellStepDeg(gs.cellSizeMeters);
+  const { dLat: cellDLat, dLon: cellDLon } = specStepDeg(gs);
   // Absolute lattice offset, so region ids stay stable while panning
-  const origin = getDefaultBoundingBox();
-  const rowOffset = Math.round((gs.minLat - origin.minLat) / cellDLat);
-  const colOffset = Math.round((gs.minLon - origin.minLon) / cellDLon);
+  const rowOffset = Math.round((gs.minLat - GRID_ORIGIN.lat) / cellDLat);
+  const colOffset = Math.round((gs.minLon - GRID_ORIGIN.lon) / cellDLon);
   const labels = new Int32Array(rows * cols).fill(-1);
   const regionCells: number[][] = [];
 

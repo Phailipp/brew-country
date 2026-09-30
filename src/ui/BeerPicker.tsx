@@ -1,4 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react';
+import { countryFlag } from '../domain/countries';
+import { localeCountry } from '../domain/worldCities';
 import { searchBeers } from '../domain/beers';
 import { BeerBadge } from './kit/BeerBadge';
 import { useBeerCatalog } from './kit/useBeerCatalog';
@@ -15,22 +17,23 @@ interface Props {
   onSuggest?: () => void;
   disabled?: boolean;
   label?: string;
+  /** Country whose beers come first (default: the browser locale's). */
+  country?: string | null;
 }
 
-const COUNTRY_FLAG: Record<string, string> = { DE: '🇩🇪', AT: '🇦🇹', CH: '🇨🇭' };
 
-export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSuggest, disabled, label = 'Bier auswählen' }: Props) {
+export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSuggest, disabled, label = 'Bier auswählen', country }: Props) {
   const catalogVersion = useBeerCatalog();
   const [query, setQuery] = useState('');
 
   const beers = useMemo(() => {
-    const list = searchBeers(query);
+    const list = searchBeers(query, country ?? localeCountry());
     if (query) return list;
     const pins = pinned.map((id) => list.find((b) => b.id === id)).filter((b) => b !== undefined);
     return [...pins, ...list.filter((b) => !pinned.includes(b.id))];
     // catalogVersion: re-run when community beers arrive
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, pinned.join(','), catalogVersion]);
+  }, [query, pinned.join(','), catalogVersion, country]);
 
   return (
     <div className={`bp bp-${layout}`}>
@@ -66,7 +69,7 @@ export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSu
               <BeerBadge beerId={beer.id} size="lg" />
               <span className="bp-name">{beer.name}</span>
               {layout === 'grid' && beer.city && (
-                <span className="bp-city">{COUNTRY_FLAG[beer.country ?? 'DE']} {beer.city}</span>
+                <span className="bp-city">{countryFlag(beer.country)} {beer.city}</span>
               )}
             </button>
           );

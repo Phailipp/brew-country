@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect, useRef, type CSSProperties } from 'react';
+import { nearestCity, localeCountry } from '../domain/worldCities';
+import { searchBeers } from '../domain/beers';
 import type { User } from '../domain/types';
 import { useAuth } from './authContext';
 import { BeerPicker } from '../ui/BeerPicker';
@@ -42,7 +44,16 @@ export function Onboarding() {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [selectedBeerId, setSelectedBeerId] = useState<string>('augustiner');
+  const [selectedBeerId, setSelectedBeerId] = useState<string>(() => searchBeers('', localeCountry())[0]?.id ?? 'augustiner');
+  const beerTouchedRef = useRef(false);
+  /** Store the home spot and, until the player picks one, preselect a local beer. */
+  const applyLocation = (loc: { lat: number; lon: number } | null) => {
+    setLocation(loc);
+    if (loc && !beerTouchedRef.current) {
+      const local = searchBeers('', nearestCity(loc.lat, loc.lon).country)[0];
+      if (local) setSelectedBeerId(local.id);
+    }
+  };
   const [error, setError] = useState('');
   const [gpsPhase, setGpsPhase] = useState<GpsPhase | null>(null);
   const [impreciseCandidate, setImpreciseCandidate] = useState<ImpreciseLocationCandidate | null>(null);
@@ -137,7 +148,7 @@ export function Onboarding() {
       const avgLat = (s1.lat + s2.lat) / 2;
       const avgLon = (s1.lon + s2.lon) / 2;
 
-      setLocation({ lat: avgLat, lon: avgLon });
+      applyLocation({ lat: avgLat, lon: avgLon });
       setImpreciseCandidate(null);
       haptic('success');
       setStep('beer');
@@ -154,7 +165,7 @@ export function Onboarding() {
 
   const handleUseImpreciseLocation = useCallback(() => {
     if (!impreciseCandidate) return;
-    setLocation({ lat: impreciseCandidate.lat, lon: impreciseCandidate.lon });
+    applyLocation({ lat: impreciseCandidate.lat, lon: impreciseCandidate.lon });
     setError('');
     setStep('beer');
   }, [impreciseCandidate]);
@@ -167,7 +178,7 @@ export function Onboarding() {
       return;
     }
     setError('');
-    setLocation({ lat, lon });
+    applyLocation({ lat, lon });
     setStep('beer');
   };
 
@@ -346,9 +357,10 @@ export function Onboarding() {
               <p className="auth-instruction">Für welche Brauerei ziehst du in die Schlacht?</p>
               <BeerPicker
                 value={selectedBeerId}
-                onChange={setSelectedBeerId}
+                onChange={(id) => { beerTouchedRef.current = true; setSelectedBeerId(id); }}
                 layout="grid"
                 onSuggest={() => setSuggestOpen(true)}
+                country={location ? nearestCity(location.lat, location.lon).country : null}
               />
               <div className="ob-sticky-cta">
                 <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => goTo('confirm')}>

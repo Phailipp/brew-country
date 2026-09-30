@@ -1,6 +1,6 @@
 # Brew Country
 
-**Welches Bier regiert dein Viertel?** Ein Location-Game für München und den DACH-Raum: Spieler checken mit ihrem Bier ein, Stimmen färben die Karte, und Brauereien kämpfen um Territorien.
+**Welches Bier regiert dein Viertel?** Ein weltweites Location-Game, gestartet in München: Spieler checken mit ihrem Bier ein, Stimmen färben die Karte, und Brauereien kämpfen um Territorien.
 
 ## Setup & Run
 
@@ -36,7 +36,7 @@ Danach lokal `npm run dev` starten, einloggen und `http://localhost:5173/#admin`
 
 ### Bier-Katalog, Logos & Einreichungen
 
-- **Katalog:** `src/domain/beers.ts`, 49 Marken aus DACH. Die Ids sind stabil und dürfen nie umbenannt werden, weil sie in gespeicherten Stimmen stehen.
+- **Katalog:** `src/domain/beers.ts`, 120 Marken: DACH plus die großen Namen jedes Bierlandes. Spieler sehen zuerst die Biere ihres Landes (aus Standort bzw. Browser-Sprache). `aliases` ordnen OSM-Tags wie `brewery=Augustiner Bräu` einer Marke zu (`matchBeerIds`). Die Ids sind stabil und dürfen nie umbenannt werden, weil sie in gespeicherten Stimmen stehen.
 - **Logos:** Eine Datei `<bier-id>.svg|png|webp` in `src/assets/logos/` legen, dann erscheint sie automatisch in Badges, Pickern und Karten-Wappen. Logos sind Marken: nur mit Freigabe verwenden und in `src/assets/logos/SOURCES.md` dokumentieren.
 - **Einreichungen:** „Dein Bier fehlt?“ schreibt nach `beerSubmissions` (Status `pending`). Nach Freigabe im Admin landet das Bier in `beers` und erscheint live bei allen Spielern.
 
@@ -51,7 +51,7 @@ npm run test:rules
 Kernpunkte:
 - Standard ist „verboten“.
 - Private Profile kann nur der Eigentümer lesen.
-- Öffentliche Positionen sind auf ca. 2 km gerundet, Check-ins auf ca. 500 m.
+- Positionen sind weltweit erlaubt (±85° Breite). Öffentliche Positionen sind auf ca. 2 km gerundet, Check-ins auf ca. 500 m.
 - Cooldown und Tageslimit für Check-ins erzwingt der Server.
 - Freundschafts-Chats sind nur für Mitglieder lesbar.
 - Katalog und Dev-Daten darf nur ein Admin schreiben.
@@ -96,8 +96,8 @@ src/
 
 ### Dominanz-Berechnung
 
-- **Globales Raster**: Die Zellen sind an einem festen Gitter verankert (Referenzbreite 48,5°). Territorien springen beim Verschieben der Karte nicht mehr, und Regionen haben stabile IDs.
-- Die Zellgröße hängt vom Zoom ab (4 km bis 200 m), höchstens 80.000 Zellen.
+- **Weltweites Raster**: Die Zellen hängen an einem globalen Gitter mit Ursprung 0°/0°. Die Längen-Schrittweite gilt jeweils für ein 15°-Breitenband, damit Zellen überall etwa quadratisch sind. Territorien springen beim Verschieben nicht, und Regionen haben stabile IDs.
+- Die Zellgröße hängt vom Zoom ab (150 km in der Weltansicht bis 200 m), höchstens 80.000 Zellen.
 - **Vote-zentrierte Rasterung**: Jede Stimme besucht nur die Zellen in ihrem Radius, also O(Stimmen × r²/Zelle²).
 - Gewichtete Mehrheit pro Zelle, danach Glättung und Verschmelzen kleiner Inseln. Sieger, Zweiter und Vorsprung bleiben dabei konsistent.
 - Worker-Antworten tragen eine Request-ID. Veraltete Ergebnisse werden verworfen.

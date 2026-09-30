@@ -11,7 +11,7 @@ beforeAll(async () => { env = await createEnv(); });
 afterAll(async () => { await env.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
 
-// Berlin — a valid DACH location different from the seeded home
+// Berlin — a valid location different from the seeded home
 const NEW_LAT = 52.52;
 const NEW_LON = 13.405;
 
@@ -42,9 +42,17 @@ describe('bc_users (private profile)', () => {
     it('denies an invalid beerId', async () => {
       await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_users/alice'), privateProfile('alice', { beerId: 'Bad Beer!' })));
     });
-    it('denies a home outside DACH (Paris)', async () => {
+    it('allows a home anywhere in the world (Buenos Aires)', async () => {
+      await assertSucceeds(setDoc(doc(userDb(env, 'alice'), 'bc_users/alice'),
+        privateProfile('alice', { homeLat: -34.6037, homeLon: -58.3816 })));
+    });
+    it('denies a home off the map (lat 88)', async () => {
       await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_users/alice'),
-        privateProfile('alice', { homeLat: 48.8566, homeLon: 2.3522 })));
+        privateProfile('alice', { homeLat: 88, homeLon: 10 })));
+    });
+    it('denies a home on Null Island (reserved for wiped homes)', async () => {
+      await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_users/alice'),
+        privateProfile('alice', { homeLat: 0, homeLon: 0 })));
     });
     it('denies unknown fields', async () => {
       await assertFails(setDoc(doc(userDb(env, 'alice'), 'bc_users/alice'), privateProfile('alice', { isAdmin: true })));
@@ -107,12 +115,12 @@ describe('bc_users (private profile)', () => {
         { homeLat: NEW_LAT, homeLon: NEW_LON, lastActiveAt: Date.now() }));
     });
     // Regression: the "re-set after a wipe" branch `(existing().homeLat == 0 && existing().homeLon == 0)`
-    // does not check inDach(), so a wiped profile can be moved anywhere (e.g. Paris).
-    it('denies re-setting a wiped home to a place outside DACH', async () => {
+    // did not check the location, so a wiped profile could be moved off the map.
+    it('denies re-setting a wiped home to a place off the map', async () => {
       await seed(env, (db) => setDoc(doc(db, 'bc_users/alice'),
         privateProfile('alice', { createdAt: Date.now() - DAY, homeLat: 0, homeLon: 0 })));
       await assertFails(updateDoc(doc(userDb(env, 'alice'), 'bc_users/alice'),
-        { homeLat: 48.8566, homeLon: 2.3522, lastActiveAt: Date.now() }));
+        { homeLat: 88, homeLon: 2.3522, lastActiveAt: Date.now() }));
     });
     it('allows moving home with homeChangedAt≈now when createdAt is > 7 days ago', async () => {
       await seed(env, (db) => setDoc(doc(db, 'bc_users/alice'), privateProfile('alice', { createdAt: Date.now() - 8 * DAY })));
@@ -124,10 +132,10 @@ describe('bc_users (private profile)', () => {
       await assertFails(updateDoc(doc(userDb(env, 'alice'), 'bc_users/alice'),
         { homeLat: NEW_LAT, homeLon: NEW_LON, lastActiveAt: Date.now() }));
     });
-    it('denies moving home outside DACH even after 7 days', async () => {
+    it('denies moving home off the map even after 7 days', async () => {
       await seed(env, (db) => setDoc(doc(db, 'bc_users/alice'), privateProfile('alice', { createdAt: Date.now() - 8 * DAY })));
       await assertFails(updateDoc(doc(userDb(env, 'alice'), 'bc_users/alice'),
-        { homeLat: 48.8566, homeLon: 2.3522, homeChangedAt: Date.now(), lastActiveAt: Date.now() }));
+        { homeLat: 48.8566, homeLon: 200, homeChangedAt: Date.now(), lastActiveAt: Date.now() }));
     });
     // Regression: homeChangedAt itself is not protected. A user can first back-date it
     // (home unchanged → allowed), then move home immediately, bypassing the 7-day lock.

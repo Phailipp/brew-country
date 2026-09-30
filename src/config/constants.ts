@@ -3,14 +3,16 @@
  * No Settings panel — tune here and redeploy.
  */
 export const GAME = {
-  // ── Grid (DACH region: ~1050 km N–S, ~850 km W–E) ────
-  GRID_SIZE_KM: 1100,
-  CELL_SIZE_METERS: 2000,            // fallback for full-DACH grid
+  // ── Grid (worldwide, anchored at 0°/0°) ──────────────
+  CELL_SIZE_METERS: 2000,            // fallback when no zoom anchor matches
 
   // ── Zoom-adaptive grid ──────────────────────────────
   /** Zoom → cell size mapping (meters). Interpolated for in-between zooms. */
   ZOOM_CELL_SIZES: {
-    6:  4000,   // ganz DACH sichtbar — grob
+    1: 150000,  // ganze Welt
+    3:  60000,  // Kontinent
+    5:  12000,  // Land
+    6:  4000,   // Region
     8:  2000,   // Bundesland
     10: 1000,   // Großraum / Stadt
     12:  500,   // Stadtviertel

@@ -116,8 +116,11 @@ describe('check-in batch (bc_userStats + bc_drinkVotes)', () => {
   it('denies unrounded coordinates', async () => {
     await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: 48.1372, lon: 11.5761 }));
   });
-  it('denies coordinates outside DACH', async () => {
-    await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: round200(48.8566), lon: round200(2.3522) }));
+  it('allows check-ins anywhere in the world (Tokio)', async () => {
+    await assertSucceeds(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: round200(35.6762), lon: round200(139.6503) }));
+  });
+  it('denies coordinates off the map (beyond ±85°)', async () => {
+    await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { lat: round200(89.5), lon: round200(10) }));
   });
   it('denies poor GPS accuracy (> 75 m)', async () => {
     await assertFails(checkIn(userDb(env, 'alice'), 'alice', 'v1', 1, { gpsAccuracyM: 500 }));

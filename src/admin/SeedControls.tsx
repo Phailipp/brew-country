@@ -5,29 +5,14 @@ import { BEERS } from '../domain/beers';
 import { getNow } from '../domain/clock';
 import { roundToPlaceKey } from '../domain/placeKey';
 import { GAME } from '../config/constants';
+import { WORLD_CITIES } from '../domain/worldCities';
 
 interface Props {
   store: StorageInterface;
 }
 
-// Major DACH cities for clustering
-const CITIES = [
-  { name: 'Berlin', lat: 52.52, lon: 13.405 },
-  { name: 'M\u00fcnchen', lat: 48.137, lon: 11.576 },
-  { name: 'Wien', lat: 48.208, lon: 16.373 },
-  { name: 'Z\u00fcrich', lat: 47.377, lon: 8.541 },
-  { name: 'Hamburg', lat: 53.551, lon: 9.994 },
-  { name: 'K\u00f6ln', lat: 50.938, lon: 6.960 },
-  { name: 'Frankfurt', lat: 50.111, lon: 8.682 },
-  { name: 'Stuttgart', lat: 48.776, lon: 9.183 },
-  { name: 'D\u00fcsseldorf', lat: 51.227, lon: 6.774 },
-  { name: 'Salzburg', lat: 47.811, lon: 13.055 },
-  { name: 'Bern', lat: 46.948, lon: 7.448 },
-  { name: 'Graz', lat: 47.071, lon: 15.439 },
-  { name: 'Innsbruck', lat: 47.263, lon: 11.394 },
-  { name: 'Leipzig', lat: 51.340, lon: 12.375 },
-  { name: 'Dresden', lat: 51.051, lon: 13.738 },
-];
+// Beer capitals worldwide for clustering
+const CITIES = WORLD_CITIES;
 
 function randomCity() {
   return CITIES[Math.floor(Math.random() * CITIES.length)];

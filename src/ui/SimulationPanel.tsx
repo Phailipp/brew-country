@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BeerPicker } from './BeerPicker';
 import type { Vote } from '../domain/types';
 import { BEERS } from '../domain/beers';
-import { getDefaultBoundingBox } from '../domain/geo';
+import { WORLD_CITIES, nearestCity } from '../domain/worldCities';
 import './SimulationPanel.css';
 
 interface Props {
@@ -12,62 +12,52 @@ interface Props {
   demoBeerId: string | null;
   onDemoBeerChange: (beerId: string) => void;
   voteCount: number;
+  /** Current map centre (simulations around "here"). */
+  getCenter: () => { lat: number; lon: number };
 }
 
-/** Always use the full DACH region for vote generation, not the viewport grid */
-const FULL_DACH = getDefaultBoundingBox();
+type Spread = 'here' | 'world';
 
-function randomInRange(min: number, max: number): number {
-  return min + Math.random() * (max - min);
+/** Gaussian-ish offset: sum of two uniforms, in degrees. */
+const jitter = (spread: number) => (Math.random() + Math.random() - 1) * spread;
+
+/** 75 % local brands, the rest from anywhere: that's what a real bar menu looks like. */
+function pickBeer(country: string) {
+  const local = BEERS.filter((b) => b.country === country);
+  const pool = local.length > 0 && Math.random() < 0.75 ? local : BEERS;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// Major DACH cities for clustered simulation
-const DACH_CITIES = [
-  { lat: 48.135, lon: 11.582, name: 'München' },
-  { lat: 52.520, lon: 13.405, name: 'Berlin' },
-  { lat: 50.938, lon: 6.960,  name: 'Köln' },
-  { lat: 48.776, lon: 9.183,  name: 'Stuttgart' },
-  { lat: 50.111, lon: 8.682,  name: 'Frankfurt' },
-  { lat: 53.551, lon: 9.994,  name: 'Hamburg' },
-  { lat: 51.234, lon: 6.784,  name: 'Düsseldorf' },
-  { lat: 51.340, lon: 12.375, name: 'Leipzig' },
-  { lat: 51.050, lon: 13.738, name: 'Dresden' },
-  { lat: 49.453, lon: 11.078, name: 'Nürnberg' },
-  { lat: 48.208, lon: 16.374, name: 'Wien' },
-  { lat: 47.076, lon: 15.421, name: 'Graz' },
-  { lat: 47.264, lon: 11.394, name: 'Innsbruck' },
-  { lat: 47.811, lon: 13.055, name: 'Salzburg' },
-  { lat: 47.377, lon: 8.542,  name: 'Zürich' },
-  { lat: 46.948, lon: 7.448,  name: 'Bern' },
-  { lat: 46.204, lon: 6.143,  name: 'Genf' },
-  { lat: 47.559, lon: 7.589,  name: 'Basel' },
-];
-
-function generateRandomVotes(count: number, clustered: boolean): Vote[] {
+function generateRandomVotes(count: number, spread: Spread, center: { lat: number; lon: number }): Vote[] {
   const votes: Vote[] = [];
+  const hereCountry = nearestCity(center.lat, center.lon).country;
+  // A handful of neighbourhood hotspots so "here" looks like a real city
+  const hotspots = Array.from({ length: 6 }, () => ({ lat: center.lat + jitter(0.12), lon: center.lon + jitter(0.18) }));
 
   for (let i = 0; i < count; i++) {
     let lat: number;
     let lon: number;
+    let country: string;
 
-    if (clustered && Math.random() < 0.7) {
-      // 70% clustered around random DACH cities
-      const city = DACH_CITIES[Math.floor(Math.random() * DACH_CITIES.length)];
-      const spread = 0.3 + Math.random() * 0.5; // ~30–80 km spread
-      lat = city.lat + (Math.random() + Math.random() - 1) * spread;
-      lon = city.lon + (Math.random() + Math.random() - 1) * spread;
+    if (spread === 'here') {
+      const h = hotspots[i % hotspots.length];
+      const s = Math.random() < 0.7 ? 0.03 : 0.15;
+      lat = h.lat + jitter(s);
+      lon = h.lon + jitter(s * 1.5);
+      country = hereCountry;
     } else {
-      lat = randomInRange(FULL_DACH.minLat, FULL_DACH.maxLat);
-      lon = randomInRange(FULL_DACH.minLon, FULL_DACH.maxLon);
+      const city = WORLD_CITIES[Math.floor(Math.random() * WORLD_CITIES.length)];
+      const s = 0.1 + Math.random() * 0.4;
+      lat = city.lat + jitter(s);
+      lon = city.lon + jitter(s * 1.4);
+      country = city.country;
     }
-
-    const beer = BEERS[Math.floor(Math.random() * BEERS.length)];
 
     votes.push({
       id: `sim_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
-      lat,
-      lon,
-      beerId: beer.id,
+      lat: Math.max(-84, Math.min(84, lat)),
+      lon: ((lon + 540) % 360) - 180,
+      beerId: pickBeer(country).id,
       timestamp: Date.now() - Math.floor(Math.random() * 86400000),
     });
   }
@@ -75,9 +65,9 @@ function generateRandomVotes(count: number, clustered: boolean): Vote[] {
   return votes;
 }
 
-export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBeerChange, voteCount }: Props) {
+export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBeerChange, voteCount, getCenter }: Props) {
   const [count, setCount] = useState(300);
-  const [clustered, setClustered] = useState(true);
+  const [spread, setSpread] = useState<Spread>('here');
 
   return (
     <section className="section sim">
@@ -100,11 +90,11 @@ export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBe
           <span className="num sim-count-value">{count}</span>
         </div>
         <div className="segmented" role="group" aria-label="Verteilung">
-          <button aria-pressed={clustered} onClick={() => setClustered(true)}>Städte</button>
-          <button aria-pressed={!clustered} onClick={() => setClustered(false)}>Zufällig</button>
+          <button aria-pressed={spread === 'here'} onClick={() => setSpread('here')}>Hier</button>
+          <button aria-pressed={spread === 'world'} onClick={() => setSpread('world')}>Weltweit</button>
         </div>
         <div className="sim-actions">
-          <button className="btn btn-primary" onClick={() => onAddVotes(generateRandomVotes(count, clustered))}>
+          <button className="btn btn-primary" onClick={() => onAddVotes(generateRandomVotes(count, spread, getCenter()))}>
             {count} Stimmen erzeugen
           </button>
           <button className="btn btn-danger" onClick={onClearVotes} disabled={voteCount === 0}>

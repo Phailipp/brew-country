@@ -3,7 +3,7 @@ import type {
   Vote, GridSpec, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship,
   WorkerInput, WorkerOutput, DrinkVote, CellResult,
 } from './domain/types';
-import { getDefaultBoundingBox, getViewportGridSpec, cellAt, cellStepDeg, MUNICH_CENTER } from './domain/geo';
+import { getDefaultBoundingBox, getViewportGridSpec, cellAt, specStepDeg } from './domain/geo';
 import { GAME } from './config/constants';
 import type { StorageInterface } from './storage/StorageInterface';
 import { BEER_MAP, registerBeers } from './domain/beers';
@@ -169,7 +169,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const mapRef = useRef<MapViewHandle>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingFlipRef = useRef<{ lat: number; lon: number; beerId: string; prevWinner: string | null } | null>(null);
-  const mapCenterRef = useRef<{ lat: number; lon: number }>({ lat: MUNICH_CENTER.lat, lon: MUNICH_CENTER.lon });
+  const mapCenterRef = useRef<{ lat: number; lon: number }>({ lat: initialUser.homeLat, lon: initialUser.homeLon });
+
+  const getMapCenter = useCallback(() => mapCenterRef.current, []);
 
   const { showToast } = useToast();
   const { onlineCount, friendPresence, setFriendIds } = usePresence(user.id);
@@ -364,7 +366,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const leaderboard = useMemo<LeaderboardEntry[]>(() => {
     if (!dominance || !viewportBounds) return [];
     const { data } = dominance.result;
-    const { dLat, dLon } = cellStepDeg(data.gridSpec.cellSizeMeters);
+    const { dLat, dLon } = specStepDeg(data.gridSpec);
     const counts = new Map<string, number>();
     let total = 0;
     for (let r = 0; r < data.rows; r++) {
@@ -601,6 +603,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                 demoBeerId={demoBeerId}
                 onDemoBeerChange={setDemoBeerId}
                 voteCount={votes.length}
+                getCenter={getMapCenter}
               />
             )}
             <LogoutSection isDemo={isDemo} user={user} />
