@@ -31,16 +31,13 @@ export function computeFeedItems(
     .slice(0, 3);
 
   for (const region of contested) {
-    const beer = BEER_MAP.get(region.beerId);
-    const runner = region.runnerUpBeerId ? BEER_MAP.get(region.runnerUpBeerId) : null;
-    if (!beer) continue;
+    if (!BEER_MAP.has(region.beerId)) continue;
     const marginPct = Math.round(region.avgMargin * 100);
 
     items.push({
       id: `battle-${region.id}`,
       type: 'battlefront',
-      title: `${beer.name} vs ${runner?.name ?? '?'}`,
-      subtitle: `Nur ${marginPct} % Vorsprung – hier kippt es gleich`,
+      stats: { marginPct },
       beerId: region.beerId,
       secondaryBeerId: region.runnerUpBeerId,
       lat: region.centroidLat,
@@ -69,13 +66,11 @@ export function computeFeedItems(
       const runnerRecent = recentByBeer.get(region.runnerUpBeerId) ?? 0;
       const winnerRecent = recentByBeer.get(region.beerId) ?? 0;
       if (runnerRecent > winnerRecent && runnerRecent >= 2) {
-        const runner = BEER_MAP.get(region.runnerUpBeerId);
-        if (!runner) continue;
+        if (!BEER_MAP.has(region.runnerUpBeerId)) continue;
         items.push({
           id: `flip-${region.id}`,
           type: 'flip-watch',
-          title: `${runner.name} holt auf!`,
-          subtitle: `${runnerRecent} neue Stimmen gegen ${winnerRecent}`,
+          stats: { recent: runnerRecent, against: winnerRecent },
           beerId: region.runnerUpBeerId,
           secondaryBeerId: region.beerId,
           lat: region.centroidLat,
@@ -101,15 +96,13 @@ export function computeFeedItems(
     .slice(0, 3);
 
   for (const [beerId, count] of topTrending) {
-    const beer = BEER_MAP.get(beerId);
-    if (!beer) continue;
+    if (!BEER_MAP.has(beerId)) continue;
     // Find the largest region for this beer to navigate to
     const beerRegion = regions.find((r) => r.beerId === beerId);
     items.push({
       id: `trend-${beerId}`,
       type: 'trending',
-      title: `${beer.name} im Trend`,
-      subtitle: `${count} Stimmen in 7 Tagen`,
+      stats: { votes: count },
       beerId,
       secondaryBeerId: null,
       lat: beerRegion?.centroidLat ?? 48.14,

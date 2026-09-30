@@ -1,7 +1,7 @@
 import Dexie from 'dexie';
 import type { User, OnTheRoadVote, DrinkVote, Duel, DuelMessage, Team, DuelOutcome } from '../domain/types';
 import type { StorageInterface } from './StorageInterface';
-import { nextVisitSlot, visitBlocker, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
+import { nextVisitSlot, visitBlocker, visitBlockedError, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
 import { venuePlayerId } from '../domain/visitIds';
 import { getNow } from '../domain/clock';
 
@@ -175,7 +175,7 @@ export class IndexedDBStore implements StorageInterface {
     const now = getNow();
     const mine = await this.getMyVisits();
     const blocked = visitBlocker(mine, venue.id, now);
-    if (blocked) throw new Error(blocked);
+    if (blocked) throw visitBlockedError(blocked);
     const slot = nextVisitSlot(mine, now);
     const id = `${userId}_${Math.floor(now / 86_400_000)}_${slot}`;
     const visit: MyVisit = { id, venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now };

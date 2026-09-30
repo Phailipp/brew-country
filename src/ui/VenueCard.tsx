@@ -11,7 +11,8 @@ import { nearestCity } from '../domain/worldCities';
 import { beerColor, beerName, pointsLabel } from './kit/beer';
 import { haptic } from './kit/haptics';
 import { clink, primeAudio } from './kit/sound';
-import { VENUE_KIND } from './kit/venueKind';
+import { VENUE_KIND, venueKindLabel } from './kit/venueKind';
+import { intlLocale, t, tr } from '../i18n';
 import './VenueCard.css';
 
 
@@ -33,13 +34,16 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
   const [error, setError] = useState('');
   const [choosing, setChoosing] = useState(false);
 
-  const kind = VENUE_KIND[venue.kind];
+  const kindIcon = VENUE_KIND[venue.kind].icon;
   const owner = standing.ownerBeerId;
   const top = standing.scores.slice(0, 4);
   const maxPts = Math.max(1, ...top.map((s) => s.points));
   const myDays = new Set(myVisits.filter((v) => v.venueId === venue.id).map((v) => Math.floor(v.createdAt / 86_400_000))).size;
   const tier = regularTier(myDays);
   const blocker = visitBlocker(myVisits, venue.id, Date.now());
+  const blockerText = blocker === 'already-today' ? t('venue.alreadyToday')
+    : blocker === 'daily-limit' ? t('venue.dailyLimit', { max: MAX_VISITS_PER_DAY })
+      : null;
   const myBeerRules = owner === beerId;
 
   const handleCheckIn = async () => {
@@ -50,12 +54,12 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
     try {
       if (!isDemo) {
         const pos = await acquireGpsSamples(1).catch(() => {
-          throw new Error('Ohne Standort kein Check-in. Erlaube den Standortzugriff und versuch es nochmal.');
+          throw new Error(t('venue.noLocation'));
         });
         const distM = haversineDistanceKm(pos.lat, pos.lon, venue.lat, venue.lon) * 1000;
         // GPS noise: allow the reported accuracy on top, up to a limit
         if (distM > CHECKIN_RADIUS_M + Math.min(pos.accuracyM, 40)) {
-          throw new Error(`Du bist ${Math.round(distM)} m entfernt. Einchecken geht nur vor Ort (max. ${CHECKIN_RADIUS_M} m).`);
+          throw new Error(t('venue.tooFar', { distance: Math.round(distM), radius: CHECKIN_RADIUS_M }));
         }
       }
       setPhase('saving');
@@ -63,7 +67,10 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
       clink();
       haptic('success');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Check-in fehlgeschlagen.');
+      const code = (e as { code?: string }).code;
+      setError(code === 'already-today' ? t('venue.alreadyToday')
+        : code === 'daily-limit' ? t('venue.dailyLimit', { max: MAX_VISITS_PER_DAY })
+          : e instanceof Error ? e.message : t('venue.failed'));
       haptic('heavy');
     } finally {
       setPhase('idle');
@@ -75,12 +82,12 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
       <div className="card card-hero venue-hero" style={{ '--c-beer': owner ? beerColor(owner) : 'var(--c-text-3)' } as CSSProperties}>
         {owner ? <BeerBadge beerId={owner} size="xl" /> : <span className="venue-free" aria-hidden="true">🏳️</span>}
         <div className="venue-hero-text">
-          <span className="venue-kind">{kind.icon} {kind.label}</span>
+          <span className="venue-kind">{kindIcon} {venueKindLabel(venue.kind)}</span>
           <h3 className="venue-name">{venue.name}</h3>
           <p className="muted">
             {owner
-              ? <><strong className="venue-owner">{beerName(owner)}</strong> regiert hier</>
-              : 'Noch frei: der erste Besuch holt sie.'}
+              ? tr('venue.rulesHere', { beer: <strong className="venue-owner">{beerName(owner)}</strong> })
+              : t('venue.free')}
           </p>
         </div>
       </div>
@@ -92,9 +99,9 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
           onClick={handleCheckIn}
           disabled={phase !== 'idle' || !!blocker}
         >
-          {phase === 'locating' && <><span className="spinner" aria-hidden="true" /> Standort wird geprüft…</>}
-          {phase === 'saving' && <><span className="spinner" aria-hidden="true" /> Zapfe…</>}
-          {phase === 'idle' && (blocker ? 'Heute schon erledigt' : `Hier einchecken · +${INFLUENCE.VISIT}${myBeerRules ? ' Verteidigung' : ''}`)}
+          {phase === 'locating' && <><span className="spinner" aria-hidden="true" /> {t('venue.locating')}</>}
+          {phase === 'saving' && <><span className="spinner" aria-hidden="true" /> {t('venue.saving')}</>}
+          {phase === 'idle' && (blocker ? t('venue.doneToday') : t(myBeerRules ? 'venue.checkInDefend' : 'venue.checkIn', { points: INFLUENCE.VISIT }))}
         </button>
         {!blocker && (
           <button
@@ -103,22 +110,22 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
             aria-expanded={choosing}
           >
             <BeerBadge beerId={beerId} size="sm" />
-            <span>mit <strong>{beerName(beerId)}</strong>{alcoholFree ? ' · alkoholfrei' : ''}</span>
-            <span className="venue-choice-edit">{choosing ? 'fertig' : 'ändern'}</span>
+            <span>{tr('venue.withBeer', { beer: <strong>{beerName(beerId)}</strong> })}{alcoholFree ? t('venue.alcoholFreeSuffix') : ''}</span>
+            <span className="venue-choice-edit">{choosing ? t('common.done') : t('common.change')}</span>
           </button>
         )}
         {choosing && !blocker && (
           <div className="venue-choose fade-in">
-            <BeerPicker value={beerId} onChange={setBeerId} layout="carousel" pinned={[playerBeerId, ...venue.beerIds]} country={nearestCity(venue.lat, venue.lon).country} label="Bier für den Check-in" />
+            <BeerPicker value={beerId} onChange={setBeerId} layout="carousel" pinned={[playerBeerId, ...venue.beerIds]} country={nearestCity(venue.lat, venue.lon).country} label={t('venue.pickerLabel')} />
             <div className="settings-row venue-af">
               <span className="row-main">
-                <span className="row-title">Alkoholfrei</span>
-                <span className="row-sub">Zählt genauso: Es geht um den Besuch.</span>
+                <span className="row-title">{t('common.alcoholFree')}</span>
+                <span className="row-sub">{t('venue.afSub')}</span>
               </span>
               <button
                 role="switch"
                 aria-checked={alcoholFree}
-                aria-label="Alkoholfrei"
+                aria-label={t('common.alcoholFree')}
                 className={`switch${alcoholFree ? ' on' : ''}`}
                 onClick={() => { setAlcoholFree(!alcoholFree); haptic('light'); }}
               >
@@ -128,18 +135,18 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
           </div>
         )}
         <p className="muted venue-hint">
-          {blocker ?? (isDemo
-            ? 'Demo: Check-in ohne Standortprüfung.'
-            : `Nur vor Ort (max. ${CHECKIN_RADIUS_M} m) · 1× pro Kneipe und Tag · max. ${MAX_VISITS_PER_DAY} Kneipen am Tag`)}
+          {blockerText ?? (isDemo
+            ? t('venue.demoHint')
+            : t('venue.rulesHint', { radius: CHECKIN_RADIUS_M, max: MAX_VISITS_PER_DAY }))}
         </p>
       </div>
 
       {top.length > 0 && (
         <div className="card">
           <div className="venue-card-head">
-            <p className="eyebrow">Einfluss</p>
+            <p className="eyebrow">{t('venue.influence')}</p>
             {venue.beerIds.length > 0 && (
-              <span className="chip">Ausschank: {venue.beerIds.map(beerName).join(', ')}</span>
+              <span className="chip">{t('venue.onTap', { beers: venue.beerIds.map(beerName).join(', ') })}</span>
             )}
           </div>
           <ul className="venue-bars">
@@ -150,15 +157,18 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
                 <span className="venue-bar-track" aria-hidden="true">
                   <span style={{ width: `${(s.points / maxPts) * 100}%`, background: beerColor(s.beerId) }} />
                 </span>
-                <span className="venue-bar-pts num"><NumberFlow value={s.points} format={{ maximumFractionDigits: 1 }} /></span>
+                <span className="venue-bar-pts num"><NumberFlow value={s.points} locales={intlLocale()} format={{ maximumFractionDigits: 1 }} /></span>
               </li>
             ))}
           </ul>
           {owner && standing.challengerBeerId && standing.toFlip > 0 && (
             <p className="venue-flip">
-              <strong>{beerName(standing.challengerBeerId)}</strong> {standing.toFlip === 1 ? 'fehlt' : 'fehlen'} noch{' '}
-              <strong className="num">{pointsLabel(standing.toFlip)}</strong> zur Übernahme.
-              Eine Person bringt höchstens {INFLUENCE.PER_PLAYER_CAP}: <em>Übernehmen geht nur als Crew.</em>
+              {tr('venue.flip', {
+                count: standing.toFlip,
+                beer: <strong>{beerName(standing.challengerBeerId)}</strong>,
+                points: <strong className="num">{pointsLabel(standing.toFlip)}</strong>,
+              })}{' '}
+              {tr('venue.flipCap', { cap: INFLUENCE.PER_PLAYER_CAP, crew: <em>{t('venue.crewOnly')}</em> })}
             </p>
           )}
         </div>
@@ -167,22 +177,22 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
       <div className="venue-stats">
         <div className="card venue-stat">
           <span className="num venue-stat-value"><NumberFlow value={standing.visits} /></span>
-          <span className="muted">Besuche · 30 Tage</span>
+          <span className="muted">{t('venue.visits30')}</span>
         </div>
         <div className="card venue-stat">
           <span className="num venue-stat-value"><NumberFlow value={standing.regulars} /></span>
-          <span className="muted">Stammgäste</span>
+          <span className="muted">{t('venue.regulars')}</span>
         </div>
         <div className="card venue-stat">
-          <span className="venue-stat-value">{tier.name ?? '—'}</span>
+          <span className="venue-stat-value">{tier.tier ? t(`venue.tier.${tier.tier}`) : '—'}</span>
           <span className="muted">
-            {tier.next ? `${myDays}/${tier.next.min} bis ${tier.next.name}` : 'Höchste Stufe'}
+            {tier.next ? t('venue.tierProgress', { days: myDays, min: tier.next.min, tier: t(`venue.tier.${tier.next.tier}`) }) : t('venue.topTier')}
           </span>
         </div>
       </div>
 
       <p className="muted venue-osm">
-        Kneipendaten: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap-Mitwirkende</a> (ODbL)
+        {tr('venue.osm', { link: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{t('common.osmContributors')}</a> })}
       </p>
     </div>
   );

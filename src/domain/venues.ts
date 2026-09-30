@@ -149,15 +149,24 @@ export const CHECKIN_RADIUS_M = 60;
 
 export const utcDay = (ms: number) => Math.floor(ms / 86_400_000);
 
+/** Why a visit is refused: already here today, or the daily pub limit is used up. */
+export type VisitBlocker = 'already-today' | 'daily-limit';
+
 /**
  * Why a visit is not possible right now, or null when it is.
- * Mirrors the server rules so the player gets a friendly message first.
+ * Mirrors the server rules so the player gets a friendly message first
+ * (the UI translates the code).
  */
-export function visitBlocker(mine: MyVisit[], venueId: string, now: number): string | null {
+export function visitBlocker(mine: MyVisit[], venueId: string, now: number): VisitBlocker | null {
   const today = mine.filter((v) => utcDay(v.createdAt) === utcDay(now));
-  if (today.some((v) => v.venueId === venueId)) return 'Heute warst du schon hier. Morgen zählt dein Besuch wieder.';
-  if (today.length >= MAX_VISITS_PER_DAY) return `Maximal ${MAX_VISITS_PER_DAY} Kneipen pro Tag. Morgen geht’s weiter!`;
+  if (today.some((v) => v.venueId === venueId)) return 'already-today';
+  if (today.length >= MAX_VISITS_PER_DAY) return 'daily-limit';
   return null;
+}
+
+/** Error thrown by the stores when a visit is refused; `code` says why. */
+export function visitBlockedError(code: VisitBlocker): Error & { code: VisitBlocker } {
+  return Object.assign(new Error(code), { code });
 }
 
 /** Free id slot for today's next visit (0–2), or -1. */

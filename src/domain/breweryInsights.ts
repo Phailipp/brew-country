@@ -1,5 +1,6 @@
 import type { Venue } from './venues';
 import { INFLUENCE, type VenueStanding } from './influence';
+import { collator } from '../i18n/locale';
 
 /**
  * The brewery's view of the game: where does our beer rule, where are we
@@ -101,7 +102,7 @@ export function breweryReport(beerId: string, venues: Venue[], standings: Map<st
     visitPoints: Math.round(visitPoints),
     atRisk: atRisk.sort(byGap),
     opportunities: opportunities.sort(byGap),
-    sleeping: sleeping.sort((a, b) => a.venue.name.localeCompare(b.venue.name, 'de')),
+    sleeping: sleeping.sort((a, b) => collator().compare(a.venue.name, b.venue.name)),
     rivals: [...rulers.entries()].map(([id, n]) => ({ beerId: id, venues: n })).sort((a, b) => b.venues - a.venues).slice(0, 6),
   };
 }
