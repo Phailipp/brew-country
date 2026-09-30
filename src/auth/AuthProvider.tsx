@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import {
   onAuthStateChanged,
@@ -13,38 +13,54 @@ import type { AuthState, User } from '../domain/types';
 import type { StorageInterface } from '../storage/StorageInterface';
 import { isFirebaseConfigured } from '../config/firebase';
 import { getFirebaseAuth } from '../config/firebaseAuth';
-
-interface AuthContextValue {
-  auth: AuthState;
-  login: (userId: string) => void;
-  register: (email: string, password: string, nickname: string) => Promise<void>;
-  loginWithEmail: (email: string, password: string) => Promise<void>;
-  resendVerificationEmail: () => Promise<void>;
-  refreshVerificationStatus: () => Promise<void>;
-  completeOnboarding: (user: User) => Promise<void>;
-  updateUser: (user: User) => Promise<void>;
-  logout: () => void;
-  updateLastActive: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-const LOCAL_AUTH_KEY = 'brewcountry_auth';
+import { AuthContext, LOCAL_AUTH_KEY, isDemoUserId, type AuthContextValue } from './authContext';
 
 interface Props {
   children: ReactNode;
   store: StorageInterface;
 }
 
+function initialAuthState(): AuthState {
+  // Without Firebase and without a saved session there is nothing to wait for
+  if (!isFirebaseConfigured() && !localStorage.getItem(LOCAL_AUTH_KEY)) {
+    return { status: 'unauthenticated' };
+  }
+  return { status: 'loading' };
+}
+
 export function AuthProvider({ children, store }: Props) {
-  const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
+  const [auth, setAuth] = useState<AuthState>(initialAuthState);
+
+  /** Resolve a user id to authenticated / onboarding. Never leaves us stuck on "loading". */
+  const resolveUser = useCallback((userId: string) => {
+    store.getUser(userId).then(
+      (user) => setAuth(user
+        ? { status: 'authenticated', userId: user.id, user }
+        : { status: 'onboarding', userId }),
+      () => setAuth({ status: 'onboarding', userId }),
+    );
+  }, [store]);
 
   useEffect(() => {
+    const savedId = localStorage.getItem(LOCAL_AUTH_KEY);
+
+    // Demo sessions live entirely in the local sandbox
+    if (isDemoUserId(savedId)) {
+      resolveUser(savedId!);
+      return;
+    }
+
     if (isFirebaseConfigured()) {
-      const firebaseAuth = getFirebaseAuth();
-      const unsubscribe = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
+      // Never leave people staring at a spinner when Firebase is unreachable;
+      // a late auth event still upgrades the state.
+      const fallback = setTimeout(() => {
+        setAuth((prev) => (prev.status === 'loading' ? { status: 'unauthenticated' } : prev));
+      }, 8000);
+      const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (firebaseUser) => {
+        clearTimeout(fallback);
         if (!firebaseUser) {
-          localStorage.removeItem(LOCAL_AUTH_KEY);
+          // Never clobber a demo session that was started in the meantime
+          if (!isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY))) localStorage.removeItem(LOCAL_AUTH_KEY);
           setAuth({ status: 'unauthenticated' });
           return;
         }
@@ -59,65 +75,40 @@ export function AuthProvider({ children, store }: Props) {
           return;
         }
 
-        const uid = firebaseUser.uid;
-        localStorage.setItem(LOCAL_AUTH_KEY, uid);
-        store.getUser(uid).then((user) => {
-          if (user) {
-            setAuth({ status: 'authenticated', userId: user.id, user });
-          } else {
-            setAuth({ status: 'onboarding', userId: uid });
-          }
-        });
+        localStorage.setItem(LOCAL_AUTH_KEY, firebaseUser.uid);
+        resolveUser(firebaseUser.uid);
       });
-
-      return () => unsubscribe();
+      return () => {
+        clearTimeout(fallback);
+        unsubscribe();
+      };
     }
 
-    const savedId = localStorage.getItem(LOCAL_AUTH_KEY);
-    if (!savedId) {
-      setAuth({ status: 'unauthenticated' });
-      return;
-    }
-
-    store.getUser(savedId).then((user) => {
-      if (user) {
-        setAuth({ status: 'authenticated', userId: user.id, user });
-      } else {
-        setAuth({ status: 'onboarding', userId: savedId });
-      }
-    });
-  }, [store]);
+    if (savedId) resolveUser(savedId);
+  }, [resolveUser]);
 
   const register = useCallback(async (email: string, password: string, nickname: string) => {
-    const firebaseAuth = getFirebaseAuth();
-    const cred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+    const cred = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
     await updateProfile(cred.user, { displayName: nickname });
     await sendEmailVerification(cred.user);
-    setAuth({
-      status: 'verify-email',
-      userId: cred.user.uid,
-      email,
-      nickname,
-    });
+    setAuth({ status: 'verify-email', userId: cred.user.uid, email, nickname });
   }, []);
 
   const login = useCallback((userId: string) => {
+    const wasDemo = isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY));
     localStorage.setItem(LOCAL_AUTH_KEY, userId);
-    store.getUser(userId).then((user) => {
-      if (user) {
-        setAuth({ status: 'authenticated', userId: user.id, user });
-      } else {
-        setAuth({ status: 'onboarding', userId });
-      }
-    }).catch(() => {
-      // Firestore unreachable (e.g. dev bypass without Firebase) → go to onboarding
-      setAuth({ status: 'onboarding', userId });
-    });
-  }, [store]);
+    // The storage backend is chosen at boot (main.tsx). Switching into the
+    // demo sandbox therefore needs a reload, otherwise demo data would be
+    // written to the production database.
+    if (isDemoUserId(userId) && !wasDemo) {
+      window.location.reload();
+      return;
+    }
+    resolveUser(userId);
+  }, [resolveUser]);
 
   const loginWithEmail = useCallback(async (email: string, password: string) => {
-    const firebaseAuth = getFirebaseAuth();
-    const cred = await signInWithEmailAndPassword(firebaseAuth, email, password);
+    const cred = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
     if (!cred.user.emailVerified) {
       setAuth({
         status: 'verify-email',
@@ -152,19 +143,15 @@ export function AuthProvider({ children, store }: Props) {
       return;
     }
 
-    const user = await store.getUser(current.uid);
-    if (user) {
-      setAuth({ status: 'authenticated', userId: user.id, user });
-    } else {
-      setAuth({ status: 'onboarding', userId: current.uid });
-    }
-  }, [store]);
+    resolveUser(current.uid);
+  }, [resolveUser]);
 
   const completeOnboarding = useCallback(async (user: User) => {
+    // Real accounts must be persisted; only the demo sandbox may continue offline
     try {
       await store.saveUser(user);
-    } catch {
-      // Firestore unreachable (dev mode) — continue anyway
+    } catch (err) {
+      if (!isDemoUserId(user.id)) throw err;
     }
     localStorage.setItem(LOCAL_AUTH_KEY, user.id);
     setAuth({ status: 'authenticated', userId: user.id, user });
@@ -176,9 +163,14 @@ export function AuthProvider({ children, store }: Props) {
   }, [store]);
 
   const logout = useCallback(() => {
+    const wasDemo = isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY));
     localStorage.removeItem(LOCAL_AUTH_KEY);
     if (isFirebaseConfigured()) {
       signOut(getFirebaseAuth()).catch(() => {});
+    }
+    if (wasDemo) {
+      window.location.reload();
+      return;
     }
     setAuth({ status: 'unauthenticated' });
   }, []);
@@ -193,28 +185,21 @@ export function AuthProvider({ children, store }: Props) {
     setAuth({ status: 'authenticated', userId: updatedUser.id, user: updatedUser });
   }, [auth, store]);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        auth,
-        login,
-        register,
-        loginWithEmail,
-        resendVerificationEmail,
-        refreshVerificationStatus,
-        completeOnboarding,
-        updateUser,
-        logout,
-        updateLastActive,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
+  const value = useMemo<AuthContextValue>(() => ({
+    auth,
+    login,
+    register,
+    loginWithEmail,
+    resendVerificationEmail,
+    refreshVerificationStatus,
+    completeOnboarding,
+    updateUser,
+    logout,
+    updateLastActive,
+  }), [
+    auth, login, register, loginWithEmail, resendVerificationEmail,
+    refreshVerificationStatus, completeOnboarding, updateUser, logout, updateLastActive,
+  ]);
 
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

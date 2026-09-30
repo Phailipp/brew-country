@@ -1,13 +1,29 @@
 import type { DominanceResult, Region } from './types';
-import { metersToDegLat, metersToDegLon } from './geo';
+import { cellStepDeg, getDefaultBoundingBox } from './geo';
+
+export interface RegionExtraction {
+  regions: Region[];
+  /** Per-cell index into `regions` (-1 = no region). */
+  labels: Int32Array;
+}
 
 /**
  * Extract connected regions from a DominanceResult via BFS flood-fill.
  * Each region is a connected component of cells with the same winnerBeerId.
  */
 export function extractRegions(data: DominanceResult): Region[] {
+  return extractRegionsWithLabels(data).regions;
+}
+
+export function extractRegionsWithLabels(data: DominanceResult): RegionExtraction {
   const { rows, cols, cells, gridSpec: gs } = data;
-  const cellDLat = metersToDegLat(gs.cellSizeMeters);
+  const { dLat: cellDLat, dLon: cellDLon } = cellStepDeg(gs.cellSizeMeters);
+  // Absolute lattice offset, so region ids stay stable while panning
+  const origin = getDefaultBoundingBox();
+  const rowOffset = Math.round((gs.minLat - origin.minLat) / cellDLat);
+  const colOffset = Math.round((gs.minLon - origin.minLon) / cellDLon);
+  const labels = new Int32Array(rows * cols).fill(-1);
+  const regionCells: number[][] = [];
 
   // Build flat grid
   const grid: (string | null)[] = new Array(rows * cols).fill(null);
@@ -34,10 +50,12 @@ export function extractRegions(data: DominanceResult): Region[] {
       let marginSum = 0, votesSum = 0;
       const runnerUpCounts = new Map<string, number>();
       const queue: number[] = [idx];
+      const members: number[] = [];
       visited[idx] = 1;
 
       while (queue.length > 0) {
         const ci = queue.pop()!;
+        members.push(ci);
         const cr = (ci / cols) | 0;
         const cc = ci % cols;
         sumRow += cr;
@@ -85,14 +103,26 @@ export function extractRegions(data: DominanceResult): Region[] {
         }
       }
 
+      // Label anchor: the member cell closest to the centroid, so the
+      // anchor always lies inside the (possibly non-convex) region.
       const avgRow = sumRow / count;
       const avgCol = sumCol / count;
-      const lat = gs.minLat + (avgRow + 0.5) * cellDLat;
-      const dLon = metersToDegLon(gs.cellSizeMeters, lat);
-      const lon = gs.minLon + (avgCol + 0.5) * dLon;
+      let anchor = members[0];
+      let bestD = Infinity;
+      for (const ci of members) {
+        const d = ((ci / cols) | 0) - avgRow;
+        const e = (ci % cols) - avgCol;
+        if (d * d + e * e < bestD) {
+          bestD = d * d + e * e;
+          anchor = ci;
+        }
+      }
+      const lat = gs.minLat + (((anchor / cols) | 0) + 0.5) * cellDLat;
+      const lon = gs.minLon + ((anchor % cols) + 0.5) * cellDLon;
 
+      regionCells.push(members);
       regions.push({
-        id: `${beerId}@${minRow},${minCol}`,
+        id: `${beerId}@${minRow + rowOffset},${minCol + colOffset}`,
         beerId,
         cellCount: count,
         centroidLat: lat,
@@ -105,24 +135,22 @@ export function extractRegions(data: DominanceResult): Region[] {
     }
   }
 
-  // Sort by cell count descending
-  regions.sort((a, b) => b.cellCount - a.cellCount);
-  return regions;
+  // Sort by cell count descending, keeping labels consistent
+  const order = regions.map((_, i) => i).sort((a, b) => regions[b].cellCount - regions[a].cellCount);
+  const sorted = order.map((i) => regions[i]);
+  order.forEach((oldIdx, newIdx) => {
+    for (const ci of regionCells[oldIdx]) labels[ci] = newIdx;
+  });
+  return { regions: sorted, labels };
 }
 
 /**
  * Find which region a cell belongs to.
  */
 export function findRegionForCell(
-  row: number, col: number, regions: Region[], data: DominanceResult
+  row: number, col: number, extraction: RegionExtraction, data: DominanceResult,
 ): Region | null {
-  const idx = row * data.cols + col;
-  const cell = data.cells[idx];
-  if (!cell || !cell.winnerBeerId) return null;
-
-  return regions.find(r =>
-    r.beerId === cell.winnerBeerId &&
-    row >= r.boundingBox.minRow && row <= r.boundingBox.maxRow &&
-    col >= r.boundingBox.minCol && col <= r.boundingBox.maxCol
-  ) ?? null;
+  if (row < 0 || row >= data.rows || col < 0 || col >= data.cols) return null;
+  const label = extraction.labels[row * data.cols + col];
+  return label >= 0 ? extraction.regions[label] ?? null : null;
 }

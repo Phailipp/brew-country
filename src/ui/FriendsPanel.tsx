@@ -1,27 +1,28 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { User, Friendship, UserPresence } from '../domain/types';
 import type { StorageInterface } from '../storage/StorageInterface';
-import { isFirebaseConfigured } from '../config/firebase';
 import { GAME } from '../config/constants';
-import { BEER_MAP } from '../domain/beers';
 import { appEvents } from '../domain/events';
 import {
   addFriend,
   removeFriend,
   acceptFriend,
   declineFriend,
-  subscribeFriends,
   makeFriendshipId,
   getUserProfile,
 } from '../services/firestoreService';
+import { BeerBadge } from './kit/BeerBadge';
+import { beerName } from './kit/beer';
+import { haptic } from './kit/haptics';
 import './FriendsPanel.css';
 
 interface Props {
   user: User;
   store: StorageInterface;
+  /** Live friendships, subscribed once in the app shell. */
+  friendships: Friendship[];
   onOpenChat: (friendshipId: string, friendUser: User) => void;
   friendPresence: Map<string, UserPresence>;
-  onFriendIdsChange: (ids: string[]) => void;
   unreadCounts?: Map<string, number>;
   onLocateFriend?: (lat: number, lon: number) => void;
 }
@@ -29,47 +30,47 @@ interface Props {
 function formatLastActive(lastSeen: number): string {
   const diff = Date.now() - lastSeen;
   if (diff < 60_000) return 'Gerade aktiv';
-  if (diff < 3600_000) return `Vor ${Math.floor(diff / 60_000)} Min.`;
-  if (diff < 86400_000) return `Vor ${Math.floor(diff / 3600_000)} Std.`;
-  return `Vor ${Math.floor(diff / 86400_000)} Tagen`;
+  if (diff < 3600_000) return `Vor ${Math.floor(diff / 60_000)} Min. aktiv`;
+  if (diff < 86400_000) return `Vor ${Math.floor(diff / 3600_000)} Std. aktiv`;
+  const days = Math.floor(diff / 86400_000);
+  return `Vor ${days} ${days === 1 ? 'Tag' : 'Tagen'} aktiv`;
 }
 
-export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriendIdsChange, unreadCounts, onLocateFriend }: Props) {
-  const [friendships, setFriendships] = useState<Friendship[]>([]);
+const Icon = {
+  chat: (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 3.2 6.4L4 19.5l1.1-3.2A7.96 7.96 0 0 1 4 12z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
+  ),
+  pin: (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><circle cx="12" cy="10" r="2.3" fill="currentColor" /></svg>
+  ),
+  remove: (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+  ),
+  check: (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  ),
+  add: (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" /></svg>
+  ),
+};
+
+export function FriendsPanel({ user, store, friendships, onOpenChat, friendPresence, unreadCounts, onLocateFriend }: Props) {
   const [friendUsers, setFriendUsers] = useState<Map<string, User>>(new Map());
   const [addInput, setAddInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
-  const prevFriendIdsRef = useRef<string>('');
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Gate: Firebase not configured
-  if (!isFirebaseConfigured()) {
-    return (
-      <div className="friends-panel">
-        <h3>Freunde</h3>
-        <p className="friends-disabled">Firebase nicht konfiguriert</p>
-      </div>
-    );
-  }
-
-  // Subscribe to friendships (real-time)
+  // Resolve friend user data when friendships change
   useEffect(() => {
-    const unsub = subscribeFriends(user.id, (fs) => {
-      setFriendships(fs);
-    });
-    return () => unsub();
-  }, [user.id]);
-
-  // Resolve friend user data from Firestore when friendships change
-  useEffect(() => {
+    let cancelled = false;
     const loadFriendUsers = async () => {
       const map = new Map<string, User>();
-      const friendIds: string[] = [];
 
       for (const fs of friendships) {
         const friendId = fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
-        friendIds.push(friendId);
 
         let friendUser = await store.getUser(friendId);
         if (!friendUser) {
@@ -93,19 +94,15 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
         }
       }
 
-      setFriendUsers(map);
-
-      const idsStr = friendIds.sort().join(',');
-      if (idsStr !== prevFriendIdsRef.current) {
-        prevFriendIdsRef.current = idsStr;
-        onFriendIdsChange(friendIds);
-      }
+      if (!cancelled) setFriendUsers(map);
     };
 
-    loadFriendUsers();
-  }, [friendships, user.id, store, onFriendIdsChange]);
+    loadFriendUsers().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [friendships, user.id, store]);
 
-  // Split friendships into categories
   const incomingRequests = friendships.filter(
     (fs) => fs.status === 'pending' && fs.requestedBy !== user.id
   );
@@ -119,23 +116,24 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
   const handleAdd = useCallback(async () => {
     const friendId = addInput.trim();
     setError(null);
+    setSuccess(null);
 
     if (!friendId) {
-      setError('Bitte User-ID eingeben');
+      setError('Gib die Freundes-ID deines Kumpels ein.');
       return;
     }
     if (friendId === user.id) {
-      setError('Du kannst dich nicht selbst hinzufügen');
+      setError('Das bist du selbst – such dir lieber Trinkkumpanen. 😉');
       return;
     }
     if (friendships.length >= GAME.MAX_FRIENDS) {
-      setError(`Maximal ${GAME.MAX_FRIENDS} Freunde`);
+      setError(`Deine Crew ist voll (max. ${GAME.MAX_FRIENDS}).`);
       return;
     }
 
     const existingId = makeFriendshipId(user.id, friendId);
     if (friendships.some(f => f.id === existingId)) {
-      setError('Anfrage existiert bereits');
+      setError('Mit dieser Person bist du schon verbunden oder hast angefragt.');
       return;
     }
 
@@ -144,45 +142,52 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
       const friendship = await addFriend(user.id, friendId);
       appEvents.emit({ type: 'friend:added', friendship });
       setAddInput('');
+      setSuccess('Anfrage verschickt! 🍻');
+      haptic('success');
     } catch (e) {
-      setError('Fehler beim Senden der Anfrage');
+      setError('Anfrage konnte nicht gesendet werden. Stimmt die ID?');
       console.error('addFriend error:', e);
     } finally {
       setAdding(false);
     }
   }, [addInput, user.id, friendships]);
 
-  const handleAccept = useCallback(async (friendId: string) => {
+  const runAction = useCallback(async (friendId: string, fn: () => Promise<void>, failMsg: string) => {
+    setBusyId(friendId);
+    setError(null);
+    setSuccess(null);
     try {
-      await acceptFriend(user.id, friendId);
+      await fn();
     } catch (e) {
-      console.error('acceptFriend error:', e);
+      console.error(e);
+      setError(failMsg);
+    } finally {
+      setBusyId(null);
     }
-  }, [user.id]);
+  }, []);
 
-  const handleDecline = useCallback(async (friendId: string) => {
-    try {
-      await declineFriend(user.id, friendId);
-    } catch (e) {
-      console.error('declineFriend error:', e);
-    }
-  }, [user.id]);
+  const handleAccept = useCallback((friendId: string) => runAction(friendId, async () => {
+    await acceptFriend(user.id, friendId);
+    haptic('success');
+  }, 'Annehmen hat nicht geklappt. Versuch es nochmal.'), [user.id, runAction]);
 
-  const handleRemove = useCallback(async (friendId: string) => {
-    try {
-      await removeFriend(user.id, friendId);
-      const friendshipId = makeFriendshipId(user.id, friendId);
-      appEvents.emit({ type: 'friend:removed', friendshipId });
-      setConfirmRemove(null);
-    } catch (e) {
-      console.error('removeFriend error:', e);
-    }
-  }, [user.id]);
+  const handleDecline = useCallback((friendId: string) => runAction(friendId, async () => {
+    await declineFriend(user.id, friendId);
+  }, 'Das hat nicht geklappt. Versuch es nochmal.'), [user.id, runAction]);
+
+  const handleRemove = useCallback((friendId: string) => runAction(friendId, async () => {
+    await removeFriend(user.id, friendId);
+    const friendshipId = makeFriendshipId(user.id, friendId);
+    appEvents.emit({ type: 'friend:removed', friendshipId });
+    setConfirmRemove(null);
+    haptic('medium');
+  }, 'Entfernen hat nicht geklappt. Versuch es nochmal.'), [user.id, runAction]);
 
   const handleOpenChat = useCallback((friendId: string) => {
     const friendUser = friendUsers.get(friendId);
     if (!friendUser) return;
     const friendshipId = makeFriendshipId(user.id, friendId);
+    haptic('light');
     onOpenChat(friendshipId, friendUser);
   }, [friendUsers, user.id, onOpenChat]);
 
@@ -195,187 +200,228 @@ export function FriendsPanel({ user, store, onOpenChat, friendPresence, onFriend
   const getFriendId = (fs: Friendship) =>
     fs.userIds[0] === user.id ? fs.userIds[1] : fs.userIds[0];
 
-  const renderFriendLabel = (friendId: string) => {
-    const friendUser = friendUsers.get(friendId);
-    const beer = friendUser ? BEER_MAP.get(friendUser.beerId) : null;
-    return (
-      <div className="friend-info-label">
-        <div className="friend-avatar">
-          {beer && <img src={beer.svgLogo} alt={beer.name} className="friend-beer-logo" />}
-        </div>
-        <span className="friend-name">
-          {friendUser ? (beer?.name ?? friendUser.beerId) : friendId.substring(0, 12) + '...'}
-        </span>
-      </div>
-    );
+  const displayName = (friendId: string) => {
+    const fu = friendUsers.get(friendId);
+    if (!fu) return `${friendId.slice(0, 8)}…`;
+    return fu.nickname || `${beerName(fu.beerId)}-Fan`;
   };
 
+  const hasAnything = friendships.length > 0;
+
   return (
-    <div className="friends-panel">
-      <h3>Freunde <span className="friends-count">{acceptedFriends.length}/{GAME.MAX_FRIENDS}</span></h3>
+    <>
+      <section className="section friends" aria-labelledby="friends-title">
+        <h2 className="section-title" id="friends-title">
+          Deine Crew
+          <small className="num">{acceptedFriends.length}/{GAME.MAX_FRIENDS}</small>
+        </h2>
 
-      {/* Add friend form */}
-      <div className="friends-add-form">
-        <input
-          type="text"
-          className="friends-add-input"
-          placeholder="User-ID eingeben..."
-          value={addInput}
-          onChange={(e) => { setAddInput(e.target.value); setError(null); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-          disabled={adding}
-        />
-        <button
-          className="friends-add-btn"
-          onClick={handleAdd}
-          disabled={adding || !addInput.trim()}
+        <form
+          className="friends-add"
+          onSubmit={(e) => { e.preventDefault(); handleAdd(); }}
         >
-          {adding ? '...' : '+'}
-        </button>
-      </div>
-      {error && <p className="friends-error">{error}</p>}
+          <label htmlFor="friends-add-input" className="sr-only">Freundes-ID</label>
+          <input
+            id="friends-add-input"
+            type="text"
+            className="friends-add-input"
+            placeholder="Freundes-ID einfügen"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            value={addInput}
+            onChange={(e) => { setAddInput(e.target.value); setError(null); setSuccess(null); }}
+            disabled={adding}
+          />
+          <button
+            type="submit"
+            className="btn btn-primary friends-add-btn"
+            disabled={adding || !addInput.trim()}
+            aria-label="Freund hinzufügen"
+          >
+            {adding ? <span className="spinner" aria-hidden="true" /> : Icon.add}
+          </button>
+        </form>
+        <div aria-live="polite">
+          {error && <p className="friends-msg error" role="alert">{error}</p>}
+          {success && <p className="friends-msg success">{success}</p>}
+        </div>
+      </section>
 
-      {/* Incoming requests */}
       {incomingRequests.length > 0 && (
-        <div className="friends-section">
-          <h4 className="friends-section-title">Eingehende Anfragen</h4>
-          {incomingRequests.map((fs) => {
-            const friendId = getFriendId(fs);
-            return (
-              <div key={fs.id} className="friend-item request-incoming">
-                {renderFriendLabel(friendId)}
-                <div className="friend-actions">
+        <section className="section" aria-labelledby="friends-req-title">
+          <h2 className="section-title" id="friends-req-title">
+            Anfragen <span className="chip chip-accent num">{incomingRequests.length}</span>
+          </h2>
+          <ul className="friends-list">
+            {incomingRequests.map((fs) => {
+              const friendId = getFriendId(fs);
+              const fu = friendUsers.get(friendId);
+              const busy = busyId === friendId;
+              return (
+                <li key={fs.id} className="row friends-request">
+                  <BeerBadge beerId={fu?.beerId} />
+                  <div className="row-main">
+                    <div className="row-title">{displayName(friendId)}</div>
+                    <div className="row-sub">möchte in deine Crew</div>
+                  </div>
                   <button
-                    className="friend-accept-btn"
+                    type="button"
+                    className="btn btn-sm btn-primary"
                     onClick={() => handleAccept(friendId)}
-                    title="Annehmen"
+                    disabled={busy}
                   >
-                    ✅
+                    Annehmen
                   </button>
                   <button
-                    className="friend-decline-btn"
+                    type="button"
+                    className="icon-btn"
                     onClick={() => handleDecline(friendId)}
-                    title="Ablehnen"
+                    disabled={busy}
+                    aria-label={`Anfrage von ${displayName(friendId)} ablehnen`}
                   >
-                    ❌
+                    {Icon.remove}
                   </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
-      {/* Sent requests (pending) */}
-      {sentRequests.length > 0 && (
-        <div className="friends-section">
-          <h4 className="friends-section-title">Gesendet</h4>
-          {sentRequests.map((fs) => {
-            const friendId = getFriendId(fs);
-            return (
-              <div key={fs.id} className="friend-item request-sent">
-                {renderFriendLabel(friendId)}
-                <div className="friend-actions">
-                  <span className="friend-pending-label">Warte...</span>
-                  <button
-                    className="friend-decline-btn"
-                    onClick={() => handleDecline(friendId)}
-                    title="Zurückziehen"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Accepted friends */}
-      {acceptedFriends.length === 0 && incomingRequests.length === 0 && sentRequests.length === 0 ? (
-        <p className="friends-empty">Noch keine Freunde. Teile deine ID!</p>
-      ) : acceptedFriends.length > 0 && (
-        <div className="friends-section">
+      {acceptedFriends.length > 0 && (
+        <section className="section" aria-labelledby="friends-list-title">
           {(incomingRequests.length > 0 || sentRequests.length > 0) && (
-            <h4 className="friends-section-title">Freunde</h4>
+            <h2 className="section-title" id="friends-list-title">Freunde</h2>
           )}
-          <div className="friends-list">
+          <ul className="friends-list stagger" aria-label="Freunde">
             {acceptedFriends.map((fs) => {
               const friendId = getFriendId(fs);
               const friendUser = friendUsers.get(friendId);
-              const beer = friendUser ? BEER_MAP.get(friendUser.beerId) : null;
               const online = isOnline(friendId);
               const presence = friendPresence.get(friendId);
+              const unread = unreadCounts?.get(makeFriendshipId(user.id, friendId)) ?? 0;
+              const name = displayName(friendId);
+              const confirming = confirmRemove === friendId;
+              const busy = busyId === friendId;
+
+              if (confirming) {
+                return (
+                  <li key={fs.id} className="row friends-confirm" role="group" aria-label={`${name} entfernen?`}>
+                    <div className="row-main">
+                      <div className="row-title">{name} entfernen?</div>
+                      <div className="row-sub">Ihr seht euch dann nicht mehr auf der Karte.</div>
+                    </div>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setConfirmRemove(null)} disabled={busy}>
+                      Abbrechen
+                    </button>
+                    <button type="button" className="btn btn-sm btn-danger" onClick={() => handleRemove(friendId)} disabled={busy}>
+                      Entfernen
+                    </button>
+                  </li>
+                );
+              }
 
               return (
-                <div key={fs.id} className="friend-item">
-                  <div className="friend-info" onClick={() => handleOpenChat(friendId)}>
-                    <div className="friend-avatar">
-                      {beer && <img src={beer.svgLogo} alt={beer.name} className="friend-beer-logo" />}
-                      <span className={`friend-online-dot ${online ? 'online' : 'offline'}`} />
-                    </div>
-                    <div className="friend-details">
-                      <span className="friend-name">
-                        {friendUser ? (beer?.name ?? friendUser.beerId) : friendId.substring(0, 8) + '...'}
+                <li key={fs.id} className="row friends-row">
+                  <button
+                    type="button"
+                    className="friends-who"
+                    onClick={() => handleOpenChat(friendId)}
+                    disabled={!friendUser}
+                    aria-label={`Chat mit ${name} öffnen`}
+                  >
+                    <span className="friends-avatar">
+                      <BeerBadge beerId={friendUser?.beerId} />
+                      <span className={`friends-dot${online ? ' online' : ''}`} aria-hidden="true" />
+                    </span>
+                    <span className="row-main">
+                      <span className="row-title">{name}</span>
+                      <span className={`row-sub${online ? ' friends-online' : ''}`}>
+                        {online ? 'Online' : presence ? formatLastActive(presence.lastSeen) : friendUser ? beerName(friendUser.beerId) : '…'}
                       </span>
-                      <span className="friend-status">
-                        {online
-                          ? 'Online'
-                          : presence
-                            ? formatLastActive(presence.lastSeen)
-                            : 'Unbekannt'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="friend-actions">
+                    </span>
+                  </button>
+                  <div className="friends-actions">
+                    <button
+                      type="button"
+                      className="icon-btn friends-chat"
+                      onClick={() => handleOpenChat(friendId)}
+                      disabled={!friendUser}
+                      aria-label={unread > 0 ? `Chat mit ${name}, ${unread} ungelesen` : `Chat mit ${name}`}
+                    >
+                      {Icon.chat}
+                      {unread > 0 && <span className="friends-unread num" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
+                    </button>
                     {friendUser && friendUser.homeLat !== 0 && onLocateFriend && (
                       <button
-                        className="friend-locate-btn"
-                        onClick={() => onLocateFriend(friendUser.homeLat, friendUser.homeLon)}
-                        title="Auf Karte zeigen"
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => { haptic('light'); onLocateFriend(friendUser.homeLat, friendUser.homeLon); }}
+                        aria-label={`${name} auf der Karte zeigen`}
                       >
-                        📍
+                        {Icon.pin}
                       </button>
                     )}
                     <button
-                      className="friend-chat-btn"
-                      onClick={() => handleOpenChat(friendId)}
-                      title="Chat"
+                      type="button"
+                      className="icon-btn friends-remove"
+                      onClick={() => setConfirmRemove(friendId)}
+                      aria-label={`${name} entfernen`}
                     >
-                      💬
-                      {(() => {
-                        const fsId = makeFriendshipId(user.id, friendId);
-                        const count = unreadCounts?.get(fsId) ?? 0;
-                        return count > 0 ? (
-                          <span className="friend-unread-badge">{count > 9 ? '9+' : count}</span>
-                        ) : null;
-                      })()}
+                      {Icon.remove}
                     </button>
-                    {confirmRemove === friendId ? (
-                      <button
-                        className="friend-remove-btn confirm"
-                        onClick={() => handleRemove(friendId)}
-                        title="Wirklich entfernen?"
-                      >
-                        ✓
-                      </button>
-                    ) : (
-                      <button
-                        className="friend-remove-btn"
-                        onClick={() => setConfirmRemove(friendId)}
-                        title="Entfernen"
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
+        </section>
+      )}
+
+      {sentRequests.length > 0 && (
+        <section className="section" aria-labelledby="friends-sent-title">
+          <h2 className="section-title" id="friends-sent-title">Gesendet</h2>
+          <ul className="friends-list">
+            {sentRequests.map((fs) => {
+              const friendId = getFriendId(fs);
+              const fu = friendUsers.get(friendId);
+              return (
+                <li key={fs.id} className="row friends-sent">
+                  <BeerBadge beerId={fu?.beerId} />
+                  <div className="row-main">
+                    <div className="row-title">{displayName(friendId)}</div>
+                    <div className="row-sub">Wartet auf Antwort …</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => handleDecline(friendId)}
+                    disabled={busyId === friendId}
+                  >
+                    Zurückziehen
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {!hasAnything && (
+        <div className="empty friends-empty">
+          <span className="empty-icon" aria-hidden="true">🍻</span>
+          <span className="empty-title">Noch keine Crew</span>
+          <p>Teile deine Freundes-ID (findest du unter „Dein Revier“) oder füg oben die ID eines Kumpels ein.</p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => document.getElementById('friends-add-input')?.focus()}
+          >
+            ID eingeben
+          </button>
         </div>
       )}
-    </div>
+    </>
   );
 }

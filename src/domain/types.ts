@@ -1,3 +1,5 @@
+import type { TerritoryGeometry } from './territoryGeometry';
+
 export interface Beer {
   id: string;
   name: string;
@@ -5,6 +7,13 @@ export interface Beer {
   svgLogo: string;
   /** Optional URL to a real brewery logo image */
   logoUrl?: string;
+  brewery?: string;
+  city?: string;
+  country?: 'DE' | 'AT' | 'CH';
+  /** Shown first in pickers (Munich core brands) */
+  featured?: boolean;
+  /** 'community' = added via an approved submission */
+  source?: 'builtin' | 'community';
 }
 
 export interface Vote {
@@ -67,17 +76,26 @@ export interface OverlaySettings {
 }
 
 export interface WorkerInput {
+  /** Monotonic id; the UI drops results of superseded requests. */
+  requestId: number;
   votes: Vote[];
   weightedVotes?: WeightedVote[];
   gridSpec: GridSpec;
   radiusKm: number;
   smoothingIterations: number;
   mergeIslandSize: number;
+  closeMarginThreshold: number;
+  closeMarginMinWeight: number;
 }
 
 export interface WorkerOutput {
   type: 'result';
+  requestId: number;
   data: DominanceResult;
+  regions: Region[];
+  /** Per-cell index into `regions` (-1 = none). */
+  labels: Int32Array;
+  geometry: TerritoryGeometry;
 }
 
 // ── Regions ──────────────────────────────────────────────
@@ -114,6 +132,8 @@ export interface User {
   beerId: string;
   standYourGroundEnabled: boolean;
   ageVerified: boolean;
+  /** Last time the home location was moved (rate-limited by the rules). */
+  homeChangedAt?: number;
 }
 
 // ── Weighted Vote (for worker input) ────────────────────

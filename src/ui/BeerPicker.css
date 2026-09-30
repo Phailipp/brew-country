@@ -1,87 +1,111 @@
-/* ─── Beer Picker ───────────────────────────────────── */
-.beer-picker {
-  background: rgba(13, 21, 38, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: var(--radius-lg);
-  margin-bottom: 8px;
-  overflow: hidden;
-}
+.bp { display: grid; gap: var(--sp-3); min-width: 0; }
 
-.beer-picker-header {
-  padding: 10px 14px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.beer-picker h3 {
-  margin: 0;
-  font-size: 9px;
-  font-weight: 800;
-  color: var(--text-400);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.beer-list {
-  display: flex;
-  flex-direction: column;
-  padding: 6px;
-  gap: 2px;
-}
-
-.beer-item {
+.bp-search {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 9px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: transparent;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  font-size: 12px;
-  text-align: left;
-  width: 100%;
-  color: var(--text-200);
+  color: var(--c-text-3);
+}
+.bp-search svg { position: absolute; left: 14px; pointer-events: none; }
+.bp-search input {
+  padding-left: 42px;
+  border-radius: var(--r-full);
+  background: rgba(255, 246, 232, 0.04);
 }
 
-.beer-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-100);
+/* ── Grid (onboarding) */
+.bp-grid .bp-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-auto-rows: max-content;
+  gap: var(--sp-2);
+  max-height: min(46vh, 420px);
+  overflow-y: auto;
+  padding: 4px;
+  margin: -4px;
+  overscroll-behavior: contain;
 }
 
-.beer-item.selected {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.25);
-  color: var(--amber);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.08);
+/* ── Carousel (check-in) */
+.bp-carousel .bp-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 84px;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--sp-4));
+  padding: var(--sp-2) var(--sp-4) var(--sp-3);
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
 }
+.bp-carousel .bp-list::-webkit-scrollbar { display: none; }
 
-.beer-logo {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+.bp-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 112px;
+  padding: var(--sp-3) var(--sp-1);
+  border-radius: var(--r-lg);
+  scroll-snap-align: start;
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: center;
+  background: rgba(255, 246, 232, 0.025);
+  box-shadow: inset 0 0 0 1px var(--c-line);
+  transition: background var(--dur-2), color var(--dur-2), transform 360ms var(--ease-spring), box-shadow var(--dur-2);
 }
+.bp-item > * { flex: none; }
+.bp-item:hover:not(:disabled) { background: rgba(255, 246, 232, 0.05); color: var(--c-text-2); }
+.bp-item:active:not(:disabled) { transform: scale(0.95); }
+.bp-item.selected {
+  color: var(--c-text);
+  background: color-mix(in oklab, var(--beer) 15%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--beer) 75%, transparent), 0 10px 30px -14px var(--beer);
+  transform: translateY(-2px);
+}
+.bp-item.selected .beer-badge { box-shadow: 0 0 0 3px var(--c-bg), 0 0 0 5px var(--beer), 0 10px 26px -6px var(--beer); }
 
-.beer-name {
-  flex: 1;
-  font-weight: 500;
-  white-space: nowrap;
+.bp-name {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+  padding-bottom: 1px;
+}
+.bp-city {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--c-text-3);
 }
 
-.beer-item.selected .beer-name {
-  font-weight: 700;
+.bp-empty {
+  grid-column: 1 / -1;
+  padding: var(--sp-6) var(--sp-2);
+  color: var(--c-text-3);
+  font-size: var(--fs-sm);
+  text-align: center;
 }
 
-.beer-color-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  opacity: 0.85;
-  box-shadow: 0 0 5px currentColor;
+.bp-suggest {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 var(--sp-2);
+  color: var(--c-accent);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  border-radius: var(--r-md);
 }
+.bp-suggest:hover { background: var(--c-accent-soft); }

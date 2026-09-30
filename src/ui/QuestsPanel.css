@@ -1,118 +1,79 @@
-/* ─── Quests Panel ──────────────────────────────────── */
-.quests-panel {
-  background: rgba(13, 21, 38, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.quests-panel h3 {
-  margin: 0;
-  padding: 10px 14px;
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-400);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.quests-list {
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.quest-row {
+/* Quests */
+.quests-summary {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  transition: all var(--transition-fast);
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-4);
 }
-
-.quest-row:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.05);
+.quests-ring { width: 72px; height: 72px; flex: none; transform: rotate(-90deg); }
+.quests-ring-track { fill: none; stroke: var(--c-surface-3); stroke-width: 8; }
+.quests-ring-fill {
+  fill: none;
+  stroke: var(--c-accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--dur-3) var(--ease-out);
+  filter: drop-shadow(0 0 6px var(--c-accent-line));
 }
-
-.quest-row.completed {
-  background: rgba(74, 222, 128, 0.05);
-  border-color: rgba(74, 222, 128, 0.12);
-}
-
-.quest-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-  width: 26px;
-  text-align: center;
-  filter: grayscale(0.4);
-}
-
-.quest-row.completed .quest-icon {
-  filter: none;
-}
-
-.quest-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.quest-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-200);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 4px;
-}
-
-.quest-row.completed .quest-title {
-  color: var(--green);
-}
-
-/* Progress bar */
-.quest-bar-wrap {
-  height: 3px;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.quest-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--blue) 0%, #60a5fa 100%);
-  transition: width 0.4s var(--ease-out);
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
-}
-
-.quest-row.completed .quest-bar-fill {
-  background: linear-gradient(90deg, var(--green) 0%, #86efac 100%);
-  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
-}
-
-.quest-count {
-  font-size: 10px;
-  color: var(--text-300);
-  font-weight: 700;
-  flex-shrink: 0;
-  min-width: 30px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.quest-row.completed .quest-count {
-  color: var(--green);
-}
-
-.quest-check {
-  color: var(--green);
-  font-size: 14px;
+.quests-summary-text { display: grid; gap: 2px; }
+.quests-summary-num {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
   font-weight: 800;
-  text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.quests-summary-total { color: var(--c-text-3); font-size: var(--fs-xl); }
+.quests-summary-label { font-size: var(--fs-sm); color: var(--c-text-2); }
+
+.quests-list { list-style: none; display: grid; gap: var(--sp-3); }
+.quests-list .card + .card { margin-top: 0; }
+
+.quest {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  transition: box-shadow var(--dur-2);
+}
+.quest-tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 24px;
+  background: var(--c-surface-2);
+  box-shadow: inset 0 0 0 1px var(--c-line-strong);
+}
+.quest-body { flex: 1; min-width: 0; display: grid; gap: var(--sp-1); }
+.quest-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.quest-title {
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.quest-count { font-size: var(--fs-xs); font-weight: 650; color: var(--c-text-2); flex: none; }
+.quest-desc { font-size: var(--fs-sm); color: var(--c-text-3); }
+.quest-bar { margin-top: var(--sp-2); }
+
+.quest.done {
+  box-shadow: inset 0 0 0 1px rgba(61, 220, 132, 0.3), 0 0 24px -10px var(--c-success);
+}
+.quest.done .quest-tile {
+  background: rgba(61, 220, 132, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(61, 220, 132, 0.4);
+}
+.quest-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--c-success);
+  color: var(--c-bg);
+  animation: popIn var(--dur-3) var(--ease-spring) both;
 }

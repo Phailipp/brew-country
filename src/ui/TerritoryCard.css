@@ -1,0 +1,38 @@
+.territory { display: grid; gap: var(--sp-3); }
+.territory .card + .card { margin-top: 0; }
+
+.territory-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4);
+}
+.territory-hero-text { display: grid; gap: var(--sp-1); justify-items: start; min-width: 0; }
+.territory-winner { font-size: var(--fs-xl); font-weight: 800; letter-spacing: -0.03em; }
+@media (max-width: 420px) {
+  .territory-hero .beer-badge.xl { width: 64px; height: 64px; }
+  .territory-winner { font-size: var(--fs-lg); }
+}
+
+.territory-bars { list-style: none; display: grid; gap: var(--sp-3); margin-top: var(--sp-3); }
+.territory-bars li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 7.5rem) 1fr 3.2rem;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.territory-bar-name { font-size: var(--fs-sm); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.territory-bar-track { height: 10px; border-radius: var(--r-full); background: var(--c-surface-3); overflow: hidden; }
+.territory-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: left;
+  animation: barGrow 700ms var(--ease-out) both;
+}
+.territory-bar-pct { font-size: var(--fs-sm); font-weight: 700; text-align: right; }
+@keyframes barGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.territory-region { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.territory-region-size { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 800; }
+.territory-region-size small { font-family: var(--font-body); font-size: var(--fs-sm); font-weight: 500; color: var(--c-text-3); }

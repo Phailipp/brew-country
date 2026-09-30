@@ -1,0 +1,171 @@
+.tabbar {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: calc(12px + var(--safe-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr) 84px repeat(2, 1fr);
+  align-items: center;
+  width: min(460px, calc(100vw - 24px));
+  height: 68px;
+  padding: 0 6px;
+  border-radius: var(--r-full);
+}
+
+.tab-indicator {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  height: 56px;
+  border-radius: var(--r-full);
+  background:
+    radial-gradient(80% 120% at 50% 0%, rgba(255, 210, 140, 0.16), transparent 70%),
+    rgba(255, 246, 232, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 246, 232, 0.14), inset 0 0 0 1px rgba(255, 236, 205, 0.06);
+  opacity: 0;
+  transition: transform 520ms var(--ease-spring), width 520ms var(--ease-spring), opacity 200ms;
+  pointer-events: none;
+}
+.tab-indicator.visible { opacity: 1; }
+
+.tab {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  height: 56px;
+  border-radius: var(--r-full);
+  color: var(--c-text-3);
+  transition: color var(--dur-2), background var(--dur-2), transform var(--dur-1);
+}
+.tab:hover { color: var(--c-text-2); }
+.tab:active { transform: scale(0.94); }
+.tab.active { color: var(--c-text); }
+.tab.active .tab-icon { color: var(--c-accent); }
+.tab-icon { width: 24px; height: 24px; transition: transform var(--dur-3) var(--ease-spring); }
+.tab.active .tab-icon { transform: translateY(-1px) scale(1.08); }
+.tab-icon svg { width: 100%; height: 100%; }
+.tab-label { font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
+@media (min-width: 380px) { .tab-label { font-size: var(--fs-xs); } }
+
+.tab-badge {
+  position: absolute;
+  top: 9px;
+  right: calc(50% - 16px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c-danger);
+  box-shadow: 0 0 0 2px var(--c-bg);
+}
+.tab-count {
+  position: absolute;
+  top: 5px;
+  right: calc(50% - 22px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* ── The Prost! FAB — the core action, in the player's beer colour */
+.prost-fab {
+  position: relative;
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  width: 76px;
+  height: 76px;
+  margin-top: -30px;
+  border-radius: 50%;
+  transition: transform 300ms var(--ease-spring);
+}
+.prost-fab:hover { transform: translateY(-2px) scale(1.03); }
+.prost-fab:active { transform: scale(0.9); }
+.prost-fab-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--c-beer) 70%, transparent), transparent);
+  filter: blur(8px);
+  opacity: 0.7;
+  animation: fabGlow 3.2s ease-in-out infinite;
+}
+.prost-fab-ring {
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: conic-gradient(from var(--ring-angle), var(--c-beer), #ffd166, var(--c-accent-2), color-mix(in oklab, var(--c-beer) 40%, #fff6e8), var(--c-beer));
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
+  animation: ringSpin 5s linear infinite;
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--c-beer) 60%, transparent));
+}
+.prost-fab-inner {
+  overflow: hidden;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  color: var(--c-accent-ink);
+  background:
+    radial-gradient(90% 90% at 30% 20%, rgba(255, 255, 255, 0.55), transparent 45%),
+    linear-gradient(160deg, #ffd166, var(--c-accent) 50%, var(--c-accent-2));
+  box-shadow:
+    0 0 0 3px var(--c-bg),
+    0 14px 30px -8px rgba(255, 140, 20, 0.7),
+    inset 0 -6px 12px rgba(160, 60, 0, 0.35);
+}
+.prost-fab-mug { position: relative; z-index: 1; filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.35)); }
+.prost-fab-liquid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44%;
+  background: linear-gradient(180deg, rgba(214, 110, 0, 0.55), rgba(160, 70, 0, 0.75));
+  transition: height 700ms var(--ease-spring);
+}
+.prost-fab-liquid svg {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 200%;
+  height: 8px;
+  fill: rgba(214, 110, 0, 0.55);
+  animation: slosh 2.6s linear infinite;
+}
+.prost-fab:hover .prost-fab-liquid,
+.prost-fab.active .prost-fab-liquid { height: 58%; }
+@keyframes slosh { to { transform: translateX(-50%); } }
+
+.prost-fab-label {
+  position: absolute;
+  bottom: -2px;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px var(--c-line-strong);
+}
+.prost-fab.active .prost-fab-inner { transform: rotate(-12deg); transition: transform 400ms var(--ease-spring); }
+
+@keyframes fabGlow {
+  0%, 100% { transform: scale(0.95); opacity: 0.55; }
+  50%      { transform: scale(1.12); opacity: 0.9; }
+}

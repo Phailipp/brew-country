@@ -1,0 +1,284 @@
+rules_version = '2';
+
+// Brew Country — Firestore security rules
+//
+// Principles
+//  - default deny; every write is validated (owner, shape, timestamps)
+//  - exact home locations live only in the private profile (bc_users);
+//    the public profile (users) carries a ~2 km coarse position
+//  - check-ins are rate limited server-side via bc_userStats (cooldown +
+//    daily cap), written in the same batch as the check-in
+//  - admins are identified by the custom claim `admin: true`
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ──────────────────────────────────────────
+    function signedIn() { return request.auth != null; }
+    function verified() {
+      return signedIn() && (
+        request.auth.token.email_verified == true ||
+        request.auth.token.firebase.sign_in_provider == 'phone'
+      );
+    }
+    function isUser(uid) { return verified() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function nowMs() { return request.time.toMillis(); }
+    function near(ms, tolMs) { return ms is number && ms >= nowMs() - tolMs && ms <= nowMs() + tolMs; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function changed() { return incoming().diff(existing()).affectedKeys(); }
+    function inDach(lat, lon) {
+      return lat is number && lon is number
+        && lat >= 45.8 && lat <= 55.1 && lon >= 5.8 && lon <= 17.2;
+    }
+    // Value lies on a lattice of 1/steps degrees (client rounds before writing)
+    function onLattice(v, steps) { return math.abs(v * steps - math.round(v * steps)) < 0.0001; }
+    function validBeerId(id) {
+      return id is string && id.size() > 0 && id.size() <= 40 && id.matches('^[a-z0-9-]+$');
+    }
+    function friendshipId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+
+    // ── private profile (exact home, email) ──────────────
+    match /bc_users/{uid} {
+      allow read: if isUser(uid) || isAdmin();
+      allow create: if isUser(uid)
+        && incoming().keys().hasOnly(['id', 'phone', 'email', 'nickname', 'createdAt', 'lastActiveAt',
+            'homeLat', 'homeLon', 'beerId', 'standYourGroundEnabled', 'ageVerified', 'homeChangedAt'])
+        && incoming().id == uid
+        && near(incoming().createdAt, 10 * 60 * 1000)
+        && incoming().ageVerified == true
+        && validBeerId(incoming().beerId)
+        && inDach(incoming().homeLat, incoming().homeLon);
+      allow update: if isUser(uid)
+        && !changed().hasAny(['id', 'createdAt', 'ageVerified'])
+        // homeChangedAt may only move together with the home itself
+        && (!changed().hasAny(['homeChangedAt']) || changed().hasAny(['homeLat', 'homeLon']))
+        && validBeerId(incoming().beerId)
+        && (incoming().lastActiveAt is number && incoming().lastActiveAt <= nowMs() + 60000)
+        && (
+          // home unchanged …
+          !changed().hasAny(['homeLat', 'homeLon'])
+          // … or re-set after a wipe, or moved at most once per week
+          || (existing().homeLat == 0 && existing().homeLon == 0
+              && inDach(incoming().homeLat, incoming().homeLon))
+          || (inDach(incoming().homeLat, incoming().homeLon)
+              && near(incoming().homeChangedAt, 10 * 60 * 1000)
+              && nowMs() - existing().get('homeChangedAt', existing().createdAt) > 7 * 24 * 3600 * 1000)
+        );
+      allow delete: if isUser(uid) || isAdmin();
+    }
+
+    // ── public profile (coarse position, derived from bc_users) ──
+    match /users/{uid} {
+      function priv() { return get(/databases/$(database)/documents/bc_users/$(uid)).data; }
+      function validPublic() {
+        return incoming().keys().hasOnly(['userId', 'beerId', 'homeLat', 'homeLon', 'createdAt', 'lastActiveAt', 'syg'])
+          && incoming().userId == uid
+          && incoming().beerId == priv().beerId
+          && incoming().createdAt == priv().createdAt
+          && incoming().syg == priv().standYourGroundEnabled
+          && inDach(incoming().homeLat, incoming().homeLon)
+          && onLattice(incoming().homeLat, 50) && onLattice(incoming().homeLon, 50)
+          && math.abs(incoming().homeLat - priv().homeLat) <= 0.011
+          && math.abs(incoming().homeLon - priv().homeLon) <= 0.011
+          && incoming().lastActiveAt is number && incoming().lastActiveAt <= nowMs() + 60000;
+      }
+      allow read: if verified();
+      allow create, update: if isUser(uid) && validPublic();
+      allow delete: if isUser(uid) || isAdmin();
+    }
+
+    // ── check-in rate limiting ───────────────────────────
+    match /bc_userStats/{uid} {
+      allow read: if isUser(uid) || isAdmin();
+      allow create, update: if isUser(uid)
+        && incoming().keys().hasOnly(['lastDrinkAt', 'day', 'dayCount', 'lastVoteId'])
+        && incoming().lastVoteId is string
+        && incoming().lastDrinkAt == request.time
+        && incoming().day == request.time.date()
+        && (resource == null || request.time > existing().lastDrinkAt + duration.value(15, 'm'))
+        && incoming().dayCount is int
+        && incoming().dayCount == ((resource != null && existing().day == incoming().day) ? existing().dayCount + 1 : 1)
+        && incoming().dayCount <= 12;
+      // deleting would reset cooldown + daily cap → admin/server only
+      allow delete: if isAdmin();
+    }
+
+    // ── check-ins (drink votes) ──────────────────────────
+    match /bc_drinkVotes/{voteId} {
+      allow read: if verified();
+      allow create: if isUser(incoming().userId)
+        && incoming().keys().hasOnly(['id', 'userId', 'beerId', 'lat', 'lon', 'placeKey', 'createdAt',
+            'expiresAt', 'gpsAccuracyM', 'proofType', 'proofPhotoUrl'])
+        && incoming().id == voteId
+        && validBeerId(incoming().beerId)
+        && inDach(incoming().lat, incoming().lon)
+        && onLattice(incoming().lat, 200) && onLattice(incoming().lon, 200)
+        && near(incoming().createdAt, 2 * 60 * 1000)
+        && incoming().expiresAt == incoming().createdAt + 24 * 3600 * 1000
+        && incoming().gpsAccuracyM is number && incoming().gpsAccuracyM <= 75
+        // must be written together with the rate-limit counter
+        && getAfter(/databases/$(database)/documents/bc_userStats/$(request.auth.uid)).data.lastDrinkAt == request.time
+        // one counter bump = exactly one check-in (no batching several votes)
+        && getAfter(/databases/$(database)/documents/bc_userStats/$(request.auth.uid)).data.lastVoteId == voteId;
+      allow update: if false;
+      allow delete: if (signedIn() && request.auth.uid == existing().userId)
+        || existing().expiresAt < nowMs()
+        || isAdmin();
+    }
+
+    // ── on-the-road flags: max 5 slots per user by construction ──
+    match /bc_otrVotes/{voteId} {
+      function validOtr() {
+        return incoming().keys().hasOnly(['id', 'userId', 'lat', 'lon', 'beerId', 'createdAt', 'expiresAt'])
+          && incoming().id == voteId
+          && voteId.matches('^' + request.auth.uid + '_otr_[0-4]$')
+          && validBeerId(incoming().beerId)
+          && inDach(incoming().lat, incoming().lon)
+          && onLattice(incoming().lat, 50) && onLattice(incoming().lon, 50)
+          && near(incoming().createdAt, 2 * 60 * 1000)
+          && incoming().expiresAt == incoming().createdAt + 14 * 24 * 3600 * 1000;
+      }
+      allow read: if verified();
+      allow create: if isUser(incoming().userId) && validOtr();
+      // a slot can be reused once its flag has expired
+      allow update: if isUser(incoming().userId) && existing().userId == incoming().userId
+        && existing().expiresAt < nowMs() && validOtr();
+      allow delete: if (signedIn() && request.auth.uid == existing().userId)
+        || existing().expiresAt < nowMs()
+        || isAdmin();
+    }
+
+    // ── teams (Biergemeinschaft): join / leave yourself only ──
+    match /bc_teams/{teamId} {
+      function myBeer() { return get(/databases/$(database)/documents/bc_users/$(request.auth.uid)).data.beerId; }
+      allow read: if verified();
+      allow create: if verified()
+        && incoming().keys().hasOnly(['id', 'beerId', 'memberUserIds'])
+        && incoming().id == teamId
+        && teamId == 'team_' + incoming().beerId
+        && incoming().beerId == myBeer()
+        && incoming().memberUserIds == [request.auth.uid];
+      allow update: if verified()
+        && changed().hasOnly(['memberUserIds'])
+        && (
+          // join
+          (incoming().memberUserIds.toSet() == existing().memberUserIds.toSet().union([request.auth.uid].toSet())
+            && !(request.auth.uid in existing().memberUserIds)
+            && incoming().memberUserIds.size() <= 10
+            && existing().beerId == myBeer())
+          // leave
+          || (incoming().memberUserIds.toSet() == existing().memberUserIds.toSet().difference([request.auth.uid].toSet())
+            && request.auth.uid in existing().memberUserIds)
+        );
+      allow delete: if isAdmin();
+    }
+
+    // ── duels (server-driven later; participants only) ───
+    match /bc_duels/{duelId} {
+      allow read: if verified()
+        && request.auth.uid in [existing().challengerUserId, existing().defenderUserId];
+      allow create: if verified() && incoming().challengerUserId == request.auth.uid && incoming().status == 'pending';
+      allow update: if verified()
+        && request.auth.uid in [existing().challengerUserId, existing().defenderUserId]
+        && !changed().hasAny(['challengerUserId', 'defenderUserId', 'challengerBeerId', 'defenderBeerId', 'createdAt']);
+      allow delete: if isAdmin();
+    }
+    match /bc_duelMessages/{msgId} {
+      function duel(id) { return get(/databases/$(database)/documents/bc_duels/$(id)).data; }
+      allow read: if verified()
+        && request.auth.uid in [duel(existing().duelId).challengerUserId, duel(existing().duelId).defenderUserId];
+      allow create: if verified()
+        && incoming().senderUserId == request.auth.uid
+        && request.auth.uid in [duel(incoming().duelId).challengerUserId, duel(incoming().duelId).defenderUserId];
+      allow update, delete: if isAdmin();
+    }
+    match /bc_duelOutcomes/{id} {
+      allow read: if verified();
+      allow delete: if existing().expiresAt < nowMs() || isAdmin();
+      allow create, update: if isAdmin();
+    }
+
+    // ── friends + chat ───────────────────────────────────
+    match /friendships/{fid} {
+      allow read: if verified() && request.auth.uid in existing().userIds;
+      allow create: if verified()
+        && incoming().keys().hasOnly(['userIds', 'status', 'requestedBy', 'createdAt'])
+        && incoming().requestedBy == request.auth.uid
+        && request.auth.uid in incoming().userIds
+        && incoming().userIds.size() == 2
+        && incoming().userIds[0] < incoming().userIds[1]
+        && fid == friendshipId(incoming().userIds[0], incoming().userIds[1])
+        && incoming().status == 'pending'
+        && near(incoming().createdAt, 10 * 60 * 1000);
+      allow update: if verified()
+        && request.auth.uid in existing().userIds
+        && request.auth.uid != existing().requestedBy
+        && existing().status == 'pending'
+        && changed().hasOnly(['status'])
+        && incoming().status == 'accepted';
+      allow delete: if verified() && request.auth.uid in existing().userIds;
+
+      match /messages/{msgId} {
+        function fs() { return get(/databases/$(database)/documents/friendships/$(fid)).data; }
+        allow read: if verified() && request.auth.uid in fs().userIds;
+        allow create: if verified()
+          && request.auth.uid in fs().userIds
+          && fs().status == 'accepted'
+          && incoming().keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && incoming().senderId == request.auth.uid
+          && incoming().text is string
+          && incoming().text.size() > 0 && incoming().text.size() <= 500
+          && incoming().createdAt == request.time;
+        allow update: if false;
+        // members may clean up (friend removal / account deletion)
+        allow delete: if verified() && request.auth.uid in fs().userIds;
+      }
+    }
+
+    // ── presence ─────────────────────────────────────────
+    match /presence/{uid} {
+      allow read: if verified();
+      allow write: if isUser(uid)
+        && incoming().keys().hasOnly(['lastSeen'])
+        && near(incoming().lastSeen, 2 * 60 * 1000);
+      allow delete: if isUser(uid);
+    }
+
+    // ── quests (cosmetic progress, owner only) ───────────
+    match /questStates/{uid} {
+      allow read, write: if isUser(uid);
+    }
+
+    // ── beer catalogue: community submissions + approved beers ──
+    match /beers/{beerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /beerSubmissions/{id} {
+      allow read: if isAdmin() || (verified() && existing().submittedBy == request.auth.uid);
+      allow create: if verified()
+        && incoming().keys().hasOnly(['name', 'brewery', 'city', 'country', 'website', 'note', 'submittedBy', 'status', 'createdAt'])
+        && incoming().submittedBy == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().name is string && incoming().name.size() >= 2 && incoming().name.size() <= 60
+        && incoming().brewery is string && incoming().brewery.size() >= 2 && incoming().brewery.size() <= 80
+        && incoming().city is string && incoming().city.size() >= 2 && incoming().city.size() <= 60
+        && incoming().country in ['DE', 'AT', 'CH']
+        && incoming().website is string && incoming().website.size() <= 200
+        && incoming().note is string && incoming().note.size() <= 300;
+      allow update, delete: if isAdmin();
+    }
+
+    // ── dev simulation votes ─────────────────────────────
+    match /legacyVotes/{id} {
+      allow read: if verified();
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

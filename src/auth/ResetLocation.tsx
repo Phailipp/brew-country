@@ -3,6 +3,8 @@ import type { User } from '../domain/types';
 import { GAME } from '../config/constants';
 import { isFirebaseConfigured } from '../config/firebase';
 import { saveUserProfile } from '../services/firestoreService';
+import { haptic } from '../ui/kit/haptics';
+import { AuthBackdrop, AuthBrand, GpsProgress, type GpsPhase } from './AuthChrome';
 import './Auth.css';
 
 interface GpsSample {
@@ -29,17 +31,17 @@ interface Props {
 export function ResetLocation({ user, onLocationSet }: Props) {
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [error, setError] = useState('');
-  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsPhase, setGpsPhase] = useState<GpsPhase | null>(null);
   const [saving, setSaving] = useState(false);
   const [impreciseCandidate, setImpreciseCandidate] = useState<ImpreciseLocationCandidate | null>(null);
 
   const handleGetLocation = useCallback(async () => {
     if (!navigator.geolocation) {
-      setError('GPS wird von deinem Browser nicht unterstützt.');
+      setError('Dein Browser kann deinen Standort leider nicht bestimmen.');
       return;
     }
 
-    setGpsLoading(true);
+    setGpsPhase('first');
     setError('');
     setImpreciseCandidate(null);
 
@@ -65,7 +67,9 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       samples.push(s1);
 
       // Wait and take second sample
+      setGpsPhase('wait');
       await new Promise((r) => setTimeout(r, GAME.GPS_SAMPLE_INTERVAL_MS));
+      setGpsPhase('second');
       const s2 = await getSample();
       samples.push(s2);
 
@@ -77,10 +81,9 @@ export function ResetLocation({ user, onLocationSet }: Props) {
           const worstAccuracy = Math.max(s1.accuracy, s2.accuracy);
           setImpreciseCandidate({ lat: avgLat, lon: avgLon, accuracy: worstAccuracy });
           setError(
-            `GPS-Genauigkeit zu gering (${Math.round(s.accuracy)}m). ` +
-            `Bitte gehe nach draussen und versuche es erneut.`
+            `Dein GPS ist gerade ungenau (±${Math.round(s.accuracy)} m). ` +
+            `Geh am besten kurz nach draußen und versuch es nochmal.`
           );
-          setGpsLoading(false);
           return;
         }
       }
@@ -91,10 +94,9 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       const jumpMeters = Math.sqrt(dlat * dlat + dlon * dlon);
       if (jumpMeters > GAME.GPS_MAX_JUMP_METERS) {
         setError(
-          `Positions-Sprung zu gross (${Math.round(jumpMeters)}m). ` +
-          `Bitte bleib stehen und versuche es erneut.`
+          `Du hast dich zwischen den Messungen bewegt (${Math.round(jumpMeters)} m). ` +
+          `Bleib kurz stehen und versuch es nochmal.`
         );
-        setGpsLoading(false);
         return;
       }
 
@@ -104,13 +106,15 @@ export function ResetLocation({ user, onLocationSet }: Props) {
 
       setLocation({ lat: avgLat, lon: avgLon });
       setImpreciseCandidate(null);
-      setGpsLoading(false);
+      haptic('success');
     } catch (err) {
-      setGpsLoading(false);
       setError(
-        `GPS-Fehler: ${err instanceof GeolocationPositionError ? err.message : 'Unbekannter Fehler'}. ` +
-        `Bitte Standortzugriff erlauben.`
+        typeof GeolocationPositionError !== 'undefined' && err instanceof GeolocationPositionError && err.code === err.PERMISSION_DENIED
+          ? 'Wir dürfen deinen Standort nicht sehen. Erlaube den Zugriff in den Einstellungen und versuch es nochmal.'
+          : 'Dein Standort konnte nicht bestimmt werden. Versuch es nochmal.'
       );
+    } finally {
+      setGpsPhase(null);
     }
   }, []);
 
@@ -124,86 +128,92 @@ export function ResetLocation({ user, onLocationSet }: Props) {
     if (!location) return;
 
     setSaving(true);
+    setError('');
+    haptic('medium');
     try {
       const updatedUser: User = {
         ...user,
         homeLat: location.lat,
         homeLon: location.lon,
+        homeChangedAt: Date.now(),
       };
 
       // Save to Firestore
-      if (isFirebaseConfigured()) {
-        await saveUserProfile(user.id, user.beerId, location.lat, location.lon);
+      if (isFirebaseConfigured() && !user.id.startsWith('dev_')) {
+        await saveUserProfile(user.id, user.beerId, location.lat, location.lon, user.createdAt, user.standYourGroundEnabled);
       }
 
       onLocationSet(updatedUser);
     } catch (e) {
       console.error('Failed to save location:', e);
-      setError('Fehler beim Speichern. Bitte versuche es erneut.');
+      setError('Speichern hat nicht geklappt. Prüf deine Verbindung und versuch es nochmal.');
       setSaving(false);
     }
   }, [location, user, onLocationSet]);
 
+  const gpsLoading = gpsPhase !== null;
+
   return (
     <div className="auth-screen">
-      <div className="auth-card onboarding-card">
-        <h1 className="auth-title">Standort erforderlich</h1>
-        <p className="auth-subtitle">
-          Dein Heimat-Standort muss neu gesetzt werden, bevor du weitermachen kannst.
-        </p>
+      <AuthBackdrop />
+      <main className="auth-wrap">
+        <AuthBrand compact claim={false} />
 
-        <div className="onboarding-section">
-          <h2>Dein Standort</h2>
-          <p className="auth-instruction">
-            Setze dein "Zuhause" neu — dein Bier dominiert im Umkreis von {GAME.HOME_RADIUS_KM} km.
-            Du musst vor Ort sein!
-          </p>
+        <div className="auth-card glass onboarding-card">
+          <section className="ob-step">
+            <div className="auth-hero-icon" aria-hidden="true">🧭</div>
+            <h1 className="ob-title">Wo ist dein Zuhause?</h1>
+            <p className="auth-instruction">
+              Dein Zuhause muss neu gesetzt werden, bevor es weitergeht. Dein Bier kämpft dann wieder
+              in {GAME.HOME_RADIUS_KM} km rund um diesen Ort – du musst dafür gerade vor Ort sein.
+            </p>
 
-          {location ? (
-            <>
-              <div className="location-confirmed">
-                <span className="location-pin">📍</span>
-                <span>
-                  {location.lat.toFixed(4)}, {location.lon.toFixed(4)}
-                </span>
-              </div>
-              <button
-                className="auth-btn"
-                onClick={handleConfirm}
-                disabled={saving}
-              >
-                {saving ? 'Speichere...' : 'Standort bestätigen'}
+            {location ? (
+              <>
+                <div className="ob-located">
+                  <span aria-hidden="true">✅</span>
+                  <span>Standort gefunden <span className="muted num">({location.lat.toFixed(3)}, {location.lon.toFixed(3)})</span></span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-lg btn-block"
+                  onClick={handleConfirm}
+                  disabled={saving}
+                  aria-busy={saving}
+                >
+                  {saving ? <><span className="spinner" aria-hidden="true" /> Speichere …</> : 'Hier ist mein Zuhause'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-block"
+                  onClick={() => { setLocation(null); setError(''); }}
+                  disabled={saving}
+                >
+                  Nochmal messen
+                </button>
+              </>
+            ) : gpsPhase ? (
+              <GpsProgress phase={gpsPhase} intervalMs={GAME.GPS_SAMPLE_INTERVAL_MS} />
+            ) : (
+              <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handleGetLocation}>
+                <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor" /><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                Standort per GPS bestimmen
               </button>
-              <button
-                className="auth-btn-secondary"
-                onClick={() => { setLocation(null); setError(''); }}
-                disabled={saving}
-              >
-                Nochmal messen
-              </button>
-            </>
-          ) : (
-            <button
-              className="auth-btn"
-              onClick={handleGetLocation}
-              disabled={gpsLoading}
-            >
-              {gpsLoading ? 'GPS wird gelesen...' : '📍 Standort erfassen'}
-            </button>
-          )}
+            )}
 
-          {error && <p className="auth-error">{error}</p>}
-          {impreciseCandidate && !location && (
-            <button
-              className="auth-btn-secondary"
-              onClick={handleUseImpreciseLocation}
-              disabled={gpsLoading}
-            >
-              Ungenaues GPS-Signal trotzdem verwenden
-            </button>
-          )}
+            {error && <p className="auth-error" role="alert">{error}</p>}
+            {impreciseCandidate && !location && !gpsLoading && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                onClick={handleUseImpreciseLocation}
+              >
+                Ungenauen Standort trotzdem nehmen
+              </button>
+            )}
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -53,7 +53,7 @@ export function usePresence(userId: string | null): UsePresenceReturn {
 
   // Subscribe to friend presence when friendIds change
   const resubscribeFriends = useCallback(() => {
-    if (!isFirebaseConfigured() || (userId && userId.startsWith('dev_'))) return;
+    if (!isFirebaseConfigured() || !userId || userId.startsWith('dev_')) return;
 
     // Clean up previous subscription
     if (friendUnsubRef.current) {
@@ -70,7 +70,7 @@ export function usePresence(userId: string | null): UsePresenceReturn {
     friendUnsubRef.current = subscribePresenceForUsers(ids, (map) => {
       setFriendPresence(map);
     });
-  }, []);
+  }, [userId]);
 
   // Cleanup friend subscription on unmount
   useEffect(() => {

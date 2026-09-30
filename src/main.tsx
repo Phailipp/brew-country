@@ -6,17 +6,22 @@ import { ToastProvider } from './ui/Toast.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { FirestoreStore } from './storage/FirestoreStore.ts'
 import { IndexedDBStore } from './storage/IndexedDBStore.ts'
+import { LOCAL_AUTH_KEY, isDemoUserId } from './auth/authContext.ts'
+import { ADMIN_ENABLED } from './config/env.ts'
+import { installGlobalLight } from './ui/kit/globalLight.ts'
 
-// Dev-bypass users (id starts with "dev_") use local IndexedDB — no Firebase needed
-const savedUserId = localStorage.getItem('brewcountry_auth');
-const isDevUser = savedUserId?.startsWith('dev_') ?? false;
-const store = isDevUser ? new IndexedDBStore() : new FirestoreStore();
+installGlobalLight()
 
-const isAdmin = window.location.hash === '#admin';
+// Demo users (id starts with "dev_") play in a local IndexedDB sandbox — no Firebase writes
+const store = isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY))
+  ? new IndexedDBStore()
+  : new FirestoreStore();
 
-if (isAdmin) {
+const root = createRoot(document.getElementById('root')!);
+
+if (ADMIN_ENABLED && window.location.hash === '#admin') {
   import('./admin/AdminPanel.tsx').then(({ AdminPanel }) => {
-    createRoot(document.getElementById('root')!).render(
+    root.render(
       <StrictMode>
         <AdminPanel store={store} />
       </StrictMode>,
@@ -25,7 +30,7 @@ if (isAdmin) {
 
   window.addEventListener('hashchange', () => location.reload());
 } else {
-  createRoot(document.getElementById('root')!).render(
+  root.render(
     <StrictMode>
       <ToastProvider>
         <AuthProvider store={store}>

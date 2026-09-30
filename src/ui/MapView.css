@@ -1,313 +1,99 @@
-/* ─── Map fills the full app wrapper ───────────────── */
-.map-wrapper {
+.map-view,
+.map-canvas {
   position: absolute;
   inset: 0;
-  z-index: 1;
 }
 
-.map-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
+.map-canvas { background: var(--c-bg); }
 
-/* CartoDB Dark Matter tiles are already styled — no filter needed */
-
-.dominance-canvas {
-  pointer-events: none;
-}
-
-.vote-marker {
-  background: transparent !important;
-  border: none !important;
-}
-
-/* ─── Hover tooltip ─────────────────────────────────── */
-.hover-tooltip-div {
+.map-loading {
   position: absolute;
-  z-index: 800;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  grid-auto-flow: column;
+  gap: var(--sp-2);
+  align-items: center;
+  color: var(--c-text-3);
+  font-size: var(--fs-sm);
+  background: radial-gradient(60% 50% at 50% 45%, rgba(255, 176, 32, 0.08), transparent 70%), var(--c-bg);
+}
+
+/* ── Home marker: crest with breathing ring in the player's beer colour */
+.home-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
   pointer-events: none;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px var(--border-subtle),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  max-width: 240px;
 }
-
-.cell-tooltip {
-  font-size: 12px;
-  min-width: 170px;
-  padding: 10px 12px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: var(--text-100);
-}
-
-.tooltip-header {
-  margin-bottom: 7px;
-  font-size: 10px;
-  color: var(--text-400);
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 6px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.tooltip-close-call {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 5px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  font-size: 10px;
-  color: var(--amber);
-  font-weight: 600;
-}
-
-.tooltip-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-300);
-  padding: 1px 0;
-}
-
-.tooltip-row.winner {
-  font-weight: 700;
-  color: var(--text-100);
-}
-
-.tooltip-dot {
-  width: 8px;
-  height: 8px;
+.home-marker-ring {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 4px currentColor;
+  border: 2px solid var(--beer);
+  box-shadow: 0 0 24px var(--beer);
+  animation: homeBreath 2.6s var(--ease-out) infinite;
 }
-
-.tooltip-name {
-  flex: 1;
-  white-space: nowrap;
-}
-
-.tooltip-count {
-  min-width: 18px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.tooltip-pct {
-  min-width: 30px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-400);
-  font-size: 10px;
-}
-
-.tooltip-row.winner .tooltip-pct {
-  color: var(--text-300);
-}
-
-/* ─── Click popup ───────────────────────────────────── */
-.click-popup .leaflet-popup-content-wrapper {
-  border-radius: var(--radius-md);
-  padding: 0;
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.6),
-    0 0 0 1px var(--border-default);
-  background: var(--bg-surface);
-  border: none;
-}
-
-.click-popup .leaflet-popup-content {
-  margin: 0;
-  color: var(--text-100);
-}
-
-.click-popup .leaflet-popup-tip-container {
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-.click-popup .leaflet-popup-tip {
-  background: var(--bg-surface);
-}
-
-.click-popup-content {
-  padding: 12px 14px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-.click-popup-title {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-100);
-  margin-bottom: 4px;
-}
-
-.click-popup-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 6px currentColor;
-}
-
-.click-popup-stats {
-  font-size: 11px;
-  color: var(--text-300);
-  margin-bottom: 10px;
-}
-
-.click-popup-share-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  background: var(--amber-dim);
-  color: var(--amber);
-  border: 1px solid var(--amber-border);
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.click-popup-share-btn:hover {
-  background: rgba(245, 158, 11, 0.2);
-  box-shadow: var(--amber-glow);
-}
-
-/* ─── Home button ───────────────────────────────────── */
-.leaflet-home-btn {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 34px !important;
-  height: 34px !important;
-  font-size: 18px;
-  line-height: 34px !important;
-  text-decoration: none !important;
-  cursor: pointer;
-  background: var(--bg-surface) !important;
-  color: var(--text-200);
-  border: none;
-  transition: all var(--transition-fast);
-}
-
-.leaflet-home-btn:hover {
-  background: var(--bg-hover) !important;
-  color: var(--amber);
-}
-
-/* ─── Leaflet control overrides ─────────────────────── */
-.leaflet-bar {
-  border: 1px solid var(--border-default) !important;
-  border-radius: var(--radius-sm) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
-  overflow: hidden;
-}
-
-.leaflet-bar a {
-  background: var(--bg-surface) !important;
-  color: var(--text-200) !important;
-  border-bottom: 1px solid var(--border-subtle) !important;
-  transition: all var(--transition-fast) !important;
-}
-
-.leaflet-bar a:hover {
-  background: var(--bg-hover) !important;
-  color: var(--text-100) !important;
-}
-
-.leaflet-bar a:last-child {
-  border-bottom: none !important;
-}
-
-/* ─── Friend markers ────────────────────────────────── */
-.friend-map-marker {
-  background: transparent !important;
-  border: none !important;
-}
-
-.friend-marker-inner {
+.home-marker-badge {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--bg-surface);
-  border: 2px solid var(--border-strong);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-size: cover;
+  box-shadow: 0 0 0 3px var(--c-bg), 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+.home-marker-badge.has-logo {
+  background-color: #fbf6ec;
+  background-size: 74% auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 0 2px var(--beer), 0 0 0 4px var(--c-bg), 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+@keyframes homeBreath {
+  0%   { transform: scale(0.85); opacity: 0.9; }
+  70%  { transform: scale(1.6);  opacity: 0; }
+  100% { transform: scale(1.6);  opacity: 0; }
+}
+
+/* ── Friend marker: avatar bubble */
+.friend-marker {
   position: relative;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px var(--border-subtle);
-  transition: transform var(--transition-fast);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50% 50% 50% 6px;
+  transform: rotate(-45deg);
+  background: var(--beer);
+  box-shadow: 0 0 0 3px var(--c-bg), 0 8px 20px rgba(0, 0, 0, 0.55);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  color: #0b0a08;
 }
-
-.friend-map-marker:hover .friend-marker-inner {
-  transform: scale(1.15);
-  border-color: var(--amber-border);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    var(--amber-glow);
-}
-
-.friend-marker-logo {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  object-fit: contain;
-}
-
-.friend-marker-online,
-.friend-marker-offline {
+.friend-marker > span { transform: rotate(45deg); }
+.friend-marker.online::after {
+  content: '';
   position: absolute;
-  bottom: -2px;
+  top: -2px;
   right: -2px;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  border: 2px solid var(--bg-surface);
+  background: var(--c-success);
+  box-shadow: 0 0 0 2px var(--c-bg);
 }
 
-.friend-marker-online {
-  background: var(--green);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+/* ── MapLibre chrome */
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  bottom: calc(96px + var(--safe-bottom));
 }
-
-.friend-marker-offline {
-  background: var(--text-400);
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: var(--c-glass) !important;
+  color: var(--c-text-3);
+  backdrop-filter: var(--blur-glass);
 }
-
-/* ─── Friend tooltip ────────────────────────────────── */
-.friend-marker-tooltip {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface) !important;
-  color: var(--text-100) !important;
-  border: 1px solid var(--border-default) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-}
+.maplibregl-ctrl-attrib a { color: var(--c-text-2); }
+.maplibregl-ctrl-attrib-button { filter: invert(0.85); }

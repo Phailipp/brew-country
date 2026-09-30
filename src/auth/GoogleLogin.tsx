@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { FirebaseError } from 'firebase/app';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './authContext';
 import { isFirebaseConfigured } from '../config/firebase';
+import { AuthBackdrop, AuthBrand } from './AuthChrome';
 import './Auth.css';
 
 type Mode = 'login' | 'register';
@@ -25,7 +26,7 @@ function mapFirebaseError(error: unknown): string | null {
     case 'auth/configuration-not-found':
       return null; // handled separately via dev bypass
     default:
-      return `Login fehlgeschlagen (${error.code}).`;
+      return 'Anmelden hat nicht geklappt. Versuch es gleich nochmal.';
   }
 }
 
@@ -47,30 +48,37 @@ export function GoogleLogin() {
   const verifyEmail = auth.status === 'verify-email' ? auth.email : '';
 
   const ctaLabel = useMemo(() => {
-    if (loading) return 'Bitte warten…';
-    return mode === 'login' ? 'Anmelden' : 'Registrieren';
+    if (loading) return mode === 'login' ? 'Melde an …' : 'Lege Konto an …';
+    return mode === 'login' ? 'Anmelden' : 'Konto erstellen';
   }, [loading, mode]);
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setError('');
+    setInfo('');
+  };
 
   const handleDevBypass = () => {
     login('dev_' + Math.random().toString(36).slice(2, 8));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (!firebaseReady) {
       setError('Firebase ist nicht konfiguriert. Anmeldung ist nicht verfügbar.');
       return;
     }
 
     if (!email.trim()) {
-      setError('Bitte eine E-Mail-Adresse eingeben.');
+      setError('Gib deine E-Mail-Adresse ein.');
       return;
     }
     if (!password) {
-      setError('Bitte ein Passwort eingeben.');
+      setError('Gib dein Passwort ein.');
       return;
     }
     if (mode === 'register' && nickname.trim().length < 3) {
-      setError('Der Nickname muss mindestens 3 Zeichen lang sein.');
+      setError('Dein Spitzname braucht mindestens 3 Zeichen.');
       return;
     }
 
@@ -81,7 +89,7 @@ export function GoogleLogin() {
     try {
       if (mode === 'register') {
         await register(email.trim(), password, nickname.trim());
-        setInfo('Bestätigungs-E-Mail wurde gesendet. Bitte öffne dein Postfach.');
+        setInfo('Fast geschafft! Wir haben dir eine Bestätigungs-Mail geschickt.');
       } else {
         await loginWithEmail(email.trim(), password);
       }
@@ -98,7 +106,7 @@ export function GoogleLogin() {
     setLoading(true);
     try {
       await resendVerificationEmail();
-      setInfo('Bestätigungs-E-Mail wurde erneut gesendet.');
+      setInfo('Neue Bestätigungs-Mail ist unterwegs.');
     } catch (e) {
       setError(mapFirebaseError(e) ?? '');
     } finally {
@@ -122,90 +130,116 @@ export function GoogleLogin() {
   if (isVerifyMode) {
     return (
       <div className="auth-screen">
-        <div className="auth-card">
-          <h1 className="auth-title">E-Mail bestätigen</h1>
-          <p className="auth-instruction">
-            Wir haben eine Bestätigungs-E-Mail an <strong>{verifyEmail}</strong> gesendet.
-            Bitte bestätige deine Adresse und klicke dann auf „Ich habe bestätigt“.
-          </p>
+        <AuthBackdrop />
+        <main className="auth-wrap">
+          <AuthBrand compact claim={false} />
+          <div className="auth-card glass fade-in">
+            <div className="auth-hero-icon" aria-hidden="true">✉️</div>
+            <h1 className="auth-title">Check dein Postfach</h1>
+            <p className="auth-instruction">
+              Wir haben dir einen Bestätigungslink an <strong>{verifyEmail}</strong> geschickt.
+              Tipp drauf und komm dann hierher zurück.
+            </p>
 
-          <button className="auth-btn" onClick={handleCheckVerification} disabled={loading}>
-            {loading ? 'Prüfe…' : 'Ich habe bestätigt'}
-          </button>
-          <button className="auth-btn-secondary" onClick={handleResendVerification} disabled={loading}>
-            E-Mail erneut senden
-          </button>
-          <button className="auth-btn-secondary" onClick={logout} disabled={loading}>
-            Abmelden
-          </button>
+            <div className="auth-actions">
+              <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handleCheckVerification} disabled={loading} aria-busy={loading}>
+                {loading ? <><span className="spinner" aria-hidden="true" /> Prüfe …</> : 'Ich habe bestätigt'}
+              </button>
+              <button type="button" className="btn btn-secondary btn-block" onClick={handleResendVerification} disabled={loading}>
+                Mail nochmal senden
+              </button>
+              <button type="button" className="btn btn-ghost btn-block" onClick={logout} disabled={loading}>
+                Abmelden
+              </button>
+            </div>
 
-          {info && <p className="auth-instruction">{info}</p>}
-          {error && <p className="auth-error">{error}</p>}
-        </div>
+            <div aria-live="polite">
+              {info && <p className="auth-info">{info}</p>}
+              {error && <p className="auth-error" role="alert">{error}</p>}
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
     <div className="auth-screen">
-      <div className="auth-card">
-        <h1 className="auth-title">Brew Country</h1>
-        <p className="auth-subtitle">Anmelden oder Registrieren</p>
+      <AuthBackdrop />
+      <main className="auth-wrap">
+        <AuthBrand />
 
-        {mode === 'register' && (
-          <div className="auth-input-group">
-            <input
-              className="auth-input"
-              placeholder="Nickname"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-            />
+        <div className="auth-card glass fade-in">
+          <h1 className="sr-only">{mode === 'login' ? 'Anmelden' : 'Registrieren'}</h1>
+          <div className="segmented auth-segmented" role="group" aria-label="Anmelden oder registrieren">
+            <button type="button" aria-pressed={mode === 'login'} onClick={() => switchMode('login')} disabled={loading}>
+              Anmelden
+            </button>
+            <button type="button" aria-pressed={mode === 'register'} onClick={() => switchMode('register')} disabled={loading}>
+              Neu hier
+            </button>
           </div>
-        )}
 
-        <div className="auth-input-group">
-          <input
-            className="auth-input"
-            type="email"
-            placeholder="E-Mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input
-            className="auth-input"
-            type="password"
-            placeholder="Passwort"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            {mode === 'register' && (
+              <div className="field fade-in">
+                <label className="field-label" htmlFor="auth-nickname">Spitzname</label>
+                <input
+                  id="auth-nickname"
+                  type="text"
+                  placeholder="z. B. HopfenHeld"
+                  autoComplete="nickname"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="field">
+              <label className="field-label" htmlFor="auth-email">E-Mail</label>
+              <input
+                id="auth-email"
+                type="email"
+                inputMode="email"
+                placeholder="du@beispiel.de"
+                autoComplete="email"
+                autoCapitalize="off"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="auth-password">Passwort</label>
+              <input
+                id="auth-password"
+                type="password"
+                placeholder={mode === 'register' ? 'Mindestens 6 Zeichen' : 'Dein Passwort'}
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            <div aria-live="polite">
+              {info && <p className="auth-info">{info}</p>}
+              {error && <p className="auth-error" role="alert">{error}</p>}
+            </div>
+
+            <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={loading} aria-busy={loading}>
+              {loading && <span className="spinner" aria-hidden="true" />}
+              {ctaLabel}
+            </button>
+          </form>
         </div>
 
-        <button className="auth-btn" onClick={handleSubmit} disabled={loading}>
-          {ctaLabel}
-        </button>
-
-        <button
-          className="auth-btn-secondary"
-          onClick={() => {
-            setMode((m) => (m === 'login' ? 'register' : 'login'));
-            setError('');
-            setInfo('');
-          }}
-          disabled={loading}
-        >
-          {mode === 'login' ? 'Neu hier? Jetzt registrieren' : 'Schon ein Konto? Jetzt anmelden'}
-        </button>
-
-        {info && <p className="auth-instruction">{info}</p>}
-        {error && <p className="auth-error">{error}</p>}
-
-        <div className="auth-dev-bypass">
-          <p className="auth-dev-bypass-label">🔧 Dev-Modus</p>
-          <button className="auth-dev-bypass-btn" onClick={handleDevBypass}>
-            Ohne Login testen (Dev-Bypass)
+        <div className="auth-demo">
+          <button type="button" className="btn btn-ghost" onClick={handleDevBypass}>
+            Demo ansehen (ohne Konto)
           </button>
+          <p className="auth-demo-hint">Lokale Demo, nichts wird gespeichert</p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

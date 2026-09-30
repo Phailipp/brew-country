@@ -148,4 +148,17 @@ export class IndexedDBStore implements StorageInterface {
   async getAllTeams(): Promise<Team[]> {
     return this.db.teams.toArray();
   }
+  async joinTeam(beerId: string, userId: string): Promise<Team> {
+    const existing = await this.getTeam(beerId);
+    const team: Team = existing
+      ? { ...existing, memberUserIds: existing.memberUserIds.includes(userId) ? existing.memberUserIds : [...existing.memberUserIds, userId] }
+      : { id: `team_${beerId}`, beerId, memberUserIds: [userId] };
+    await this.db.teams.put(team);
+    return team;
+  }
+  async leaveTeam(beerId: string, userId: string): Promise<void> {
+    const existing = await this.getTeam(beerId);
+    if (!existing) return;
+    await this.db.teams.put({ ...existing, memberUserIds: existing.memberUserIds.filter((id) => id !== userId) });
+  }
 }

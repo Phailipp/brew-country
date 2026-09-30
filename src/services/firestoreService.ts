@@ -14,14 +14,18 @@ import {
   query,
   where,
   orderBy,
-  limit,
+  limitToLast,
+  arrayRemove,
   onSnapshot,
   serverTimestamp,
   type Unsubscribe,
   type DocumentData,
 } from 'firebase/firestore';
 import { getFirestoreDb } from '../config/firestore';
+import { getFirebaseAuth } from '../config/firebaseAuth';
+import { deleteUser } from 'firebase/auth';
 import { GAME } from '../config/constants';
+import { PUBLIC_HOME_STEPS, snapToLattice } from '../domain/privacy';
 import type { Friendship, ChatMessage, UserPresence } from '../domain/types';
 import type { QuestState, Vote } from '../domain/types';
 
@@ -34,10 +38,12 @@ import type { QuestState, Vote } from '../domain/types';
 export interface FirestoreUserProfile {
   userId: string;
   beerId: string;
+  /** Coarse (~2 km) public position — the exact home stays private. */
   homeLat: number;
   homeLon: number;
   createdAt: number;
   lastActiveAt: number;
+  syg: boolean;
 }
 
 /**
@@ -47,22 +53,51 @@ export interface FirestoreUserProfile {
 export async function saveUserProfile(
   userId: string,
   beerId: string,
-  homeLat?: number,
-  homeLon?: number,
+  homeLat: number,
+  homeLon: number,
+  createdAt: number,
+  syg = false,
 ): Promise<void> {
   const db = getFirestoreDb();
-  const data: Record<string, unknown> = {
+  // createdAt comes from the canonical user record — never "now", otherwise
+  // every app start would restart the new-player home boost.
+  // The home position is published on a ~2 km lattice only (privacy).
+  await setDoc(doc(db, 'users', userId), {
     userId,
     beerId,
+    homeLat: snapToLattice(homeLat, PUBLIC_HOME_STEPS),
+    homeLon: snapToLattice(homeLon, PUBLIC_HOME_STEPS),
+    createdAt,
     lastActiveAt: Date.now(),
+    syg,
+  });
+}
+
+function toProfile(data: DocumentData): FirestoreUserProfile {
+  return {
+    userId: data.userId as string,
+    beerId: data.beerId as string,
+    homeLat: (data.homeLat as number) ?? 0,
+    homeLon: (data.homeLon as number) ?? 0,
+    createdAt: (data.createdAt as number) ?? 0,
+    lastActiveAt: (data.lastActiveAt as number) ?? 0,
+    syg: (data.syg as boolean) ?? false,
   };
-  // Only set location + createdAt on first write (onboarding)
-  if (homeLat !== undefined && homeLon !== undefined) {
-    data.homeLat = homeLat;
-    data.homeLon = homeLon;
-    data.createdAt = Date.now();
-  }
-  await setDoc(doc(db, 'users', userId), data, { merge: true });
+}
+
+/** Public profile → minimal User shape (for weights, friends, team maths). */
+export function profileToUser(p: FirestoreUserProfile): import('../domain/types').User {
+  return {
+    id: p.userId,
+    phone: null,
+    createdAt: p.createdAt,
+    lastActiveAt: p.lastActiveAt,
+    homeLat: p.homeLat,
+    homeLon: p.homeLon,
+    beerId: p.beerId,
+    standYourGroundEnabled: p.syg,
+    ageVerified: true,
+  };
 }
 
 /**
@@ -71,16 +106,7 @@ export async function saveUserProfile(
 export async function getUserProfile(userId: string): Promise<FirestoreUserProfile | null> {
   const db = getFirestoreDb();
   const snap = await getDoc(doc(db, 'users', userId));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  return {
-    userId: data.userId as string,
-    beerId: data.beerId as string,
-    homeLat: (data.homeLat as number) ?? 0,
-    homeLon: (data.homeLon as number) ?? 0,
-    createdAt: (data.createdAt as number) ?? 0,
-    lastActiveAt: (data.lastActiveAt as number) ?? 0,
-  };
+  return snap.exists() ? toProfile(snap.data()) : null;
 }
 
 /**
@@ -95,17 +121,7 @@ export function subscribeAllUsers(
 
   return onSnapshot(q, (snapshot) => {
     const users: FirestoreUserProfile[] = snapshot.docs
-      .map((d) => {
-        const data = d.data();
-        return {
-          userId: data.userId as string,
-          beerId: data.beerId as string,
-          homeLat: (data.homeLat as number) ?? 0,
-          homeLon: (data.homeLon as number) ?? 0,
-          createdAt: (data.createdAt as number) ?? 0,
-          lastActiveAt: (data.lastActiveAt as number) ?? 0,
-        };
-      })
+      .map((d) => toProfile(d.data()))
       // Only include users with valid location
       .filter((u) => u.homeLat !== 0 || u.homeLon !== 0);
     callback(users);
@@ -243,7 +259,8 @@ export function subscribeMessages(
   const q = query(
     collection(db, 'friendships', friendshipId, 'messages'),
     orderBy('createdAt', 'asc'),
-    limit(GAME.CHAT_PAGE_SIZE),
+    // Newest page — `limit` would pin the chat to the oldest messages
+    limitToLast(GAME.CHAT_PAGE_SIZE),
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -388,4 +405,115 @@ export async function getQuestStateForUser(userId: string): Promise<QuestState> 
 export async function saveQuestStateForUser(userId: string, state: QuestState): Promise<void> {
   const db = getFirestoreDb();
   await setDoc(doc(db, 'questStates', userId), { state, updatedAt: Date.now() }, { merge: true });
+}
+
+// ── Beer catalogue: community submissions ───────────────
+
+export interface BeerSubmission {
+  id: string;
+  name: string;
+  brewery: string;
+  city: string;
+  country: 'DE' | 'AT' | 'CH';
+  website: string;
+  note: string;
+  submittedBy: string;
+  createdAt: number;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+export type BeerSubmissionInput = Pick<BeerSubmission, 'name' | 'brewery' | 'city' | 'country' | 'website' | 'note'>;
+
+/** Anyone signed in can suggest a beer; it stays invisible until an admin approves it. */
+export async function submitBeerSuggestion(userId: string, input: BeerSubmissionInput): Promise<void> {
+  const db = getFirestoreDb();
+  await addDoc(collection(db, 'beerSubmissions'), {
+    ...input,
+    submittedBy: userId,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function listBeerSubmissions(status: BeerSubmission['status'] = 'pending'): Promise<BeerSubmission[]> {
+  const db = getFirestoreDb();
+  const snap = await getDocs(query(collection(db, 'beerSubmissions'), where('status', '==', status)));
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      ...(data as Omit<BeerSubmission, 'id' | 'createdAt'>),
+      createdAt: data.createdAt?.toMillis?.() ?? 0,
+    };
+  });
+}
+
+export interface CatalogBeer {
+  id: string;
+  name: string;
+  brewery: string;
+  city: string;
+  country: 'DE' | 'AT' | 'CH';
+  color: string;
+  logoUrl?: string;
+}
+
+/** Admin: publish a submission as a catalogue beer and mark it approved. */
+export async function approveBeerSubmission(submissionId: string, beer: CatalogBeer): Promise<void> {
+  const db = getFirestoreDb();
+  await setDoc(doc(db, 'beers', beer.id), { ...beer, approvedAt: serverTimestamp(), submissionId });
+  await setDoc(doc(db, 'beerSubmissions', submissionId), { status: 'approved', beerId: beer.id }, { merge: true });
+}
+
+export async function rejectBeerSubmission(submissionId: string, reason: string): Promise<void> {
+  const db = getFirestoreDb();
+  await setDoc(doc(db, 'beerSubmissions', submissionId), { status: 'rejected', reason }, { merge: true });
+}
+
+/** Approved community beers (small collection, live). */
+export function subscribeCatalogBeers(callback: (beers: CatalogBeer[]) => void): Unsubscribe {
+  const db = getFirestoreDb();
+  return onSnapshot(collection(db, 'beers'), (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CatalogBeer, 'id'>) })));
+  }, () => callback([]));
+}
+
+// ── Account deletion (GDPR "right to erasure") ──────────
+
+/**
+ * Delete everything the player owns, then the auth account itself.
+ * Throws `auth/requires-recent-login` if the session is too old — the UI
+ * then asks the player to sign in again.
+ */
+export async function deleteMyAccount(uid: string, beerId: string): Promise<void> {
+  const db = getFirestoreDb();
+  const del = (path: string, id: string) => deleteDoc(doc(db, path, id)).catch(() => {});
+
+  // Friendships incl. chat history
+  const friends = await getDocs(query(collection(db, 'friendships'), where('userIds', 'array-contains', uid)));
+  for (const f of friends.docs) {
+    const msgs = await getDocs(collection(db, 'friendships', f.id, 'messages'));
+    await Promise.all(msgs.docs.map((m) => deleteDoc(m.ref).catch(() => {})));
+    await deleteDoc(f.ref).catch(() => {});
+  }
+
+  // Check-ins and flags
+  for (const coll of ['bc_drinkVotes', 'bc_otrVotes']) {
+    const mine = await getDocs(query(collection(db, coll), where('userId', '==', uid)));
+    await Promise.all(mine.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+  }
+
+  // Team membership
+  await setDoc(doc(db, 'bc_teams', `team_${beerId}`), { memberUserIds: arrayRemove(uid) }, { merge: true }).catch(() => {});
+
+  await Promise.all([
+    del('presence', uid),
+    del('questStates', uid),
+    del('bc_userStats', uid),
+    del('users', uid),
+  ]);
+  await del('bc_users', uid);
+
+  const current = getFirebaseAuth().currentUser;
+  if (current && current.uid === uid) await deleteUser(current);
 }
