@@ -176,11 +176,11 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
 
       <div className="venue-stats">
         <div className="card venue-stat">
-          <span className="num venue-stat-value"><NumberFlow value={standing.visits} /></span>
+          <span className="num venue-stat-value"><NumberFlow value={standing.visits} locales={intlLocale()} /></span>
           <span className="muted">{t('venue.visits30')}</span>
         </div>
         <div className="card venue-stat">
-          <span className="num venue-stat-value"><NumberFlow value={standing.regulars} /></span>
+          <span className="num venue-stat-value"><NumberFlow value={standing.regulars} locales={intlLocale()} /></span>
           <span className="muted">{t('venue.regulars')}</span>
         </div>
         <div className="card venue-stat">

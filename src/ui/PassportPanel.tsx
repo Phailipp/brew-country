@@ -4,7 +4,7 @@ import type { MyVisit } from '../domain/venues';
 import { playerPassport, regularTier } from '../domain/influence';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerColor, beerName } from './kit/beer';
-import { t } from '../i18n';
+import { intlLocale, t } from '../i18n';
 import './PassportPanel.css';
 
 interface Props {
@@ -24,17 +24,17 @@ export function PassportPanel({ visits, onLocate }: Props) {
 
       <div className="passport-stats">
         <div className="card passport-stat">
-          <span className="num passport-stat-value"><NumberFlow value={passport.coasters.length} /></span>
+          <span className="num passport-stat-value"><NumberFlow value={passport.coasters.length} locales={intlLocale()} /></span>
           <span className="muted">{t('passport.coasters')}</span>
         </div>
         <div className="card passport-stat">
-          <span className="num passport-stat-value"><NumberFlow value={passport.beers} /></span>
+          <span className="num passport-stat-value"><NumberFlow value={passport.beers} locales={intlLocale()} /></span>
           <span className="muted">{t('passport.beers')}</span>
         </div>
         <div className={`card passport-stat${passport.weeklyStreak > 0 ? ' is-hot' : ''}`}>
           <span className="num passport-stat-value">
             {passport.weeklyStreak > 0 && <span aria-hidden="true">🔥</span>}
-            <NumberFlow value={passport.weeklyStreak} />
+            <NumberFlow value={passport.weeklyStreak} locales={intlLocale()} />
           </span>
           <span className="muted">{t('passport.streak')}</span>
         </div>

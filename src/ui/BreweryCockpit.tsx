@@ -7,6 +7,7 @@ import { BeerBadge } from './kit/BeerBadge';
 import { BeerPicker } from './BeerPicker';
 import { beerColor, beerName, pointsLabel } from './kit/beer';
 import { VENUE_KIND } from './kit/venueKind';
+import { fmtNumber, fmtPercent, intlLocale, percentSuffix, t } from '../i18n';
 import './BreweryCockpit.css';
 
 interface Props {
@@ -32,7 +33,7 @@ function InsightList({ title, hint, items, tone, render, onOpen }: {
       </div>
       <p className="muted">{hint}</p>
       {items.length === 0 ? (
-        <p className="cockpit-empty">Nichts im Moment.</p>
+        <p className="cockpit-empty">{t('cockpit.nothing')}</p>
       ) : (
         <ul>
           {items.slice(0, 5).map((i) => (
@@ -64,8 +65,8 @@ export function BreweryCockpit({ initialBeerId, venues, standings, onOpenVenue }
     return (
       <div className="empty">
         <span className="empty-icon" aria-hidden="true">🏭</span>
-        <span className="empty-title">Noch keine Kneipen geladen</span>
-        <span>Zoom auf der Karte in ein Viertel. Sobald Kneipen erscheinen, rechnet das Cockpit.</span>
+        <span className="empty-title">{t('cockpit.emptyTitle')}</span>
+        <span>{t('cockpit.emptyText')}</span>
       </div>
     );
   }
@@ -75,37 +76,37 @@ export function BreweryCockpit({ initialBeerId, venues, standings, onOpenVenue }
       <div className="card card-hero cockpit-hero" style={{ '--c-beer': beerColor(beerId) } as CSSProperties}>
         <BeerBadge beerId={beerId} size="lg" />
         <div className="cockpit-hero-text">
-          <span className="eyebrow">Brauerei-Cockpit</span>
+          <span className="eyebrow">{t('cockpit.eyebrow')}</span>
           <h3>{beerName(beerId)}</h3>
           <button className="cockpit-switch" onClick={() => setPicking(!picking)} aria-expanded={picking}>
-            {picking ? 'fertig' : 'Marke wechseln'}
+            {picking ? t('common.done') : t('cockpit.switchBrand')}
           </button>
         </div>
       </div>
-      {picking && <BeerPicker value={beerId} onChange={setBeerId} layout="carousel" label="Marke für das Cockpit" />}
+      {picking && <BeerPicker value={beerId} onChange={setBeerId} layout="carousel" label={t('cockpit.pickerLabel')} />}
 
       <div className="cockpit-kpis">
         <div className="card cockpit-kpi">
-          <span className="num cockpit-kpi-value"><NumberFlow value={r.ruled} /></span>
-          <span className="muted">Kneipen regiert</span>
+          <span className="num cockpit-kpi-value"><NumberFlow value={r.ruled} locales={intlLocale()} /></span>
+          <span className="muted">{t('cockpit.ruled')}</span>
         </div>
         <div className="card cockpit-kpi">
-          <span className="num cockpit-kpi-value"><NumberFlow value={Math.round(r.shareOfVoice * 100)} suffix=" %" /></span>
-          <span className="muted">Share of Voice</span>
+          <span className="num cockpit-kpi-value"><NumberFlow value={Math.round(r.shareOfVoice * 100)} locales={intlLocale()} suffix={percentSuffix()} /></span>
+          <span className="muted">{t('cockpit.shareOfVoice')}</span>
         </div>
         <div className="card cockpit-kpi">
-          <span className="num cockpit-kpi-value"><NumberFlow value={r.tapped} /></span>
-          <span className="muted">Ausschank laut OSM</span>
+          <span className="num cockpit-kpi-value"><NumberFlow value={r.tapped} locales={intlLocale()} /></span>
+          <span className="muted">{t('cockpit.tapped')}</span>
         </div>
         <div className="card cockpit-kpi">
-          <span className="num cockpit-kpi-value"><NumberFlow value={r.visitPoints} /></span>
-          <span className="muted">Punkte durch Gäste</span>
+          <span className="num cockpit-kpi-value"><NumberFlow value={r.visitPoints} locales={intlLocale()} /></span>
+          <span className="muted">{t('cockpit.visitPoints')}</span>
         </div>
       </div>
 
       <div className="card">
-        <p className="eyebrow">Wer regiert die Kneipen?</p>
-        <div className="cockpit-share" role="img" aria-label="Anteil regierter Kneipen je Marke">
+        <p className="eyebrow">{t('cockpit.whoRules')}</p>
+        <div className="cockpit-share" role="img" aria-label={t('cockpit.shareLabel')}>
           {r.rivals.map((x) => (
             <span key={x.beerId} style={{ flexGrow: x.venues, background: beerColor(x.beerId) }} className={x.beerId === beerId ? 'is-us' : ''} />
           ))}
@@ -114,40 +115,41 @@ export function BreweryCockpit({ initialBeerId, venues, standings, onOpenVenue }
           {r.rivals.map((x) => (
             <li key={x.beerId} className={x.beerId === beerId ? 'is-us' : ''}>
               <span className="cockpit-dot" style={{ background: beerColor(x.beerId) }} />
-              {beerName(x.beerId)} <span className="num muted">{Math.round((x.venues / totalRuled) * 100)} %</span>
+              {beerName(x.beerId)} <span className="num muted">{fmtPercent(x.venues / totalRuled)}</span>
             </li>
           ))}
         </ul>
       </div>
 
       <InsightList
-        title="Gefährdet"
-        hint="Hier fehlt der Konkurrenz nur noch wenig. Außendienst hinschicken, Aktion vor Ort."
+        title={t('cockpit.atRisk')}
+        hint={t('cockpit.atRiskHint')}
         items={r.atRisk}
         tone="hot"
-        render={(i) => `${i.rivalBeerId ? beerName(i.rivalBeerId) : 'Konkurrenz'} ${i.gap === 1 ? 'fehlt' : 'fehlen'} noch ${pointsLabel(i.gap)}`}
+        render={(i) => t('cockpit.atRiskRow', { count: i.gap, rival: i.rivalBeerId ? beerName(i.rivalBeerId) : t('cockpit.competition'), points: pointsLabel(i.gap) })}
         onOpen={onOpenVenue}
       />
       <InsightList
-        title="Chancen"
-        hint="Mit einem kleinen Schub gehört die Kneipe euch. Ideal für eine Freibier-Quest."
+        title={t('cockpit.chances')}
+        hint={t('cockpit.chancesHint')}
         items={r.opportunities}
         tone="accent"
-        render={(i) => `Noch ${pointsLabel(i.gap)}${i.rivalBeerId ? ` gegen ${beerName(i.rivalBeerId)}` : ''}`}
+        render={(i) => (i.rivalBeerId
+          ? t('cockpit.chanceRowVs', { points: pointsLabel(i.gap), rival: beerName(i.rivalBeerId) })
+          : t('cockpit.chanceRow', { points: pointsLabel(i.gap) }))}
         onOpen={onOpenVenue}
       />
       <InsightList
-        title="Ausschank ohne Fans"
-        hint="Laut OpenStreetMap wird euer Bier hier gezapft, aber niemand checkt ein. Aktivieren!"
+        title={t('cockpit.sleeping')}
+        hint={t('cockpit.sleepingHint')}
         items={r.sleeping}
         tone="calm"
-        render={() => 'Keine Besuche in 30 Tagen'}
+        render={() => t('cockpit.sleepingRow')}
         onOpen={onOpenVenue}
       />
 
       <p className="muted cockpit-foot">
-        Basis: {r.venuesTotal.toLocaleString('de-DE')} Kneipen im geladenen Kartenbereich, Besuche der letzten 30 Tage.
-        Spielerdaten nur pseudonym. Kneipendaten © OpenStreetMap-Mitwirkende (ODbL).
+        {t('cockpit.foot', { count: fmtNumber(r.venuesTotal) })}
       </p>
     </div>
   );

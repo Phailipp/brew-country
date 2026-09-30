@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource, type ExpressionSpecification } from 'maplibre-gl';
+import { AttributionControl, Map as MapLibreMap, Marker, setWorkerUrl, type GeoJSONSource, type ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 // Let Vite bundle MapLibre's module worker (incl. its shared chunk). MapLibre's
 // own URL guess breaks after bundling and under capacitor:// on iOS.
@@ -9,7 +9,8 @@ import type { Vote, ViewportBounds } from '../domain/types';
 import type { TerritoryGeometry } from '../domain/territoryGeometry';
 import { BEERS, BEER_MAP } from '../domain/beers';
 import { DEFAULT_CENTER } from '../domain/geo';
-import { loadMapStyle, TERRITORY_BEFORE_ID } from './map/mapStyle';
+import { loadMapStyle, relabelMap, TERRITORY_BEFORE_ID } from './map/mapStyle';
+import { t, useLocale } from '../i18n';
 import { useBeerCatalog } from './kit/useBeerCatalog';
 import './MapView.css';
 
@@ -392,7 +393,7 @@ function makeHomeMarker(beerId: string): HTMLElement {
   el.className = 'home-marker';
   el.style.setProperty('--beer', beer?.color ?? '#ffb020');
   el.setAttribute('role', 'img');
-  el.setAttribute('aria-label', 'Dein Zuhause');
+  el.setAttribute('aria-label', t('map.homeMarker'));
   const badge = document.createElement('span');
   badge.className = 'home-marker-badge';
   if (beer) badge.style.backgroundImage = `url("${beer.logoUrl ?? beer.svgLogo}")`;
@@ -407,11 +408,19 @@ function makeFriendMarker(f: FriendMarker): HTMLElement {
   const el = document.createElement('div');
   el.className = `friend-marker${f.online ? ' online' : ''}`;
   el.style.setProperty('--beer', beer?.color ?? '#a39580');
-  el.title = f.name ?? 'Freund';
+  el.title = f.name ?? t('map.friend');
   const initial = document.createElement('span');
   initial.textContent = (f.name ?? '?').trim().charAt(0).toUpperCase() || '?';
   el.append(initial);
   return el;
+}
+
+/** Compact credits; pubs come from OSM even when the tile style is unavailable. */
+function osmAttribution(): AttributionControl {
+  return new AttributionControl({
+    compact: true,
+    customAttribution: `<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t('common.osmContributors')}</a>`,
+  });
 }
 
 export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
@@ -429,6 +438,8 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   const introRef = useRef<boolean>(shouldPlayIntro());
   // Read once at map creation; later home moves only move the marker
   const homeRef = useRef(home);
+  const locale = useLocale();
+  const attributionRef = useRef<AttributionControl | null>(null);
 
   useEffect(() => {
     tapRef.current = onMapTap;
@@ -454,13 +465,11 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
         minZoom: 1,
         maxZoom: 18,
         maxPitch: 65,
-        attributionControl: {
-          compact: true,
-          // Pubs come from OSM even when the tile style is unavailable
-          customAttribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap-Mitwirkende</a>',
-        },
+        attributionControl: false,
         fadeDuration: 150,
       });
+      attributionRef.current = osmAttribution();
+      m.addControl(attributionRef.current);
       map = m;
       mapRef.current = m;
       // Dev builds: expose the map for automated UI checks
@@ -628,8 +637,20 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     } : EMPTY);
   }, [selectedPoint, ready]);
 
+  // ── Language change: map labels and credits follow the UI language
+  const labelledRef = useRef(locale);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || labelledRef.current === locale) return;
+    labelledRef.current = locale;
+    relabelMap(map, locale);
+    if (attributionRef.current) map.removeControl(attributionRef.current);
+    attributionRef.current = osmAttribution();
+    map.addControl(attributionRef.current);
+  }, [locale, ready]);
+
   // ── Home marker
-  const homeKey = home ? `${home.lat},${home.lon},${home.beerId}` : '';
+  const homeKey = home ? `${home.lat},${home.lon},${home.beerId},${locale}` : '';
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !home) return;
@@ -641,7 +662,7 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   }, [homeKey, ready]);
 
   // ── Friend markers
-  const friendsKey = friends.map((f) => `${f.userId}:${f.lat},${f.lon},${f.beerId},${f.online}`).join('|');
+  const friendsKey = locale + friends.map((f) => `${f.userId}:${f.lat},${f.lon},${f.beerId},${f.online}`).join('|');
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
@@ -719,10 +740,10 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
 
   return (
     <div className="map-view">
-      <div ref={containerRef} className="map-canvas" role="application" aria-label="Territorien-Karte" />
+      <div ref={containerRef} className="map-canvas" role="application" aria-label={t('map.label')} />
       {!ready && (
         <div className="map-loading" aria-live="polite">
-          <span className="spinner" /> Karte lädt…
+          <span className="spinner" /> {t('map.loading')}
         </div>
       )}
     </div>
