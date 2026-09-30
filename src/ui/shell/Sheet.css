@@ -103,5 +103,5 @@
 .sheet-enter { animation: sheetContentIn 420ms var(--ease-soft) both; }
 .sheet-title.sheet-enter { animation-duration: 320ms; }
 @keyframes sheetContentIn {
-  from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+  from { opacity: 0; transform: translateY(12px); }
 }

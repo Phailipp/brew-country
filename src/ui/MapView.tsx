@@ -293,6 +293,7 @@ function makeHomeMarker(beerId: string): HTMLElement {
   const badge = document.createElement('span');
   badge.className = 'home-marker-badge';
   if (beer) badge.style.backgroundImage = `url("${beer.logoUrl ?? beer.svgLogo}")`;
+  if (beer?.logoUrl) badge.classList.add('has-logo');
   el.append(document.createElement('span'), badge);
   el.firstElementChild!.className = 'home-marker-ring';
   return el;
