@@ -1,22 +1,47 @@
 # Brew Country
 
-**Welches Bier regiert dein Viertel?** Ein weltweites Location-Game, gestartet in München: Spieler checken mit ihrem Bier ein, Stimmen färben die Karte, und Brauereien kämpfen um Territorien.
+**Welches Bier regiert deine Kneipe?** Ein weltweites Kneipen-Spiel, gestartet in München. Spieler checken in echten Kneipen aus OpenStreetMap ein. Jede Kneipe gehört dem Bier mit dem meisten Einfluss, und Übernahmen gehen nur als Crew. Ab 18, verantwortungsvoll: Gezählt werden Besuche, nicht Mengen, und alkoholfrei zählt genauso.
+
+- **Team und Entscheidungen:** [`docs/TEAM.md`](docs/TEAM.md) (Personas, Zielgruppen, Release-Entscheidungen)
+- **Launch:** [`docs/LAUNCH.md`](docs/LAUNCH.md) (Checkliste inklusive Gründer-Aufgaben)
 
 ## Setup & Run
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # Unit-Tests (Vitest)
 npm run lint       # ESLint (inkl. React-Compiler-Regeln)
 npm run build      # Typecheck + Production-Build
 ```
+
+## Tests (alle laufen in der CI und blockieren)
+
+```bash
+npm test           # Unit-Tests (Vitest): Spiellogik, Raster, Kneipen-Loader, Alter, Share-Links …
+npm run test:rules # Firestore-Regeln im Emulator (Java nötig), 160+ Fälle inkl. Angriffe
+npm run test:e2e   # Playwright: Telefon + Desktop im Demo-Modus, Netzwerk gestubbt, axe-A11y
+# Produktions-Build unter CSP:
+npm run build && npx vite preview --port 5402 & CSP_CHECK=1 E2E_PORT=5402 npx playwright test e2e/csp.spec.ts
+```
+
+Die E2E-Tests brauchen kein Internet. Der Kartenstil fällt auf den eingebauten Offline-Stil zurück, und Overpass antwortet aus `e2e/fixtures/overpass-munich.json` (echte OSM-Daten der Münchner Altstadt, ODbL).
+
+## Build-Schalter (`VITE_*`)
+
+| Schalter | Standard | Wirkung |
+|---|---|---|
+| `VITE_BRAND_LOGOS` | aus (Dev: an) | Brauerei-Logos. Ohne Freigabe sind die Dateien nicht im Build. |
+| `VITE_LEGACY_FEATURES` | aus | Prototyp-Mechaniken (Duelle, OTR-Flaggen, Teams, alte Quests) |
+| `VITE_ENABLE_ADMIN` | aus (Dev: an) | Admin-Panel `#admin` |
+| `VITE_PUBLIC_URL` | `.env` | Absolute Adresse für Share-Vorschau und Links aus der iOS-App |
+
+Die Rechtstexte liegen unter `src/legal/`, die Betreiberdaten in `src/config/legal.ts` (vor dem Launch ausfüllen).
 
 iOS (Capacitor): `npm run cap:build && npm run cap:open`
 
 ### Demo-Modus
 
-Auf dem Login-Screen startet **„Demo ansehen“** eine lokale Sandbox (IndexedDB, kein Firebase). Im Profil-Tab gibt es dann Demo-Werkzeuge: Stimmen simulieren und per Tipp auf die Karte abstimmen. Der Prost-Check-in nutzt ohne GPS die Kartenmitte. Das ist für Pitches bei Brauereien gedacht.
+Auf dem Login-Screen startet **„Demo ansehen“** eine lokale Sandbox (IndexedDB, kein Firebase). Im Profil-Tab gibt es dann Demo-Werkzeuge: Stimmen simulieren, Stammgäste in den sichtbaren Kneipen simulieren und per Tipp auf die Karte abstimmen. Der Kneipen-Finder (Prost-Button) nutzt ohne GPS die Kartenmitte. Das ist für Pitches bei Brauereien gedacht. Der Deep Link `#brauerei` öffnet das Brauerei-Cockpit.
 
 ### Admin
 
