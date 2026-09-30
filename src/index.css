@@ -417,6 +417,8 @@ input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="search"],
+input[type="url"],
+input[type="tel"],
 select,
 textarea {
   width: 100%;

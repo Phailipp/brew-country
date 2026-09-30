@@ -72,7 +72,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.25;
+  line-height: 1.4;
+  padding-bottom: 1px;
 }
 .bp-city {
   max-width: 100%;

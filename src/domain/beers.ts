@@ -1,6 +1,6 @@
 import type { Beer } from './types';
-// Brand logos shipped in /public/logos (see public/logos/SOURCES.md)
-import { LOGO_FILES } from './beerLogos';
+// Brand logos dropped into src/assets/logos (see beerLogos.ts)
+import { LOGO_URLS } from './beerLogos';
 
 /** Two-letter monogram, e.g. "Hacker-Pschorr" → "HP", "Augustiner" → "AU". */
 function monogram(name: string): string {
@@ -92,11 +92,10 @@ const SEED: BeerSeed[] = [
 ];
 
 function hydrate(seed: BeerSeed & { logoUrl?: string }): Beer {
-  const file = LOGO_FILES[seed.id];
   return {
     ...seed,
     svgLogo: generateSvgLogo(seed.name, seed.color),
-    logoUrl: seed.logoUrl ?? (file ? `${import.meta.env.BASE_URL}logos/${file}` : undefined),
+    logoUrl: seed.logoUrl ?? LOGO_URLS[seed.id],
   };
 }
 

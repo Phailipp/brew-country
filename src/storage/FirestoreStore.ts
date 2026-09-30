@@ -166,6 +166,7 @@ export class FirestoreStore implements StorageInterface {
       lastDrinkAt: serverTimestamp(),
       day,
       dayCount: sameDay ? (prev?.dayCount ?? 0) + 1 : 1,
+      lastVoteId: vote.id,
     });
     batch.set(doc(db, COLLECTIONS.drinkVotes, vote.id), clean({
       ...vote,

@@ -51,13 +51,16 @@ service cloud.firestore {
         && inDach(incoming().homeLat, incoming().homeLon);
       allow update: if isUser(uid)
         && !changed().hasAny(['id', 'createdAt', 'ageVerified'])
+        // homeChangedAt may only move together with the home itself
+        && (!changed().hasAny(['homeChangedAt']) || changed().hasAny(['homeLat', 'homeLon']))
         && validBeerId(incoming().beerId)
         && (incoming().lastActiveAt is number && incoming().lastActiveAt <= nowMs() + 60000)
         && (
           // home unchanged …
           !changed().hasAny(['homeLat', 'homeLon'])
           // … or re-set after a wipe, or moved at most once per week
-          || (existing().homeLat == 0 && existing().homeLon == 0)
+          || (existing().homeLat == 0 && existing().homeLon == 0
+              && inDach(incoming().homeLat, incoming().homeLon))
           || (inDach(incoming().homeLat, incoming().homeLon)
               && near(incoming().homeChangedAt, 10 * 60 * 1000)
               && nowMs() - existing().get('homeChangedAt', existing().createdAt) > 7 * 24 * 3600 * 1000)
@@ -89,14 +92,16 @@ service cloud.firestore {
     match /bc_userStats/{uid} {
       allow read: if isUser(uid) || isAdmin();
       allow create, update: if isUser(uid)
-        && incoming().keys().hasOnly(['lastDrinkAt', 'day', 'dayCount'])
+        && incoming().keys().hasOnly(['lastDrinkAt', 'day', 'dayCount', 'lastVoteId'])
+        && incoming().lastVoteId is string
         && incoming().lastDrinkAt == request.time
         && incoming().day == request.time.date()
         && (resource == null || request.time > existing().lastDrinkAt + duration.value(15, 'm'))
         && incoming().dayCount is int
         && incoming().dayCount == ((resource != null && existing().day == incoming().day) ? existing().dayCount + 1 : 1)
         && incoming().dayCount <= 12;
-      allow delete: if isUser(uid) || isAdmin();
+      // deleting would reset cooldown + daily cap → admin/server only
+      allow delete: if isAdmin();
     }
 
     // ── check-ins (drink votes) ──────────────────────────
@@ -113,7 +118,9 @@ service cloud.firestore {
         && incoming().expiresAt == incoming().createdAt + 24 * 3600 * 1000
         && incoming().gpsAccuracyM is number && incoming().gpsAccuracyM <= 75
         // must be written together with the rate-limit counter
-        && getAfter(/databases/$(database)/documents/bc_userStats/$(request.auth.uid)).data.lastDrinkAt == request.time;
+        && getAfter(/databases/$(database)/documents/bc_userStats/$(request.auth.uid)).data.lastDrinkAt == request.time
+        // one counter bump = exactly one check-in (no batching several votes)
+        && getAfter(/databases/$(database)/documents/bc_userStats/$(request.auth.uid)).data.lastVoteId == voteId;
       allow update: if false;
       allow delete: if (signedIn() && request.auth.uid == existing().userId)
         || existing().expiresAt < nowMs()
@@ -179,7 +186,8 @@ service cloud.firestore {
     }
     match /bc_duelMessages/{msgId} {
       function duel(id) { return get(/databases/$(database)/documents/bc_duels/$(id)).data; }
-      allow read: if verified();
+      allow read: if verified()
+        && request.auth.uid in [duel(existing().duelId).challengerUserId, duel(existing().duelId).defenderUserId];
       allow create: if verified()
         && incoming().senderUserId == request.auth.uid
         && request.auth.uid in [duel(incoming().duelId).challengerUserId, duel(incoming().duelId).defenderUserId];

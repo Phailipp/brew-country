@@ -22,6 +22,49 @@ Auf dem Login-Screen startet **„Demo ansehen“** eine lokale Sandbox (Indexed
 
 Das Admin-Panel (`#admin`) wird **nur** in Dev-Builds oder mit `VITE_ENABLE_ADMIN=true` eingebaut. Im öffentlichen Production-Bundle ist es nicht enthalten.
 
+Admin-Rechte kommen über den Firebase Custom Claim `admin: true`. Einmalig per Admin-SDK setzen:
+
+```js
+// node set-admin.mjs <uid>  (mit Service-Account, nicht im Repo ablegen)
+import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+initializeApp({ credential: applicationDefault() });
+await getAuth().setCustomUserClaims(process.argv[2], { admin: true });
+```
+
+Danach lokal `npm run dev` starten, einloggen und `http://localhost:5173/#admin` öffnen. Im Tab **Biere** werden eingereichte Biere geprüft und freigegeben.
+
+### Bier-Katalog, Logos & Einreichungen
+
+- **Katalog:** `src/domain/beers.ts`, 49 Marken aus DACH. Die Ids sind stabil und dürfen nie umbenannt werden, weil sie in gespeicherten Stimmen stehen.
+- **Logos:** Eine Datei `<bier-id>.svg|png|webp` in `src/assets/logos/` legen, dann erscheint sie automatisch in Badges, Pickern und Karten-Wappen. Logos sind Marken: nur mit Freigabe verwenden und in `src/assets/logos/SOURCES.md` dokumentieren.
+- **Einreichungen:** „Dein Bier fehlt?“ schreibt nach `beerSubmissions` (Status `pending`). Nach Freigabe im Admin landet das Bier in `beers` und erscheint live bei allen Spielern.
+
+### Firestore-Regeln
+
+`firestore.rules` wird mit `firebase deploy --only firestore:rules` deployt. Tests laufen gegen den Emulator (Java nötig):
+
+```bash
+npm run test:rules
+```
+
+Kernpunkte:
+- Standard ist „verboten“.
+- Private Profile kann nur der Eigentümer lesen.
+- Öffentliche Positionen sind auf ca. 2 km gerundet, Check-ins auf ca. 500 m.
+- Cooldown und Tageslimit für Check-ins erzwingt der Server.
+- Freundschafts-Chats sind nur für Mitglieder lesbar.
+- Katalog und Dev-Daten darf nur ein Admin schreiben.
+
+**Wichtig:** Die Regeln erst deployen, wenn diese Client-Version live ist. Ältere Clients schreiben z. B. exakte Positionen und würden sonst abgelehnt.
+
+Empfohlen zusätzlich: TTL-Policies in der Firestore-Konsole auf `bc_drinkVotes.expiresAt` und `bc_otrVotes.expiresAt`.
+
+### Datenschutz
+
+- Die exakte Heimposition steht nur im privaten Profil (`bc_users`), öffentlich ist sie gerundet.
+- **Profil → Konto löschen** entfernt Profil, Check-ins, Flaggen, Freundschaften inkl. Chats, Team-Mitgliedschaft und den Login.
+
 ## Bedienung
 
 | Aktion | Wie |
@@ -69,6 +112,6 @@ Die Bierfarbe des Spielers (`--c-beer`) färbt Akzente der gesamten Oberfläche.
 
 ## Bekannte Grenzen / nächste Schritte
 
-- **Die Spielregeln werden nur im Client geprüft.** Firestore Security Rules und Cloud Functions (Check-in, Heimposition, Aggregation) sind der nächste Schritt, siehe Roadmap.
-- Jeder Client liest noch alle Profile und Stimmen. Serverseitige Aggregation pro Kachel steht aus.
-- Die Wappen sind Platzhalter-Monogramme, keine lizenzierten Brauerei-Logos.
+- **GPS lässt sich fälschen.** Die Regeln begrenzen Menge und Takt der Check-ins, prüfen aber nicht, ob jemand wirklich vor Ort ist. Dafür braucht es App Check, native Mock-Location-Erkennung und QR-Codes bei Partner-Wirten.
+- **Jeder Client liest noch alle öffentlichen Profile und Check-ins.** Serverseitige Aggregation pro Kachel (Cloud Functions) steht aus.
+- **Ohne Logo-Datei** zeigen Biere ein Monogramm-Wappen.
