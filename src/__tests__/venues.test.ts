@@ -115,8 +115,12 @@ describe('OSM venues', () => {
       { type: 'node', id: 4, lat: 1, lon: 1, tags: { amenity: 'pub', name: 'Zu', disused: 'yes' } },
       { type: 'node', id: 5, lat: 50.07, lon: 14.43, tags: { craft: 'brewery', name: 'Pivovar Staropramen' } },
       { type: 'node', id: 6, lat: 48.2, lon: 11.6, tags: { amenity: 'biergarten', name: 'Seehaus' } },
+      { type: 'node', id: 7, lat: 48.2, lon: 11.6, tags: { amenity: 'cafe', name: 'Café Kosmos' } },
+      { type: 'node', id: 8, lat: 48.2, lon: 11.6, tags: { amenity: 'restaurant', name: 'Pizzeria' } },
+      { type: 'node', id: 9, lat: 48.2, lon: 11.6, tags: { amenity: 'restaurant', name: 'Wirtshaus Ayingers', brewery: 'Ayinger' } },
     ] });
-    expect(venues.map((v) => v.id)).toEqual(['n1', 'w2', 'n5', 'n6']);
+    expect(venues.map((v) => v.id)).toEqual(['n1', 'w2', 'n5', 'n6', 'n9']);
+    expect(venues[4]).toMatchObject({ kind: 'restaurant', beerIds: ['ayinger'] });
     expect(venues[0].beerIds).toEqual(['augustiner', 'paulaner']);
     expect(venues[1]).toMatchObject({ kind: 'bar', beerIds: [], lat: 35.6 });
     expect(venues[2]).toMatchObject({ kind: 'brewery', beerIds: ['staropramen'] });

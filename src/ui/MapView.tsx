@@ -451,6 +451,8 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       });
       map = m;
       mapRef.current = m;
+      // Dev builds: expose the map for automated UI checks
+      if (import.meta.env.DEV) (window as unknown as { __bcMap?: MapLibreMap }).__bcMap = m;
 
       const emitViewport = () => {
         const b = m.getBounds();

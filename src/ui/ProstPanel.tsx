@@ -7,6 +7,7 @@ import { roundToPlaceKey } from '../domain/placeKey';
 import { validateDrinkVote, getDailyDrinkCount } from '../domain/drinkVoteRules';
 import { acquireGpsSamples } from '../domain/gpsVerify';
 import { BeerPicker } from './BeerPicker';
+import { nearestCity } from '../domain/worldCities';
 import { SuggestBeerDialog } from './SuggestBeerDialog';
 import { appEvents } from '../domain/events';
 import { beerName } from './kit/beer';
@@ -23,11 +24,14 @@ interface Props {
    * device has no GPS, so the flow can be shown on a laptop.
    */
   demoLocation?: { lat: number; lon: number } | null;
+  /** Locate the player and open the pub they are sitting in (venue check-in). */
+  onFindVenue?: () => Promise<void>;
 }
 
 type Phase = 'idle' | 'locating' | 'saving';
 
-export function ProstPanel({ user, store, onCheckedIn, demoLocation }: Props) {
+export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue }: Props) {
+  const [finding, setFinding] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState('');
   const [dailyCount, setDailyCount] = useState(0);
@@ -102,6 +106,24 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation }: Props) {
 
   return (
     <div className="prost">
+      {onFindVenue && (
+        <button
+          className="card prost-venue"
+          disabled={finding}
+          onClick={async () => {
+            haptic('light');
+            setFinding(true);
+            try { await onFindVenue(); } finally { setFinding(false); }
+          }}
+        >
+          <span className="prost-venue-icon" aria-hidden="true">{finding ? <span className="spinner" /> : '📍'}</span>
+          <span className="prost-venue-text">
+            <strong>In einer Kneipe?</strong>
+            <span>Check dort ein und hol sie für dein Bier. Das zählt 30 Tage.</span>
+          </span>
+          <span className="prost-venue-go" aria-hidden="true">›</span>
+        </button>
+      )}
       <p className="prost-lede">
         Was trinkst du gerade? Dein Check-in färbt die Umgebung für 24&nbsp;Stunden in deiner Bierfarbe.
       </p>
@@ -111,6 +133,7 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation }: Props) {
         onChange={setBeerId}
         layout="carousel"
         pinned={[user.beerId]}
+        country={nearestCity(user.homeLat, user.homeLon).country}
         disabled={busy}
         label="Bier wählen"
         onSuggest={() => setSuggestOpen(true)}

@@ -7,6 +7,7 @@ import { haversineDistanceKm } from '../domain/geo';
 import { acquireGpsSamples } from '../domain/gpsVerify';
 import { BeerBadge } from './kit/BeerBadge';
 import { BeerPicker } from './BeerPicker';
+import { nearestCity } from '../domain/worldCities';
 import { beerColor, beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
 import { clink, primeAudio } from './kit/sound';
@@ -30,6 +31,7 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
   const [alcoholFree, setAlcoholFree] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState('');
+  const [choosing, setChoosing] = useState(false);
 
   const kind = VENUE_KIND[venue.kind];
   const owner = standing.ownerBeerId;
@@ -83,6 +85,55 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
         </div>
       </div>
 
+      <div className="card venue-checkin">
+        {error && <p className="venue-error" role="alert">{error}</p>}
+        <button
+          className="btn btn-primary btn-lg btn-block"
+          onClick={handleCheckIn}
+          disabled={phase !== 'idle' || !!blocker}
+        >
+          {phase === 'locating' && <><span className="spinner" aria-hidden="true" /> Standort wird geprüft…</>}
+          {phase === 'saving' && <><span className="spinner" aria-hidden="true" /> Zapfe…</>}
+          {phase === 'idle' && (blocker ? 'Heute schon erledigt' : `Hier einchecken · +${INFLUENCE.VISIT}${myBeerRules ? ' Verteidigung' : ''}`)}
+        </button>
+        {!blocker && (
+          <button
+            className="venue-choice"
+            onClick={() => { setChoosing(!choosing); haptic('light'); }}
+            aria-expanded={choosing}
+          >
+            <BeerBadge beerId={beerId} size="sm" />
+            <span>mit <strong>{beerName(beerId)}</strong>{alcoholFree ? ' · alkoholfrei' : ''}</span>
+            <span className="venue-choice-edit">{choosing ? 'fertig' : 'ändern'}</span>
+          </button>
+        )}
+        {choosing && !blocker && (
+          <div className="venue-choose fade-in">
+            <BeerPicker value={beerId} onChange={setBeerId} layout="carousel" pinned={[playerBeerId, ...venue.beerIds]} country={nearestCity(venue.lat, venue.lon).country} label="Bier für den Check-in" />
+            <div className="settings-row venue-af">
+              <span className="row-main">
+                <span className="row-title">Alkoholfrei</span>
+                <span className="row-sub">Zählt genauso: Es geht um den Besuch.</span>
+              </span>
+              <button
+                role="switch"
+                aria-checked={alcoholFree}
+                aria-label="Alkoholfrei"
+                className={`switch${alcoholFree ? ' on' : ''}`}
+                onClick={() => { setAlcoholFree(!alcoholFree); haptic('light'); }}
+              >
+                <span />
+              </button>
+            </div>
+          </div>
+        )}
+        <p className="muted venue-hint">
+          {blocker ?? (isDemo
+            ? 'Demo: Check-in ohne Standortprüfung.'
+            : `Nur vor Ort (max. ${CHECKIN_RADIUS_M} m) · 1× pro Kneipe und Tag · max. 3 Kneipen am Tag`)}
+        </p>
+      </div>
+
       {top.length > 0 && (
         <div className="card">
           <div className="venue-card-head">
@@ -130,40 +181,6 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
         </div>
       </div>
 
-      <div className="card venue-checkin">
-        <p className="eyebrow">Was trinkst du?</p>
-        <BeerPicker value={beerId} onChange={setBeerId} layout="carousel" pinned={[playerBeerId, ...venue.beerIds]} label="Bier für den Check-in" />
-        <div className="settings-row venue-af">
-          <span className="row-main">
-            <span className="row-title">Alkoholfrei</span>
-            <span className="row-sub">Zählt genauso: Es geht um den Besuch.</span>
-          </span>
-          <button
-            role="switch"
-            aria-checked={alcoholFree}
-            aria-label="Alkoholfrei"
-            className={`switch${alcoholFree ? ' on' : ''}`}
-            onClick={() => { setAlcoholFree(!alcoholFree); haptic('light'); }}
-          >
-            <span />
-          </button>
-        </div>
-        {error && <p className="venue-error" role="alert">{error}</p>}
-        <button
-          className="btn btn-primary btn-lg btn-block"
-          onClick={handleCheckIn}
-          disabled={phase !== 'idle' || !!blocker}
-        >
-          {phase === 'locating' && <><span className="spinner" aria-hidden="true" /> Standort wird geprüft…</>}
-          {phase === 'saving' && <><span className="spinner" aria-hidden="true" /> Zapfe…</>}
-          {phase === 'idle' && (blocker ? 'Heute schon erledigt' : `Hier einchecken · +${INFLUENCE.VISIT}${myBeerRules ? ' Verteidigung' : ''}`)}
-        </button>
-        <p className="muted venue-hint">
-          {blocker ?? (isDemo
-            ? 'Demo: Check-in ohne Standortprüfung.'
-            : `Nur vor Ort (max. ${CHECKIN_RADIUS_M} m). Ein Besuch pro Kneipe und Tag, höchstens drei Kneipen am Tag.`)}
-        </p>
-      </div>
     </div>
   );
 }

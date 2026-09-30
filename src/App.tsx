@@ -3,7 +3,7 @@ import type {
   Vote, GridSpec, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship,
   WorkerInput, WorkerOutput, DrinkVote, CellResult,
 } from './domain/types';
-import { getDefaultBoundingBox, getViewportGridSpec, cellAt, specStepDeg } from './domain/geo';
+import { getDefaultBoundingBox, getViewportGridSpec, cellAt, specStepDeg, haversineDistanceKm } from './domain/geo';
 import { GAME } from './config/constants';
 import type { StorageInterface } from './storage/StorageInterface';
 import { BEERS, BEER_MAP, registerBeers } from './domain/beers';
@@ -29,7 +29,9 @@ import { PassportPanel } from './ui/PassportPanel';
 import { useVenues, VENUE_MIN_ZOOM } from './hooks/useVenues';
 import { venuePlayerId } from './domain/visitIds';
 import { nearestCity } from './domain/worldCities';
-import type { VenueCheckin } from './domain/venues';
+import { CHECKIN_RADIUS_M, tilesForViewport, type VenueCheckin } from './domain/venues';
+import { loadVenues } from './services/venueService';
+import { acquireGpsSamples } from './domain/gpsVerify';
 import { QuestsPanel } from './ui/QuestsPanel';
 import { ExploreFeed } from './ui/ExploreFeed';
 import { ShareModal } from './ui/ShareModal';
@@ -556,7 +558,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     loadWeightedVotes().catch(() => {});
   }, [dominance, loadWeightedVotes]);
 
-  const { checkIn: venueCheckIn, addCheckins } = venueState;
+  const { checkIn: venueCheckIn, addCheckins, addVenues } = venueState;
   const handleVenueCheckIn = useCallback(async (beerId: string, alcoholFree: boolean) => {
     if (!selectedVenue) return;
     const { before, after } = await venueCheckIn(selectedVenue, beerId, alcoholFree);
@@ -588,6 +590,34 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       });
     }
   }, [selectedVenue, venueCheckIn]);
+
+  // Prost → "Which pub am I in?": GPS (demo: map centre), nearest pub within reach
+  const findVenueHere = useCallback(async () => {
+    let pos: { lat: number; lon: number };
+    try {
+      pos = await acquireGpsSamples(1);
+    } catch {
+      if (!isDemo) {
+        showToast('📍', 'Ohne Standort finden wir deine Kneipe nicht.');
+        return;
+      }
+      pos = mapCenterRef.current;
+    }
+    const d = 0.004;
+    const tiles = tilesForViewport({ south: pos.lat - d, north: pos.lat + d, west: pos.lon - d * 1.5, east: pos.lon + d * 1.5 });
+    const nearby = (await loadVenues(tiles).catch(() => []))
+      .map((v) => ({ v, m: haversineDistanceKm(pos.lat, pos.lon, v.lat, v.lon) * 1000 }))
+      .filter((x) => x.m <= (isDemo ? 400 : CHECKIN_RADIUS_M + 40))
+      .sort((a, b) => a.m - b.m);
+    if (nearby.length === 0) {
+      showToast('🍺', 'Keine Kneipe in deiner Nähe gefunden. Check hier trotzdem ein.');
+      return;
+    }
+    const { v } = nearby[0];
+    addVenues([v]);
+    mapRef.current?.flyTo(v.lat, v.lon, 17);
+    setSheet({ kind: 'venue', venueId: v.id });
+  }, [isDemo, showToast, addVenues]);
 
   // Demo: a crowd of simulated regulars visits the venues on screen
   const simulateVenueCrowd = useCallback(async () => {
@@ -645,6 +675,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         store={store}
         onCheckedIn={handleCheckedIn}
         demoLocation={isDemo ? mapCenterRef.current : null}
+        onFindVenue={findVenueHere}
       />
     );
   } else if (sheet?.kind === 'venue') {
@@ -792,7 +823,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                 ? <>{beerName(homeCell.winnerBeerId)}{homeShare !== null && (
                   <span className="num status-chip-pct"> · <NumberFlow value={homeShare} suffix=" %" /></span>
                 )}</>
-                : 'Wird berechnet…'}
+                : dominance ? 'Nicht im Bild · antippen' : 'Wird berechnet…'}
             </span>
           </span>
         </button>

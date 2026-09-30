@@ -22,6 +22,8 @@ export interface VenueState {
   checkIn: (venue: Venue, beerId: string, alcoholFree: boolean) => Promise<{ visit: MyVisit; before: VenueStanding; after: VenueStanding }>;
   /** Demo: add simulated visits and recompute */
   addCheckins: (visits: VenueCheckin[]) => void;
+  /** Make venues known (e.g. found via GPS outside the viewport) */
+  addVenues: (venues: Venue[]) => void;
 }
 
 export function useVenues(
@@ -144,5 +146,14 @@ export function useVenues(
     setCheckins((prev) => [...prev, ...visits]);
   }, []);
 
-  return { venues, standings, myVisits, venueVotes, status, reload, checkIn, addCheckins };
+  const addVenues = useCallback((list: Venue[]) => {
+    setVenueMap((prev) => {
+      if (list.every((v) => prev.has(v.id))) return prev;
+      const next = new Map(prev);
+      for (const v of list) next.set(v.id, v);
+      return next;
+    });
+  }, []);
+
+  return { venues, standings, myVisits, venueVotes, status, reload, checkIn, addCheckins, addVenues };
 }

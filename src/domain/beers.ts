@@ -222,10 +222,12 @@ export function searchBeers(query: string, preferCountry?: string | null): Beer[
     ? BEERS.filter((b) => norm(`${b.name} ${b.brewery ?? ''} ${b.city ?? ''} ${(b.aliases ?? []).join(' ')}`).includes(q))
     : [...BEERS];
   const home = preferCountry ?? 'DE';
+  // Within a group the catalogue order counts: it is curated by relevance
+  const rank = new Map(BEERS.map((b, i) => [b.id, i]));
   return list.sort((a, b) =>
     Number(b.country === home) - Number(a.country === home)
     || Number(!!b.featured) - Number(!!a.featured)
-    || a.name.localeCompare(b.name, 'de'));
+    || (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
 }
 
 const compact = (s: string) => norm(s).replace(/[^a-z0-9]+/g, '');

@@ -84,3 +84,17 @@
   font-size: var(--fs-sm);
 }
 .venue-hint { font-size: var(--fs-xs); text-align: center; }
+.venue-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--tap);
+  padding: 0 var(--sp-1);
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+.venue-choice > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.venue-choice strong { color: var(--c-text); }
+.venue-choice-edit { color: var(--c-accent); font-weight: 700; }
+.venue-choose { display: grid; gap: var(--sp-3); }

@@ -95,6 +95,16 @@ function kindOf(tags: Record<string, string>): VenueKind {
   return 'restaurant';
 }
 
+const BEER_AMENITIES = new Set(['pub', 'bar', 'biergarten']);
+
+/** Places that pour beer: pubs, bars, beer gardens, breweries, restaurants with a known tap. */
+function isBeerPlace(tags: Record<string, string>): boolean {
+  return BEER_AMENITIES.has(tags.amenity)
+    || tags.craft === 'brewery'
+    || tags.microbrewery === 'yes'
+    || (tags.amenity === 'restaurant' && !!tags.brewery);
+}
+
 /** Turn an Overpass JSON response into venues (deduplicated, named only). */
 export function parseOverpass(json: { elements?: OverpassElement[] }): Venue[] {
   const out = new Map<string, Venue>();
@@ -105,6 +115,7 @@ export function parseOverpass(json: { elements?: OverpassElement[] }): Venue[] {
     const name = tags.name?.trim();
     if (lat === undefined || lon === undefined || !name) continue;
     if (tags.disused === 'yes' || tags['disused:amenity']) continue;
+    if (!isBeerPlace(tags)) continue;
     const id = `${el.type[0]}${el.id}`;
     out.set(id, {
       id,

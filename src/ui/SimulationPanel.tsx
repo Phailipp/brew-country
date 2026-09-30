@@ -114,7 +114,7 @@ export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBe
 
       <div className="card">
         <p className="eyebrow">Per Tipp auf die Karte abstimmen</p>
-        <BeerPicker value={demoBeerId} onChange={onDemoBeerChange} layout="carousel" label="Bier für Demo-Stimmen" />
+        <BeerPicker value={demoBeerId} onChange={onDemoBeerChange} layout="carousel" country={nearestCity(getCenter().lat, getCenter().lon).country} label="Bier für Demo-Stimmen" />
         <p className="muted">Tipp auf die Karte → Gebiet ansehen → „Demo: Stimme setzen“.</p>
       </div>
     </section>
