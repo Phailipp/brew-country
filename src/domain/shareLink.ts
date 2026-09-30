@@ -4,13 +4,13 @@ import { BEER_MAP } from './beers';
 /**
  * Encode a share payload into URL query params.
  */
-function getWebOrigin(): string {
+/** Public web address of the app (the iOS app has no web origin of its own). */
+function getWebBase(): string {
   const origin = window.location.origin;
-  // In Capacitor iOS, origin is capacitor://localhost — use a web fallback
   if (origin.startsWith('capacitor') || origin === 'null') {
-    return 'https://brewcountry.app';
+    return (import.meta.env.VITE_PUBLIC_URL ?? 'https://phailipp.github.io/brew-country').replace(/\/$/, '') + '/';
   }
-  return origin;
+  return `${origin}${window.location.pathname}`;
 }
 
 export function encodeShareLink(payload: SharePayload): string {
@@ -21,7 +21,7 @@ export function encodeShareLink(payload: SharePayload): string {
   params.set('lat', payload.centroidLat.toFixed(5));
   params.set('lon', payload.centroidLon.toFixed(5));
   params.set('z', payload.zoom.toString());
-  return `${getWebOrigin()}${window.location.pathname}?${params.toString()}`;
+  return `${getWebBase()}?${params.toString()}`;
 }
 
 /**
@@ -38,6 +38,10 @@ export function decodeShareLink(): SharePayload | null {
   const rid = params.get('rid');
 
   if (!beerId || !latStr || !lonStr) return null;
+  const lat = Number(latStr);
+  const lon = Number(lonStr);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180) return null;
+  const z = zStr ? Number(zStr) : 12;
 
   const beer = BEER_MAP.get(beerId);
 
@@ -45,9 +49,9 @@ export function decodeShareLink(): SharePayload | null {
     regionId: rid ?? '',
     beerId,
     beerName: beer?.name ?? beerId,
-    centroidLat: parseFloat(latStr),
-    centroidLon: parseFloat(lonStr),
-    zoom: zStr ? parseInt(zStr, 10) : 12,
+    centroidLat: lat,
+    centroidLon: lon,
+    zoom: Number.isFinite(z) ? Math.min(18, Math.max(2, z)) : 12,
     cellCount: 0,
     totalVotes: 0,
     avgMargin: 0,
