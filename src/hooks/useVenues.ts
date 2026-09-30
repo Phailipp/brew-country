@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { StorageInterface } from '../storage/StorageInterface';
 import type { ViewportBounds, WeightedVote } from '../domain/types';
 import { tilesForViewport, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
@@ -35,10 +35,9 @@ export function useVenues(
   const [venueMap, setVenueMap] = useState<Map<string, Venue>>(() => new Map());
   const [checkins, setCheckins] = useState<VenueCheckin[]>([]);
   const [myVisits, setMyVisits] = useState<MyVisit[]>([]);
-  const [status, setStatus] = useState<VenueState['status']>('idle');
+  const [loadStatus, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [nonce, setNonce] = useState(0);
   const [now, setNow] = useState(() => Date.now());
-  const loadedTiles = useRef(new Set<string>());
 
   // Clock for decay; a minute is plenty
   useEffect(() => {
@@ -59,10 +58,7 @@ export function useVenues(
   const tilesKey = tiles.join(',');
 
   useEffect(() => {
-    if (tiles.length === 0) {
-      setStatus(viewport && zoom < VENUE_MIN_ZOOM ? 'zoom' : 'idle');
-      return;
-    }
+    if (tiles.length === 0) return;
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       setStatus('loading');
@@ -72,7 +68,6 @@ export function useVenues(
           store.getVenueCheckins(tiles, Date.now() - INFLUENCE.WINDOW_DAYS * DAY_MS).catch(() => [] as VenueCheckin[]),
         ]);
         if (ctrl.signal.aborted) return;
-        for (const k of tiles) loadedTiles.current.add(k);
         setVenueMap((prev) => {
           const next = new Map(prev);
           for (const v of venues) next.set(v.id, v);
@@ -127,6 +122,11 @@ export function useVenues(
   }, [venues, standings]);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  // Without tiles to load, the status follows the view (zoomed out vs. nothing to do)
+  const status: VenueState['status'] = tiles.length > 0
+    ? loadStatus
+    : viewport && zoom < VENUE_MIN_ZOOM ? 'zoom' : 'idle';
 
   const checkIn = useCallback(async (venue: Venue, beerId: string, alcoholFree: boolean) => {
     const at = Date.now();

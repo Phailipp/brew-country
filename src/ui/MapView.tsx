@@ -384,6 +384,7 @@ function makeHomeMarker(beerId: string): HTMLElement {
   const el = document.createElement('div');
   el.className = 'home-marker';
   el.style.setProperty('--beer', beer?.color ?? '#ffb020');
+  el.setAttribute('role', 'img');
   el.setAttribute('aria-label', 'Dein Zuhause');
   const badge = document.createElement('span');
   badge.className = 'home-marker-badge';

@@ -65,22 +65,21 @@ export function TabBar({ active, onSelect, onProst, prostActive, unreadCrew, que
     <button
       key={tab.id}
       data-tab={tab.id}
-      role="tab"
-      aria-selected={active === tab.id}
+      aria-current={active === tab.id ? 'page' : undefined}
       className={`tab${active === tab.id ? ' active' : ''}`}
       onClick={() => onSelect(tab.id)}
     >
       <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
       <span className="tab-label">{tab.label}</span>
-      {tab.badge && <span className="tab-badge" aria-label="Ungelesene Nachrichten" />}
+      {tab.badge && <><span className="tab-badge" aria-hidden="true" /><span className="sr-only">, ungelesene Nachrichten</span></>}
       {tab.id === 'quests' && questsDone > 0 && (
-        <span className="tab-count num" aria-label={`${questsDone} Quests geschafft`}>{questsDone}</span>
+        <><span className="tab-count num" aria-hidden="true">{questsDone}</span><span className="sr-only">, {questsDone} geschafft</span></>
       )}
     </button>
   );
 
   return (
-    <nav ref={navRef} className="tabbar glass" role="tablist" aria-label="Hauptnavigation">
+    <nav ref={navRef} className="tabbar glass" aria-label="Hauptnavigation">
       <span
         className={`tab-indicator${indicator ? ' visible' : ''}`}
         style={indicator ? { transform: `translateX(${indicator.x}px)`, width: indicator.w } : undefined}

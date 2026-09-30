@@ -236,3 +236,8 @@
 .cockpit-entry-text { display: grid; gap: 2px; flex: 1; min-width: 0; }
 .cockpit-entry-text span { font-size: var(--fs-sm); color: var(--c-text-2); }
 .cockpit-entry-go { font-size: 28px; color: var(--c-accent); line-height: 1; }
+
+/* Phones: the bottom sheet covers the pill's spot */
+@media (max-width: 899px) {
+  .app:has(.sheet.open) .venue-hint-pill { display: none; }
+}

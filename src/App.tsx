@@ -882,7 +882,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       </header>
 
 
-      {!sheet && venueHint && (
+      {venueHint && (
         <div className={`venue-hint-pill glass${venueState.status === 'error' ? ' is-error' : ''}`} role="status">
           {venueHint}
         </div>
