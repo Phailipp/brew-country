@@ -6,7 +6,7 @@ import type {
 import { getDefaultBoundingBox, getViewportGridSpec, cellAt, cellStepDeg, MUNICH_CENTER } from './domain/geo';
 import { GAME } from './config/constants';
 import type { StorageInterface } from './storage/StorageInterface';
-import { BEER_MAP } from './domain/beers';
+import { BEER_MAP, registerBeers } from './domain/beers';
 import { findRegionForCell } from './domain/regions';
 import { appEvents } from './domain/events';
 import { buildWeightedVotes } from './domain/weights';
@@ -51,6 +51,9 @@ import {
   subscribeAllUsers,
   subscribeFriends,
   subscribeLegacyVotes,
+  subscribeCatalogBeers,
+  profileToUser,
+  deleteMyAccount,
   type FirestoreUserProfile,
 } from './services/firestoreService';
 import './App.css';
@@ -201,9 +204,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   useEffect(() => {
     if (online && user.beerId) {
-      saveUserProfile(user.id, user.beerId, user.homeLat, user.homeLon, user.createdAt).catch(() => {});
+      saveUserProfile(user.id, user.beerId, user.homeLat, user.homeLon, user.createdAt, user.standYourGroundEnabled).catch(() => {});
     }
-  }, [online, user.id, user.beerId, user.homeLat, user.homeLon, user.createdAt]);
+  }, [online, user.id, user.beerId, user.homeLat, user.homeLon, user.createdAt, user.standYourGroundEnabled]);
 
   useEffect(() => {
     if (!online) return;
@@ -215,6 +218,12 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     return subscribeLegacyVotes(setVotes);
   }, [online]);
 
+  // Approved community beers join the catalogue live
+  useEffect(() => {
+    if (!online) return;
+    return subscribeCatalogBeers((beers) => registerBeers(beers));
+  }, [online]);
+
   useEffect(() => {
     onActivity().catch(() => {});
   }, [onActivity]);
@@ -224,17 +233,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const loadWeightedVotes = useCallback(async () => {
     const seq = ++weightsSeqRef.current;
 
-    const firestoreUsers: User[] = remoteUsers.map((p) => ({
-      id: p.userId,
-      phone: null,
-      createdAt: p.createdAt,
-      lastActiveAt: p.lastActiveAt,
-      homeLat: p.homeLat,
-      homeLon: p.homeLon,
-      beerId: p.beerId,
-      standYourGroundEnabled: false,
-      ageVerified: true,
-    }));
+    const firestoreUsers: User[] = remoteUsers.map(profileToUser);
 
     const [localUsers, allOTR, allTeams, allDrink] = await Promise.all([
       store.getAllUsers(),
@@ -243,10 +242,11 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       store.getAllDrinkVotes(),
     ]);
 
-    // Full records (with Stand-Your-Ground etc.) win over public profiles
+    // Public (coarse) profiles for everyone; the player's own full record wins
     const merged = new Map<string, User>();
     for (const u of firestoreUsers) merged.set(u.id, u);
     for (const u of localUsers) merged.set(u.id, u);
+    merged.set(user.id, user);
     const allUsers = Array.from(merged.values()).filter((u) => u.homeLat !== 0 || u.homeLon !== 0);
 
     const outcomeLists = await Promise.all(allUsers.map((u) => store.getDuelOutcomes(u.id)));
@@ -254,7 +254,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
     if (seq !== weightsSeqRef.current) return; // superseded
     setWeightedVotes(buildWeightedVotes(allUsers, allOTR, allTeams, outcomesMap, allDrink));
-  }, [store, remoteUsers]);
+  }, [store, remoteUsers, user]);
 
   useEffect(() => {
     const t = setTimeout(() => { loadWeightedVotes().catch(() => {}); }, 400);
@@ -603,7 +603,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
                 voteCount={votes.length}
               />
             )}
-            <LogoutSection isDemo={isDemo} />
+            <LogoutSection isDemo={isDemo} user={user} />
           </>
         );
         break;
@@ -715,9 +715,31 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   );
 }
 
-function LogoutSection({ isDemo }: { isDemo: boolean }) {
+function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
   const { logout } = useAuth();
+  const { showToast } = useToast();
   const [sound, setSound] = useState(soundEnabled);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    try {
+      if (isDemo) {
+        indexedDB.deleteDatabase('BrewCountryDB');
+      } else {
+        await deleteMyAccount(user.id, user.beerId);
+      }
+      showToast('👋', 'Dein Konto und alle Daten wurden gelöscht.', 'success');
+      logout();
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      showToast('⚠️', code === 'auth/requires-recent-login'
+        ? 'Bitte melde dich einmal neu an und lösche dann erneut.'
+        : 'Löschen hat nicht geklappt. Versuch es gleich nochmal.', 'error');
+      setDeleting(false);
+    }
+  };
   return (
     <section className="section">
       <h2 className="section-title">Einstellungen</h2>
@@ -739,6 +761,21 @@ function LogoutSection({ isDemo }: { isDemo: boolean }) {
       <button className="btn btn-secondary btn-block settings-logout" onClick={logout}>
         {isDemo ? 'Demo beenden' : 'Abmelden'}
       </button>
+      {!confirmDelete ? (
+        <button className="btn btn-ghost btn-block settings-delete" onClick={() => setConfirmDelete(true)}>
+          Konto löschen
+        </button>
+      ) : (
+        <div className="card settings-danger" role="alert">
+          <p><strong>Wirklich löschen?</strong> Profil, Check-ins, Flaggen, Freundschaften und Chats werden endgültig entfernt.</p>
+          <div className="settings-danger-actions">
+            <button className="btn btn-danger" onClick={deleteAccount} disabled={deleting}>
+              {deleting ? <><span className="spinner" aria-hidden="true" /> Lösche …</> : 'Ja, endgültig löschen'}
+            </button>
+            <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>Abbrechen</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

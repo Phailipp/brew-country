@@ -7,6 +7,13 @@ export interface Beer {
   svgLogo: string;
   /** Optional URL to a real brewery logo image */
   logoUrl?: string;
+  brewery?: string;
+  city?: string;
+  country?: 'DE' | 'AT' | 'CH';
+  /** Shown first in pickers (Munich core brands) */
+  featured?: boolean;
+  /** 'community' = added via an approved submission */
+  source?: 'builtin' | 'community';
 }
 
 export interface Vote {
@@ -125,6 +132,8 @@ export interface User {
   beerId: string;
   standYourGroundEnabled: boolean;
   ageVerified: boolean;
+  /** Last time the home location was moved (rate-limited by the rules). */
+  homeChangedAt?: number;
 }
 
 // ── Weighted Vote (for worker input) ────────────────────

@@ -7,17 +7,22 @@ interface Props {
   className?: string;
 }
 
-/** Round brewery crest. Decorative — pair it with the beer name in text. */
+/**
+ * Round brewery crest. Brand logos sit on a cream plate with a ring in the
+ * beer colour; without a logo the generated monogram crest is shown.
+ * Decorative — pair it with the beer name in text.
+ */
 export function BeerBadge({ beerId, size = 'md', className = '' }: Props) {
   const beer = beerId ? BEER_MAP.get(beerId) : undefined;
+  const hasLogo = !!beer?.logoUrl;
   const style = {
-    backgroundImage: beer ? `url("${beer.logoUrl ?? beer.svgLogo}")` : undefined,
+    backgroundImage: beer ? `url("${hasLogo ? beer.logoUrl : beer.svgLogo}")` : undefined,
     backgroundColor: beer ? undefined : 'var(--c-surface-3)',
     '--badge-color': beer?.color,
   } as CSSProperties;
   return (
     <span
-      className={`beer-badge ${size === 'md' ? '' : size} ${className}`.trim()}
+      className={`beer-badge ${size === 'md' ? '' : size} ${hasLogo ? 'has-logo' : ''} ${className}`.replace(/\s+/g, ' ').trim()}
       style={style}
       aria-hidden="true"
     />

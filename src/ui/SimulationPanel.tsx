@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { BEER_MAP } from '../domain/beers';
-import { BeerBadge } from './kit/BeerBadge';
+import { BeerPicker } from './BeerPicker';
 import type { Vote } from '../domain/types';
 import { BEERS } from '../domain/beers';
 import { getDefaultBoundingBox } from '../domain/geo';
@@ -117,21 +116,7 @@ export function SimulationPanel({ onAddVotes, onClearVotes, demoBeerId, onDemoBe
 
       <div className="card">
         <p className="eyebrow">Per Tipp auf die Karte abstimmen</p>
-        <div className="sim-beers" role="radiogroup" aria-label="Bier für Demo-Stimmen">
-          {Array.from(BEER_MAP.values()).map((b) => (
-            <button
-              key={b.id}
-              role="radio"
-              aria-checked={demoBeerId === b.id}
-              className={`sim-beer${demoBeerId === b.id ? ' selected' : ''}`}
-              onClick={() => onDemoBeerChange(b.id)}
-              title={b.name}
-            >
-              <BeerBadge beerId={b.id} size="md" />
-              <span className="sr-only">{b.name}</span>
-            </button>
-          ))}
-        </div>
+        <BeerPicker value={demoBeerId} onChange={onDemoBeerChange} layout="carousel" label="Bier für Demo-Stimmen" />
         <p className="muted">Tipp auf die Karte → Gebiet ansehen → „Demo: Stimme setzen“.</p>
       </div>
     </section>

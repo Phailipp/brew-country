@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef, type CSSProperties } from 'react';
 import type { User } from '../domain/types';
 import { useAuth } from './authContext';
-import { BEERS } from '../domain/beers';
+import { BeerPicker } from '../ui/BeerPicker';
+import { SuggestBeerDialog } from '../ui/SuggestBeerDialog';
 import { GAME } from '../config/constants';
 import { isFirebaseConfigured } from '../config/firebase';
 import { getFirebaseAuth } from '../config/firebaseAuth';
@@ -38,6 +39,7 @@ export function Onboarding() {
   const userId = auth.status === 'onboarding' ? auth.userId : '';
 
   const [step, setStep] = useState<OnboardingStep>('age');
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [selectedBeerId, setSelectedBeerId] = useState<string>('augustiner');
@@ -342,30 +344,12 @@ export function Onboarding() {
             <section className="ob-step" key="beer">
               <h1 className="ob-title" ref={headingRef} tabIndex={-1}>Wähl dein Bier</h1>
               <p className="auth-instruction">Für welche Brauerei ziehst du in die Schlacht?</p>
-              <div className="ob-beer-grid" role="radiogroup" aria-label="Bier auswählen">
-                {BEERS.map((beer) => {
-                  const selected = selectedBeerId === beer.id;
-                  return (
-                    <button
-                      type="button"
-                      key={beer.id}
-                      role="radio"
-                      aria-checked={selected}
-                      className={`ob-beer${selected ? ' selected' : ''}`}
-                      style={{ '--tile-color': beer.color } as CSSProperties}
-                      onClick={() => { setSelectedBeerId(beer.id); haptic('light'); }}
-                    >
-                      <BeerBadge beerId={beer.id} size="lg" />
-                      <span className="ob-beer-name">{beer.name}</span>
-                      {selected && (
-                        <span className="ob-beer-check" aria-hidden="true">
-                          <svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <BeerPicker
+                value={selectedBeerId}
+                onChange={setSelectedBeerId}
+                layout="grid"
+                onSuggest={() => setSuggestOpen(true)}
+              />
               <div className="ob-sticky-cta">
                 <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => goTo('confirm')}>
                   Weiter mit {beerName(selectedBeerId)}
@@ -411,6 +395,11 @@ export function Onboarding() {
           )}
         </div>
       </main>
+      <SuggestBeerDialog
+        open={suggestOpen}
+        onClose={() => setSuggestOpen(false)}
+        userId={userId}
+      />
     </div>
   );
 }

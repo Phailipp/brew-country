@@ -4,13 +4,14 @@ import { SeedControls } from './SeedControls';
 import { TimeControls } from './TimeControls';
 import { DebugStats } from './DebugStats';
 import { ManualInjectPanel } from './ManualInjectPanel';
+import { SubmissionReview } from './SubmissionReview';
 import './AdminPanel.css';
 
 interface Props {
   store: StorageInterface;
 }
 
-type Tab = 'seed' | 'time' | 'stats' | 'inject';
+type Tab = 'seed' | 'time' | 'stats' | 'inject' | 'beers';
 
 export function AdminPanel({ store }: Props) {
   const [tab, setTab] = useState<Tab>('stats');
@@ -23,13 +24,13 @@ export function AdminPanel({ store }: Props) {
       </header>
 
       <nav className="admin-tabs">
-        {(['stats', 'seed', 'time', 'inject'] as Tab[]).map(t => (
+        {(['stats', 'beers', 'seed', 'time', 'inject'] as Tab[]).map(t => (
           <button
             key={t}
             className={`admin-tab ${tab === t ? 'active' : ''}`}
             onClick={() => setTab(t)}
           >
-            {t === 'stats' ? 'Stats' : t === 'seed' ? 'Seed' : t === 'time' ? 'Time' : 'Inject'}
+            {t === 'stats' ? 'Stats' : t === 'beers' ? 'Biere' : t === 'seed' ? 'Seed' : t === 'time' ? 'Time' : 'Inject'}
           </button>
         ))}
       </nav>
@@ -39,6 +40,7 @@ export function AdminPanel({ store }: Props) {
         {tab === 'seed' && <SeedControls store={store} />}
         {tab === 'time' && <TimeControls />}
         {tab === 'inject' && <ManualInjectPanel store={store} />}
+        {tab === 'beers' && <SubmissionReview />}
       </div>
     </div>
   );

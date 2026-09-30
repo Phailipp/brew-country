@@ -10,6 +10,7 @@ import type { TerritoryGeometry } from '../domain/territoryGeometry';
 import { BEERS, BEER_MAP } from '../domain/beers';
 import { MUNICH_CENTER } from '../domain/geo';
 import { loadMapStyle, TERRITORY_BEFORE_ID } from './map/mapStyle';
+import { useBeerCatalog } from './kit/useBeerCatalog';
 import './MapView.css';
 
 export interface MapViewHandle {
@@ -47,11 +48,23 @@ const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 const REDUCED_MOTION = typeof window !== 'undefined'
   && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-const beerColorExpr: ExpressionSpecification = [
-  'match', ['get', 'beerId'],
-  ...BEERS.flatMap((b) => [b.id, b.color]),
-  '#a39580',
-] as unknown as ExpressionSpecification;
+/** Data-driven colour lookup; rebuilt when the beer catalogue grows. */
+function colorExpr(): ExpressionSpecification {
+  return [
+    'match', ['get', 'beerId'],
+    ...BEERS.flatMap((b) => [b.id, b.color]),
+    '#a39580',
+  ] as unknown as ExpressionSpecification;
+}
+const beerColorExpr = colorExpr();
+const COLOR_PROPS: [string, string][] = [
+  ['territory-fill', 'fill-color'],
+  ['territory-glow-far', 'line-color'],
+  ['territory-glow-mid', 'line-color'],
+  ['territory-glow', 'line-color'],
+  ['territory-line', 'line-color'],
+  ['votes', 'circle-color'],
+];
 
 function shouldPlayIntro(): boolean {
   if (REDUCED_MOTION) return false;
@@ -64,13 +77,45 @@ function shouldPlayIntro(): boolean {
   return true;
 }
 
+/** Map crest: brand logo on a cream plate with a ring in the beer colour. */
+function composeLogoCrest(img: HTMLImageElement, color: string): ImageData | null {
+  const size = 96;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#0b0a08';
+  ctx.beginPath(); ctx.arc(48, 48, 47, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(48, 48, 43, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fbf6ec';
+  ctx.beginPath(); ctx.arc(48, 48, 38, 0, Math.PI * 2); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(48, 48, 36, 0, Math.PI * 2); ctx.clip();
+  const box = 52;
+  const scale = Math.min(box / img.naturalWidth, box / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
+  ctx.drawImage(img, 48 - w / 2, 48 - h / 2, w, h);
+  ctx.restore();
+  return ctx.getImageData(0, 0, size, size);
+}
+
 function loadBeerIcons(map: MapLibreMap) {
   for (const beer of BEERS) {
     const id = `beer-${beer.id}`;
     if (map.hasImage(id)) continue;
-    const img = new Image(96, 96);
+    const img = new Image(96, 96); // explicit size: the monogram SVGs have no intrinsic size
+    img.crossOrigin = 'anonymous';
     img.onload = () => {
-      if (!map.hasImage(id)) map.addImage(id, img, { pixelRatio: 2 });
+      if (map.hasImage(id)) return;
+      if (beer.logoUrl) {
+        const crest = composeLogoCrest(img, beer.color);
+        if (crest) map.addImage(id, crest, { pixelRatio: 2 });
+      } else {
+        map.addImage(id, img, { pixelRatio: 2 });
+      }
     };
     img.src = beer.logoUrl ?? beer.svgLogo;
   }
@@ -373,6 +418,18 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       mapRef.current = null;
     };
   }, []);
+
+  // ── Catalogue growth: new colours + crest icons
+  const catalogVersion = useBeerCatalog();
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || catalogVersion === 0) return;
+    const expr = colorExpr();
+    for (const [layer, prop] of COLOR_PROPS) {
+      if (map.getLayer(layer)) map.setPaintProperty(layer, prop as 'fill-color', expr);
+    }
+    loadBeerIcons(map);
+  }, [catalogVersion, ready]);
 
   // ── Territories, hotspots, labels
   useEffect(() => {

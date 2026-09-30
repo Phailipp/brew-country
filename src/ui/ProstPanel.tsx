@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type CSSProperties } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { User, DrinkVote } from '../domain/types';
 import type { StorageInterface } from '../storage/StorageInterface';
 import { GAME } from '../config/constants';
@@ -6,9 +6,9 @@ import { getNow } from '../domain/clock';
 import { roundToPlaceKey } from '../domain/placeKey';
 import { validateDrinkVote, getDailyDrinkCount } from '../domain/drinkVoteRules';
 import { acquireGpsSamples } from '../domain/gpsVerify';
-import { BEERS } from '../domain/beers';
+import { BeerPicker } from './BeerPicker';
+import { SuggestBeerDialog } from './SuggestBeerDialog';
 import { appEvents } from '../domain/events';
-import { BeerBadge } from './kit/BeerBadge';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
 import { clink, primeAudio } from './kit/sound';
@@ -32,6 +32,7 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation }: Props) {
   const [error, setError] = useState('');
   const [dailyCount, setDailyCount] = useState(0);
   const [beerId, setBeerId] = useState(user.beerId);
+  const [suggestOpen, setSuggestOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,22 +106,16 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation }: Props) {
         Was trinkst du gerade? Dein Check-in färbt die Umgebung für 24&nbsp;Stunden in deiner Bierfarbe.
       </p>
 
-      <div className="prost-beers" role="radiogroup" aria-label="Bier wählen">
-        {BEERS.map((b) => (
-          <button
-            key={b.id}
-            role="radio"
-            aria-checked={beerId === b.id}
-            className={`prost-beer${beerId === b.id ? ' selected' : ''}`}
-            style={{ '--beer': b.color } as CSSProperties}
-            onClick={() => { setBeerId(b.id); haptic('light'); }}
-            disabled={busy}
-          >
-            <BeerBadge beerId={b.id} size="lg" />
-            <span>{b.name}</span>
-          </button>
-        ))}
-      </div>
+      <BeerPicker
+        value={beerId}
+        onChange={setBeerId}
+        layout="carousel"
+        pinned={[user.beerId]}
+        disabled={busy}
+        label="Bier wählen"
+        onSuggest={() => setSuggestOpen(true)}
+      />
+      <SuggestBeerDialog open={suggestOpen} onClose={() => setSuggestOpen(false)} userId={user.id} />
 
       <button
         className={`prost-go${busy ? ' busy' : ''}`}

@@ -392,6 +392,13 @@ button.row:hover, a.row:hover { background: rgba(255, 246, 232, 0.05); }
   background-size: cover;
   box-shadow: 0 0 0 2px var(--c-bg), 0 4px 14px -4px var(--badge-color, transparent);
 }
+.beer-badge.has-logo {
+  background-color: #fbf6ec;
+  background-size: 72% auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 0 2px var(--badge-color, #fff), 0 0 0 4px var(--c-bg), 0 6px 16px -6px var(--badge-color, transparent);
+}
 .beer-badge.sm { width: 28px; height: 28px; }
 .beer-badge.lg { width: 56px; height: 56px; }
 .beer-badge.xl { width: 88px; height: 88px; }

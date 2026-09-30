@@ -45,7 +45,7 @@ export function TeamPanel({ user, store }: Props) {
     setLoading(true);
     setError('');
     try {
-      let t = await store.getTeam(user.beerId);
+      const t = await store.getTeam(user.beerId);
 
       if (t) {
         if (t.memberUserIds.includes(user.id)) {
@@ -57,17 +57,9 @@ export function TeamPanel({ user, store }: Props) {
           setError('Leider voll – jemand war schneller.');
           return;
         }
-        t = { ...t, memberUserIds: [...t.memberUserIds, user.id] };
-      } else {
-        t = {
-          id: `team_${user.beerId}`,
-          beerId: user.beerId,
-          memberUserIds: [user.id],
-        };
       }
 
-      await store.saveTeam(t);
-      setTeam(t);
+      setTeam(await store.joinTeam(user.beerId, user.id));
       haptic('success');
     } catch (e) {
       console.error('TeamPanel join error:', e);
@@ -86,7 +78,7 @@ export function TeamPanel({ user, store }: Props) {
         ...team,
         memberUserIds: team.memberUserIds.filter(id => id !== user.id),
       };
-      await store.saveTeam(updated);
+      await store.leaveTeam(team.beerId, user.id);
       setTeam(updated.memberUserIds.length > 0 ? updated : null);
       setConfirmLeave(false);
       haptic('medium');

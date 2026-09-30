@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-brew 'vitest run --config vitest.rules.config.ts'",
     "cap:build": "npm run build && npx cap sync ios",
     "cap:open": "npx cap open ios"
   },
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
     "@eslint/js": "^9.39.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/canvas-confetti": "^1.9.0",
     "@types/d3-contour": "^3.0.6",
     "@types/node": "^24.10.1",
@@ -38,6 +40,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "firebase-tools": "^15.32.0",
     "globals": "^16.5.0",
     "jsdom": "^28.0.0",
     "typescript": "~5.9.3",

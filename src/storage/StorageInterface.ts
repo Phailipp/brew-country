@@ -42,4 +42,7 @@ export interface StorageInterface {
   getTeam(beerId: string): Promise<Team | null>;
   saveTeam(team: Team): Promise<void>;
   getAllTeams(): Promise<Team[]>;
+  /** Add the given player to the team of their beer (creates it if needed). */
+  joinTeam(beerId: string, userId: string): Promise<Team>;
+  leaveTeam(beerId: string, userId: string): Promise<void>;
 }
