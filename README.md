@@ -75,9 +75,9 @@ Empfohlen zusätzlich: TTL-Policies in der Firestore-Konsole auf `bc_drinkVotes.
   - Wechsel erst bei 20 % Vorsprung.
 - **Check-in:**
   - Nur vor Ort (60 m).
-  - 1× pro Kneipe und Tag, höchstens 3 Kneipen am Tag. Die Regeln erzwingen das über Id-Slots.
+  - 1× pro Kneipe und Tag, höchstens 2 Kneipen am Tag (verantwortungsvoller Konsum). Die Regeln erzwingen das über Id-Slots.
   - Alkoholfrei zählt gleich.
-- **Datenschutz:** Öffentliche Besuche tragen nur das Pseudonym `sha256(uid|kneipe)`. Der Bierpass liegt privat unter `bc_users/{uid}/visits`.
+- **Datenschutz:** Öffentliche Besuche tragen nur Pseudonyme aus einem geheimen Zufalls-Salz pro Spieler (`sha256(salz|kneipe)`), die Zeit ist auf die Stunde gerundet. Der Bierpass liegt privat unter `bc_users/{uid}/visits`.
 - **Bierpass:** Bierdeckel pro Kneipe, Stammgast-Stufen (Gast → Stammgast → Stammtisch → Inventar), Wochen-Serie.
 - **Brauerei-Cockpit** (Entdecken → Brauerei-Cockpit oder `#brauerei`):
   - Kneipen regiert und Share of Voice.

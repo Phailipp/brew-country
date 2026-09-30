@@ -150,17 +150,17 @@ describe('visit limits', () => {
   const mine = (venueId: string, hoursAgo: number): MyVisit => ({
     id: venueId + hoursAgo, venueId, venueName: venueId, tile: '0_0', beerId: 'augustiner', alcoholFree: false, createdAt: NOW - hoursAgo * 3_600_000,
   });
-  it('allows one visit per venue and day and three per day', () => {
+  it('allows one visit per venue and day and two per day', () => {
     expect(visitBlocker([], 'n1', NOW)).toBeNull();
     expect(visitBlocker([mine('n1', 1)], 'n1', NOW)).toMatch(/schon hier/);
-    expect(visitBlocker([mine('n1', 1), mine('n2', 2), mine('n3', 3)], 'n4', NOW)).toMatch(/Maximal 3/);
+    expect(visitBlocker([mine('n1', 1), mine('n2', 2)], 'n3', NOW)).toMatch(/Maximal 2/);
     expect(visitBlocker([mine('n1', 30)], 'n1', NOW)).toBeNull();
   });
   it('picks the next free slot', () => {
     expect(nextVisitSlot([], NOW)).toBe(0);
     expect(nextVisitSlot([mine('n1', 1)], NOW)).toBe(1);
-    expect(nextVisitSlot([mine('n1', 1)], NOW, (s) => s === 1)).toBe(2);
-    expect(nextVisitSlot([mine('n1', 1), mine('n2', 2), mine('n3', 3)], NOW)).toBe(-1);
+    expect(nextVisitSlot([], NOW, (s) => s === 0)).toBe(1);
+    expect(nextVisitSlot([mine('n1', 1), mine('n2', 2)], NOW)).toBe(-1);
   });
 });
 

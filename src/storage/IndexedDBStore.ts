@@ -179,9 +179,11 @@ export class IndexedDBStore implements StorageInterface {
     const slot = nextVisitSlot(mine, now);
     const id = `${userId}_${Math.floor(now / 86_400_000)}_${slot}`;
     const visit: MyVisit = { id, venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now };
+    // Hash first: a pending non-IndexedDB promise would auto-commit the transaction
+    const player = await venuePlayerId(userId, venue.id);
     await this.db.transaction('rw', this.db.venueVisits, this.db.myVisits, async () => {
       await this.db.venueVisits.put({
-        id, player: await venuePlayerId(userId, venue.id), venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: now,
+        id, player, venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: now,
       });
       await this.db.myVisits.put(visit);
     });

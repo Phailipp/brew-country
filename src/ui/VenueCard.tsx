@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import NumberFlow from '@number-flow/react';
 import type { Venue, MyVisit } from '../domain/venues';
-import { CHECKIN_RADIUS_M, visitBlocker } from '../domain/venues';
+import { CHECKIN_RADIUS_M, MAX_VISITS_PER_DAY, visitBlocker } from '../domain/venues';
 import { INFLUENCE, regularTier, type VenueStanding } from '../domain/influence';
 import { haversineDistanceKm } from '../domain/geo';
 import { acquireGpsSamples } from '../domain/gpsVerify';
@@ -130,7 +130,7 @@ export function VenueCard({ venue, standing, myVisits, playerBeerId, isDemo, onC
         <p className="muted venue-hint">
           {blocker ?? (isDemo
             ? 'Demo: Check-in ohne Standortprüfung.'
-            : `Nur vor Ort (max. ${CHECKIN_RADIUS_M} m) · 1× pro Kneipe und Tag · max. 3 Kneipen am Tag`)}
+            : `Nur vor Ort (max. ${CHECKIN_RADIUS_M} m) · 1× pro Kneipe und Tag · max. ${MAX_VISITS_PER_DAY} Kneipen am Tag`)}
         </p>
       </div>
 

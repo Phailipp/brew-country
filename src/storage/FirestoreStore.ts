@@ -32,7 +32,7 @@ import { CHECKIN_STEPS, PUBLIC_HOME_STEPS, snapToLattice } from '../domain/priva
 import { GAME } from '../config/constants';
 import type { StorageInterface } from './StorageInterface';
 import { MAX_VISITS_PER_DAY, nextVisitSlot, utcDay, visitBlocker, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
-import { visitDocId, venuePlayerId } from '../domain/visitIds';
+import { hourFloor, newVisitSalt, visitDocId, venuePlayerId } from '../domain/visitIds';
 
 const COLLECTIONS = {
   users: 'bc_users',
@@ -312,14 +312,15 @@ export class FirestoreStore implements StorageInterface {
     if (blocked) throw new Error(blocked);
 
     const day = utcDay(now);
-    const pid = await venuePlayerId(userId, venue.id);
+    const salt = await this.visitSalt(userId);
+    const pid = await venuePlayerId(salt, venue.id);
     // Another device may have used a slot already: try the next free one
     for (let slot = nextVisitSlot(mine, now); slot >= 0 && slot < MAX_VISITS_PER_DAY; slot++) {
-      const id = await visitDocId(userId, day, slot);
+      const id = await visitDocId(salt, day, slot);
       const visit: MyVisit = { id, venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now };
       const batch = writeBatch(db);
       batch.set(doc(db, COLLECTIONS.venueVisits, id), {
-        venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: now, pid, day, slot,
+        venueId: venue.id, tile: venue.tile, beerId, alcoholFree, createdAt: hourFloor(now), pid, day, slot,
       });
       batch.set(doc(db, COLLECTIONS.users, userId, 'visits', id), {
         venueId: venue.id, venueName: venue.name, tile: venue.tile, beerId, alcoholFree, createdAt: now,
@@ -332,6 +333,24 @@ export class FirestoreStore implements StorageInterface {
       }
     }
     throw new Error(`Maximal ${MAX_VISITS_PER_DAY} Kneipen pro Tag. Morgen geht’s weiter!`);
+  }
+
+  private saltCache = new Map<string, string>();
+
+  /** The player's secret pseudonym salt (created on first use, never changes). */
+  private async visitSalt(userId: string): Promise<string> {
+    const cached = this.saltCache.get(userId);
+    if (cached) return cached;
+    const db = getFirestoreDb();
+    const ref = doc(db, COLLECTIONS.users, userId);
+    const snap = await getDoc(ref);
+    let salt = snap.exists() ? (snap.data().visitSalt as string | undefined) : undefined;
+    if (!salt) {
+      salt = newVisitSalt();
+      await updateDoc(ref, { visitSalt: salt });
+    }
+    this.saltCache.set(userId, salt);
+    return salt;
   }
 
   async getVenueCheckins(tiles: string[], sinceMs: number): Promise<VenueCheckin[]> {

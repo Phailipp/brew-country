@@ -142,8 +142,8 @@ export interface MyVisit {
   createdAt: number;
 }
 
-/** Max visits per UTC day (enforced by the rules through 3 id slots). */
-export const MAX_VISITS_PER_DAY = 3;
+/** Max visits per UTC day (enforced by the rules through 2 id slots). Quality over quantity. */
+export const MAX_VISITS_PER_DAY = 2;
 /** You have to be this close to a venue to check in. */
 export const CHECKIN_RADIUS_M = 60;
 
