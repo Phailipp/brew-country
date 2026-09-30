@@ -93,7 +93,15 @@ export interface WorkerInput {
   closeMarginMinWeight: number;
 }
 
-export interface WorkerOutput {
+export type WorkerOutput = WorkerResult | WorkerFailure;
+
+export interface WorkerFailure {
+  type: 'error';
+  requestId: number;
+  message: string;
+}
+
+export interface WorkerResult {
   type: 'result';
   requestId: number;
   data: DominanceResult;

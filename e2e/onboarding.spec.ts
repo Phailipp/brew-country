@@ -33,3 +33,13 @@ test('ending the demo returns to the login', async ({ page }) => {
   await page.getByRole('button', { name: 'Demo beenden' }).click();
   await expect(page.getByRole('button', { name: /Demo ansehen/ })).toBeVisible();
 });
+
+test('deleting the demo account wipes local data', async ({ page }) => {
+  await startDemo(page);
+  await tab(page, 'Profil').click();
+  await page.getByRole('button', { name: 'Konto löschen' }).click();
+  await page.getByRole('button', { name: 'Ja, endgültig löschen' }).click();
+  await expect(page.getByRole('button', { name: /Demo ansehen/ })).toBeVisible();
+  const dbs = await page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name));
+  expect(dbs).not.toContain('BrewCountryDB');
+});

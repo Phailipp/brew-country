@@ -12,6 +12,13 @@ interface Props {
   userId: string;
 }
 
+/** "www.brauerei.de" → "https://www.brauerei.de"; empty stays empty. */
+function normalizeWebsite(raw: string): string {
+  const v = raw.trim();
+  if (!v) return '';
+  return (/^https?:\/\//i.test(v) ? v.replace(/^http:/i, 'https:') : `https://${v}`).slice(0, 200);
+}
+
 const EMPTY: BeerSubmissionInput = { name: '', brewery: '', city: '', country: localeCountry() ?? 'DE', website: '', note: '' };
 
 /**
@@ -45,7 +52,7 @@ export function SuggestBeerDialog({ open, onClose, userId }: Props) {
         brewery: form.brewery.trim().slice(0, 80),
         city: form.city.trim().slice(0, 60),
         country: form.country,
-        website: form.website.trim().slice(0, 200),
+        website: normalizeWebsite(form.website),
         note: form.note.trim().slice(0, 300),
       };
       if (!isDemo) await submitBeerSuggestion(userId, clean);

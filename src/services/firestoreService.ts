@@ -23,7 +23,7 @@ import {
 } from 'firebase/firestore';
 import { getFirestoreDb } from '../config/firestore';
 import { getFirebaseAuth } from '../config/firebaseAuth';
-import { deleteUser } from 'firebase/auth';
+import { deleteUser, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { GAME } from '../config/constants';
 import { PUBLIC_HOME_STEPS, snapToLattice } from '../domain/privacy';
 import type { Friendship, ChatMessage, UserPresence } from '../domain/types';
@@ -35,6 +35,19 @@ import type { QuestState, Vote } from '../domain/types';
  * Public user profile stored in Firestore.
  * Contains all fields needed for map dominance + friend display.
  */
+
+/**
+ * Live listeners die silently on permission errors, expired sessions or quota
+ * limits. Report it once so the UI can tell the player the data may be stale.
+ */
+export const SYNC_ERROR_EVENT = 'bc:sync-error';
+function snapshotError(what: string) {
+  return (error: Error) => {
+    console.warn(`[sync] ${what} listener stopped:`, error);
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(SYNC_ERROR_EVENT, { detail: what }));
+  };
+}
+
 export interface FirestoreUserProfile {
   userId: string;
   beerId: string;
@@ -125,7 +138,7 @@ export function subscribeAllUsers(
       // Only include users with valid location
       .filter((u) => u.homeLat !== 0 || u.homeLon !== 0);
     callback(users);
-  });
+  }, snapshotError('users'));
 }
 
 // ── Helpers ──────────────────────────────────────────────
@@ -223,7 +236,7 @@ export function subscribeFriends(
       };
     });
     callback(friendships);
-  });
+  }, snapshotError('friendships'));
 }
 
 // ── Chat ─────────────────────────────────────────────────
@@ -275,7 +288,7 @@ export function subscribeMessages(
       };
     });
     callback(messages);
-  });
+  }, snapshotError('chat'));
 }
 
 // ── Presence ─────────────────────────────────────────────
@@ -313,7 +326,7 @@ export function subscribeOnlineCount(
       }
     });
     callback(count);
-  });
+  }, snapshotError('presence'));
 }
 
 /**
@@ -355,7 +368,7 @@ export function subscribePresenceForUsers(
         });
       });
       callback(new Map(presenceMap));
-    });
+    }, snapshotError('friend presence'));
 
     unsubscribers.push(unsub);
   }
@@ -374,7 +387,7 @@ export function subscribeLegacyVotes(callback: (votes: Vote[]) => void): Unsubsc
   return onSnapshot(q, (snapshot) => {
     const votes = snapshot.docs.map((d) => d.data() as Vote);
     callback(votes);
-  });
+  }, snapshotError('legacy votes'));
 }
 
 export async function saveLegacyVote(vote: Vote): Promise<void> {
@@ -487,6 +500,16 @@ export function subscribeCatalogBeers(callback: (beers: CatalogBeer[]) => void):
  * Throws `auth/requires-recent-login` if the session is too old — the UI
  * then asks the player to sign in again.
  */
+/**
+ * Confirm the password right before deleting. Firebase refuses to delete an
+ * account whose sign-in is old, and we must not end up with half-deleted data.
+ */
+export async function reauthenticate(password: string): Promise<void> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user?.email) throw Object.assign(new Error('no user'), { code: 'auth/no-current-user' });
+  await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+}
+
 export async function deleteMyAccount(uid: string, beerId: string): Promise<void> {
   const db = getFirestoreDb();
   const del = (path: string, id: string) => deleteDoc(doc(db, path, id)).catch(() => {});
@@ -511,6 +534,10 @@ export async function deleteMyAccount(uid: string, beerId: string): Promise<void
     await deleteDoc(doc(db, 'bc_venueVisits', v.id)).catch(() => {});
     await deleteDoc(v.ref).catch(() => {});
   }
+
+  // Own beer suggestions
+  const subs = await getDocs(query(collection(db, 'beerSubmissions'), where('submittedBy', '==', uid)));
+  await Promise.all(subs.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
 
   // Team membership
   await setDoc(doc(db, 'bc_teams', `team_${beerId}`), { memberUserIds: arrayRemove(uid) }, { merge: true }).catch(() => {});

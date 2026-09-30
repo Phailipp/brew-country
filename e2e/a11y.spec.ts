@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { stubNetwork, startDemo, tab } from './helpers';
 
+// Measure the settled UI, not mid-fade frames (half-transparent text fails contrast)
+test.use({ contextOptions: { reducedMotion: 'reduce' } });
+
 const serious = (violations: { impact?: string | null; id: string; nodes: unknown[] }[]) =>
   violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.map((n) => (n as { target: string[] }).target.join(' ')).join(', ')}`);
 

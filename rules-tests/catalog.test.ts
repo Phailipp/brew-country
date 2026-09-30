@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import {
-  addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where,
 } from 'firebase/firestore';
 import { adminDb, anonDb, createEnv, seed, unverifiedDb, userDb } from './helpers';
 
@@ -112,5 +112,16 @@ describe('admin-only & default deny', () => {
     await assertSucceeds(setDoc(doc(userDb(env, 'alice'), 'questStates/alice'), { q: 1 }));
     await assertFails(setDoc(doc(userDb(env, 'alice'), 'questStates/bob'), { q: 1 }));
     await assertFails(getDoc(doc(userDb(env, 'bob'), 'questStates/alice')));
+  });
+});
+
+describe('beerSubmissions: links and withdrawal', () => {
+  it('denies a non-https website', async () => {
+    await assertFails(addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice', { website: 'javascript:alert(1)' })));
+  });
+  it('lets players withdraw their own suggestion, not those of others', async () => {
+    const ref = await addDoc(collection(userDb(env, 'alice'), 'beerSubmissions'), submission('alice'));
+    await assertFails(deleteDoc(doc(userDb(env, 'bob'), 'beerSubmissions', ref.id)));
+    await assertSucceeds(deleteDoc(doc(userDb(env, 'alice'), 'beerSubmissions', ref.id)));
   });
 });

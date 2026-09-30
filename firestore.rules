@@ -324,8 +324,12 @@ service cloud.firestore {
         && incoming().city is string && incoming().city.size() >= 2 && incoming().city.size() <= 60
         && incoming().country is string && incoming().country.matches('^[A-Z]{2}$')
         && incoming().website is string && incoming().website.size() <= 200
-        && incoming().note is string && incoming().note.size() <= 300;
-      allow update, delete: if isAdmin();
+        && incoming().note is string && incoming().note.size() <= 300
+        // only web links (the admin panel renders it as a link)
+        && (incoming().website == '' || incoming().website.matches('^https://.*'));
+      allow update: if isAdmin();
+      // players may withdraw their own suggestions (account deletion)
+      allow delete: if isAdmin() || (signedIn() && existing().submittedBy == request.auth.uid);
     }
 
     // ── dev simulation votes ─────────────────────────────

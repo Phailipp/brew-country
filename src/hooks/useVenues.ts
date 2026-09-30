@@ -39,9 +39,10 @@ export function useVenues(
   const [nonce, setNonce] = useState(0);
   const [now, setNow] = useState(() => Date.now());
 
-  // Clock for decay; a minute is plenty
+  // Clock for decay: 10 % a day means ~0.07 % in 10 minutes. Each tick
+  // recomputes every territory, so it must stay rare.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
+    const id = setInterval(() => setNow(Date.now()), 10 * 60_000);
     return () => clearInterval(id);
   }, []);
 

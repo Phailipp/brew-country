@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties, type ReactNode } from 'react';
 import type {
   Vote, GridSpec, ViewportBounds, Region, SharePayload, WeightedVote, User, Friendship,
-  WorkerInput, WorkerOutput, DrinkVote, CellResult,
+  WorkerInput, WorkerOutput, WorkerResult, DrinkVote, CellResult,
 } from './domain/types';
 import { getDefaultBoundingBox, getViewportGridSpec, cellAt, specStepDeg, haversineDistanceKm } from './domain/geo';
 import { GAME } from './config/constants';
@@ -26,6 +26,7 @@ import { SimulationPanel } from './ui/SimulationPanel';
 import { VenueCard } from './ui/VenueCard';
 import { VENUE_KIND } from './ui/kit/venueKind';
 import { PassportPanel } from './ui/PassportPanel';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import { PubFinder, type LocateResult } from './ui/PubFinder';
 import { LEGACY_FEATURES } from './config/env';
 import { weeklyChallenges } from './domain/weeklyChallenges';
@@ -68,6 +69,8 @@ import {
   subscribeCatalogBeers,
   profileToUser,
   deleteMyAccount,
+  reauthenticate,
+  SYNC_ERROR_EVENT,
   type FirestoreUserProfile,
 } from './services/firestoreService';
 import './App.css';
@@ -138,7 +141,7 @@ type SheetMode =
   | { kind: 'brewery' };
 
 interface DominanceState {
-  result: WorkerOutput;
+  result: WorkerResult;
   /** Grid spec the result belongs to. */
   spec: GridSpec;
 }
@@ -232,10 +235,23 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     return subscribeAllUsers(setRemoteUsers);
   }, [online]);
 
+  // Raw votes only exist for demo/dev simulations
   useEffect(() => {
-    if (!online) return;
+    if (!online || !devTools) return;
     return subscribeLegacyVotes(setVotes);
-  }, [online]);
+  }, [online, devTools]);
+
+  // A live listener died (permissions, expired session, quota): say so once
+  useEffect(() => {
+    let warned = false;
+    const onSyncError = () => {
+      if (warned) return;
+      warned = true;
+      showToast('📡', 'Verbindung zum Server unterbrochen. Lade die App neu, falls Daten fehlen.', 'error');
+    };
+    window.addEventListener(SYNC_ERROR_EVENT, onSyncError);
+    return () => window.removeEventListener(SYNC_ERROR_EVENT, onSyncError);
+  }, [showToast]);
 
   // Approved community beers join the catalogue live
   useEffect(() => {
@@ -284,8 +300,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     return () => clearTimeout(t);
   }, [loadWeightedVotes, user]);
 
-  // Periodic cleanup of expired votes/outcomes
+  // Periodic cleanup of expired legacy votes/outcomes (Firestore TTL does this in production)
   useEffect(() => {
+    if (!LEGACY_FEATURES && online) return;
     const cleanup = () => Promise.all([
       store.removeExpiredOTRVotes(),
       store.removeExpiredDrinkVotes(),
@@ -294,7 +311,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     cleanup();
     const id = setInterval(cleanup, 5 * 60 * 1000);
     return () => clearInterval(id);
-  }, [store]);
+  }, [store, online]);
 
   // ── Venues (pubs, bars, beer gardens from OpenStreetMap)
   const venueState = useVenues(store, user.id, viewportBounds, viewZoom);
@@ -304,8 +321,17 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   useEffect(() => {
     const worker = new Worker(new URL('./workers/dominanceWorker.ts', import.meta.url), { type: 'module' });
     worker.onmessage = (e: MessageEvent<WorkerOutput>) => {
-      if (e.data.type !== 'result' || e.data.requestId !== requestIdRef.current) return; // stale
+      if (e.data.requestId !== requestIdRef.current) return; // stale
+      if (e.data.type === 'error') {
+        console.warn('[territories] computation failed:', e.data.message);
+        setComputing(false);
+        return;
+      }
       setDominance({ result: e.data, spec: e.data.data.gridSpec });
+      setComputing(false);
+    };
+    worker.onerror = (e) => {
+      console.warn('[territories] worker crashed:', e.message);
       setComputing(false);
     };
     workerRef.current = worker;
@@ -928,7 +954,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         contentKey={sheet ? (sheet.kind === 'tab' ? sheet.tab : sheet.kind === 'venue' ? `venue-${sheet.venueId}` : sheet.kind) : 'none'}
         initialSnap={sheet?.kind === 'prost' ? 'full' : 'half'}
       >
-        {sheetBody}
+        <ErrorBoundary variant="panel" resetKey={sheet ? JSON.stringify(sheet) : 'none'}>
+          {sheetBody}
+        </ErrorBoundary>
       </Sheet>
 
       <TabBar
@@ -958,28 +986,40 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   );
 }
 
+/** Demo sandbox + venue cache: close the open connections, then delete. */
+async function deleteLocalData(): Promise<void> {
+  const { default: Dexie } = await import('dexie');
+  await Promise.all(['BrewCountryDB', 'BrewCountryVenues'].map((name) => Dexie.delete(name).catch(() => {})));
+}
+
 function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
   const { logout } = useAuth();
   const { showToast } = useToast();
   const [sound, setSound] = useState(soundEnabled);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [password, setPassword] = useState('');
 
   const deleteAccount = async () => {
     setDeleting(true);
     try {
       if (isDemo) {
-        indexedDB.deleteDatabase('BrewCountryDB');
+        await deleteLocalData();
       } else {
+        // Confirm first, so we never end up with half-deleted data
+        await reauthenticate(password);
         await deleteMyAccount(user.id, user.beerId);
+        await deleteLocalData();
       }
       showToast('👋', 'Dein Konto und alle Daten wurden gelöscht.', 'success');
       logout();
     } catch (e) {
       const code = (e as { code?: string }).code;
-      showToast('⚠️', code === 'auth/requires-recent-login'
-        ? 'Bitte melde dich einmal neu an und lösche dann erneut.'
-        : 'Löschen hat nicht geklappt. Versuch es gleich nochmal.', 'error');
+      showToast('⚠️', code === 'auth/wrong-password' || code === 'auth/invalid-credential'
+        ? 'Das Passwort stimmt nicht.'
+        : code === 'auth/requires-recent-login'
+          ? 'Bitte melde dich einmal neu an und lösche dann erneut.'
+          : 'Löschen hat nicht geklappt. Versuch es gleich nochmal.', 'error');
       setDeleting(false);
     }
   };
@@ -1010,9 +1050,15 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
         </button>
       ) : (
         <div className="card settings-danger" role="alert">
-          <p><strong>Wirklich löschen?</strong> Profil, Check-ins, Flaggen, Freundschaften und Chats werden endgültig entfernt.</p>
+          <p><strong>Wirklich löschen?</strong> Profil, Bierpass, Kneipenbesuche, Freundschaften, Chats und Vorschläge werden endgültig entfernt.</p>
+          {!isDemo && (
+            <label className="field">
+              <span className="field-label">Zur Bestätigung dein Passwort</span>
+              <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </label>
+          )}
           <div className="settings-danger-actions">
-            <button className="btn btn-danger" onClick={deleteAccount} disabled={deleting}>
+            <button className="btn btn-danger" onClick={deleteAccount} disabled={deleting || (!isDemo && password.length === 0)}>
               {deleting ? <><span className="spinner" aria-hidden="true" /> Lösche …</> : 'Ja, endgültig löschen'}
             </button>
             <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>Abbrechen</button>
