@@ -158,6 +158,9 @@
 /* ── Settings */
 .settings-row { display: flex; align-items: center; gap: var(--sp-3); }
 .settings-row .row-title, .settings-row .row-sub { display: block; }
+.settings-row + .settings-row { margin-top: var(--sp-2); }
+.settings-language { flex: none; }
+.settings-language button { padding: 0 var(--sp-3); min-width: 72px; }
 .settings-logout { margin-top: var(--sp-4); }
 .switch {
   flex: none;

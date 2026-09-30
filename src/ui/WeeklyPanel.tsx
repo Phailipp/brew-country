@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { MyVisit } from '../domain/venues';
 import { weeklyChallenges, weekStart } from '../domain/weeklyChallenges';
+import { t } from '../i18n';
 import './QuestsPanel.css';
 
 interface Props {
@@ -17,17 +18,19 @@ export function WeeklyPanel({ visits }: Props) {
   return (
     <section className="section quests" aria-labelledby="weekly-title">
       <h2 className="section-title" id="weekly-title">
-        Diese Woche <small>{done}/{challenges.length} · noch {daysLeft} {daysLeft === 1 ? 'Tag' : 'Tage'}</small>
+        {t('weekly.title')} <small>{done}/{challenges.length} · {t('weekly.daysLeft', { count: daysLeft })}</small>
       </h2>
-      <ul className="quests-list stagger" aria-label="Wochen-Challenges">
-        {challenges.map((c) => (
+      <ul className="quests-list stagger" aria-label={t('weekly.listLabel')}>
+        {challenges.map((c) => {
+          const title = t(`weekly.challenge.${c.id}.title`);
+          return (
           <li key={c.id} className={`card quest${c.done ? ' done' : ''}`}>
             <span className="quest-tile" aria-hidden="true">{c.icon}</span>
             <div className="quest-body">
               <div className="quest-head">
-                <h3 className="quest-title">{c.title}</h3>
+                <h3 className="quest-title">{title}</h3>
                 {c.done ? (
-                  <span className="quest-check" role="img" aria-label="Erledigt">
+                  <span className="quest-check" role="img" aria-label={t('common.completed')}>
                     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -36,16 +39,17 @@ export function WeeklyPanel({ visits }: Props) {
                   <span className="quest-count num">{c.progress}/{c.target}</span>
                 )}
               </div>
-              <p className="quest-desc">{c.description}</p>
+              <p className="quest-desc">{t(`weekly.challenge.${c.id}.description`, { target: c.target })}</p>
               {!c.done && (
-                <div className="bar quest-bar" role="progressbar" aria-label={`Fortschritt ${c.title}`}
+                <div className="bar quest-bar" role="progressbar" aria-label={t('common.progressOf', { title })}
                   aria-valuemin={0} aria-valuemax={c.target} aria-valuenow={c.progress}>
                   <span style={{ width: `${(c.progress / c.target) * 100}%` }} />
                 </div>
               )}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );

@@ -13,7 +13,20 @@ import { appEvents } from '../domain/events';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
 import { clink, primeAudio } from './kit/sound';
+import { t } from '../i18n';
+import type { ValidationResult } from '../domain/drinkVoteRules';
 import './ProstPanel.css';
+
+function validationMessage(r: ValidationResult): string {
+  const p = r.params ?? {};
+  switch (r.errorCode) {
+    case 'gps_accuracy': return t('prost.errGps', p);
+    case 'cooldown': return t('prost.errCooldown', p);
+    case 'same_place_beer': return t('prost.errSamePlace', p);
+    case 'daily_cap': return t('prost.errDailyCap', p);
+    default: return t('prost.errFallback');
+  }
+}
 
 interface Props {
   user: User;
@@ -65,7 +78,7 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
       const existing = await store.getDrinkVotes(user.id);
       const result = validateDrinkVote(existing, placeKey, beerId, accuracyM);
       if (!result.ok) {
-        setError(result.error ?? 'Check-in gerade nicht möglich.');
+        setError(validationMessage(result));
         haptic('medium');
         return;
       }
@@ -93,8 +106,8 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
     } catch (err) {
       setError(
         typeof GeolocationPositionError !== 'undefined' && err instanceof GeolocationPositionError
-          ? 'Wir konnten deinen Standort nicht bestätigen. Erlaube den Standortzugriff und versuch es nochmal.'
-          : 'Da ist was schiefgelaufen. Versuch es gleich nochmal.',
+          ? t('prost.errLocation')
+          : t('prost.errGeneric'),
       );
       haptic('medium');
     } finally {
@@ -118,15 +131,13 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
         >
           <span className="prost-venue-icon" aria-hidden="true">{finding ? <span className="spinner" /> : '📍'}</span>
           <span className="prost-venue-text">
-            <strong>In einer Kneipe?</strong>
-            <span>Check dort ein und hol sie für dein Bier. Das zählt 30 Tage.</span>
+            <strong>{t('prost.inPub')}</strong>
+            <span>{t('prost.inPubText')}</span>
           </span>
           <span className="prost-venue-go" aria-hidden="true">›</span>
         </button>
       )}
-      <p className="prost-lede">
-        Was trinkst du gerade? Dein Check-in färbt die Umgebung für 24&nbsp;Stunden in deiner Bierfarbe.
-      </p>
+      <p className="prost-lede">{t('prost.lede')}</p>
 
       <BeerPicker
         value={beerId}
@@ -135,7 +146,7 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
         pinned={[user.beerId]}
         country={nearestCity(user.homeLat, user.homeLon).country}
         disabled={busy}
-        label="Bier wählen"
+        label={t('prost.pickerLabel')}
         onSuggest={() => setSuggestOpen(true)}
       />
       <SuggestBeerDialog open={suggestOpen} onClose={() => setSuggestOpen(false)} userId={user.id} />
@@ -149,12 +160,12 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
         {busy ? (
           <>
             <span className="prost-radar" aria-hidden="true"><span /><span /></span>
-            {phase === 'locating' ? 'Standort wird bestätigt…' : 'Check-in läuft…'}
+            {phase === 'locating' ? t('prost.locating') : t('prost.saving')}
           </>
         ) : capReached ? (
-          'Für heute ist Schluss – morgen geht’s weiter'
+          t('prost.capReached')
         ) : (
-          <>Prost mit {beerName(beerId)}!</>
+          t('prost.go', { beer: beerName(beerId) })
         )}
       </button>
 
@@ -163,8 +174,8 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
           <p className="prost-error" role="alert">{error}</p>
         ) : (
           <div className="prost-meter">
-            <span className="muted">Check-ins heute</span>
-            <span className="prost-dots" role="img" aria-label={`${dailyCount} von ${GAME.DRINK_DAILY_CAP}`}>
+            <span className="muted">{t('prost.today')}</span>
+            <span className="prost-dots" role="img" aria-label={t('prost.dots', { count: dailyCount, max: GAME.DRINK_DAILY_CAP })}>
               {Array.from({ length: GAME.DRINK_DAILY_CAP }, (_, i) => (
                 <span key={i} className={i < dailyCount ? 'on' : ''} />
               ))}
@@ -174,9 +185,9 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation, onFindVenue
       </div>
 
       <ul className="prost-rules">
-        <li><span aria-hidden="true">📍</span> Nur vor Ort – wir prüfen dein GPS.</li>
-        <li><span aria-hidden="true">⏱️</span> Wirkt 24 Stunden im Umkreis von {GAME.DRINK_RADIUS_KM}&nbsp;km.</li>
-        <li><span aria-hidden="true">🧡</span> Genieß verantwortungsvoll – es zählt der Check-in, nicht die Menge.</li>
+        <li><span aria-hidden="true">📍</span> {t('prost.ruleLocal')}</li>
+        <li><span aria-hidden="true">⏱️</span> {t('prost.ruleDuration', { km: GAME.DRINK_RADIUS_KM })}</li>
+        <li><span aria-hidden="true">🧡</span> {t('prost.ruleResponsible')}</li>
       </ul>
     </div>
   );

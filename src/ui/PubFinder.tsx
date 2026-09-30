@@ -5,6 +5,7 @@ import { BeerBadge } from './kit/BeerBadge';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
 import { VENUE_KIND } from './kit/venueKind';
+import { t, tr } from '../i18n';
 import './PubFinder.css';
 
 export interface NearbyVenue {
@@ -50,7 +51,7 @@ export function PubFinder({ locate, standings, onOpen }: Props) {
     return (
       <div className="finder">
         <div className="finder-radar" aria-hidden="true"><span /><span /><span /></div>
-        <p className="finder-status" role="status">Wir suchen Kneipen um dich herum…</p>
+        <p className="finder-status" role="status">{t('finder.searching')}</p>
       </div>
     );
   }
@@ -61,14 +62,12 @@ export function PubFinder({ locate, standings, onOpen }: Props) {
       <div className="empty">
         <span className="empty-icon" aria-hidden="true">{result.reason === 'no-location' ? '📍' : '📡'}</span>
         <span className="empty-title">
-          {result.reason === 'no-location' ? 'Standort nicht verfügbar' : 'Kneipen gerade nicht erreichbar'}
+          {result.reason === 'no-location' ? t('finder.noLocationTitle') : t('finder.networkTitle')}
         </span>
         <span>
-          {result.reason === 'no-location'
-            ? 'Erlaube den Standortzugriff in den Einstellungen. Einchecken geht nur vor Ort.'
-            : 'Die Kneipendaten kommen von OpenStreetMap. Versuch es gleich noch einmal.'}
+          {result.reason === 'no-location' ? t('finder.noLocationText') : t('finder.networkText')}
         </span>
-        <button className="btn btn-primary" onClick={run}>Nochmal suchen</button>
+        <button className="btn btn-primary" onClick={run}>{t('finder.retry')}</button>
       </div>
     );
   }
@@ -77,21 +76,19 @@ export function PubFinder({ locate, standings, onOpen }: Props) {
     return (
       <div className="empty">
         <span className="empty-icon" aria-hidden="true">🍺</span>
-        <span className="empty-title">Keine Kneipe in Reichweite</span>
+        <span className="empty-title">{t('finder.noneTitle')}</span>
         <span>
-          Einchecken geht nur direkt vor Ort. Fehlt deine Kneipe? Trag sie auf{' '}
-          <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer">openstreetmap.org</a> ein,
-          dann taucht sie hier auf.
+          {tr('finder.noneText', { osm: <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer">openstreetmap.org</a> })}
         </span>
-        <button className="btn btn-secondary" onClick={run}>Nochmal suchen</button>
+        <button className="btn btn-secondary" onClick={run}>{t('finder.retry')}</button>
       </div>
     );
   }
 
   return (
     <div className="finder">
-      <p className="finder-lede">In welcher Kneipe bist du?</p>
-      <ul className="finder-list" aria-label="Kneipen in deiner Nähe">
+      <p className="finder-lede">{t('finder.lede')}</p>
+      <ul className="finder-list" aria-label={t('finder.listLabel')}>
         {result.nearby.map(({ venue, distance }) => {
           const owner = standings.get(venue.id)?.ownerBeerId ?? null;
           return (
@@ -101,7 +98,7 @@ export function PubFinder({ locate, standings, onOpen }: Props) {
                 <span className="finder-main">
                   <span className="finder-name">{venue.name}</span>
                   <span className="finder-sub">
-                    {Math.round(distance)} m · {owner ? `${beerName(owner)} regiert` : 'noch frei'}
+                    {t('finder.distance', { distance: Math.round(distance) })} · {owner ? t('finder.rules', { beer: beerName(owner) }) : t('finder.free')}
                   </span>
                 </span>
                 {owner && <BeerBadge beerId={owner} size="sm" />}
@@ -111,7 +108,7 @@ export function PubFinder({ locate, standings, onOpen }: Props) {
           );
         })}
       </ul>
-      <p className="muted finder-hint">Trink verantwortungsvoll. Alkoholfrei zählt genauso.</p>
+      <p className="muted finder-hint">{t('finder.hint')}</p>
     </div>
   );
 }

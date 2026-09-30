@@ -288,10 +288,9 @@ export type AppEvent =
   | { type: 'chat:message'; message: ChatMessage; friendshipId: string };
 
 // ── Quests ───────────────────────────────────────────────
+/** A quest; the UI names it by `id`. */
 export interface QuestDefinition {
   id: string;
-  title: string;
-  description: string;
   icon: string;
   targetCount: number;
 }
@@ -311,11 +310,15 @@ export interface QuestState {
 // ── Feed ─────────────────────────────────────────────────
 export type FeedItemType = 'battlefront' | 'flip-watch' | 'trending';
 
+/**
+ * A hotspot for the explore feed. The UI builds the texts from `type`,
+ * the beers and `stats` (battlefront: marginPct; flip-watch: recent, against;
+ * trending: votes).
+ */
 export interface FeedItem {
   id: string;
   type: FeedItemType;
-  title: string;
-  subtitle: string;
+  stats: { marginPct?: number; recent?: number; against?: number; votes?: number };
   beerId: string | null;
   secondaryBeerId: string | null;
   lat: number;

@@ -43,29 +43,63 @@ export async function stubNetwork(page: Page, opts: { overpass?: 'ok' | 'error' 
   return { overpassCalls: () => calls };
 }
 
-/** Walk through the demo onboarding (manual coordinates, default beer). */
-export async function startDemo(page: Page, opts: { beer?: string } = {}): Promise<void> {
+/** UI labels the demo onboarding clicks through, per app language. */
+export const DEMO_LABELS = {
+  de: {
+    demo: /Demo ansehen/,
+    birthdate: 'Geburtsdatum',
+    next: 'Weiter',
+    manual: /Koordinaten selbst eingeben/,
+    lat: 'Breitengrad',
+    lon: 'Längengrad',
+    useLocation: /Diesen Standort nehmen/,
+    searchBeer: 'Bier suchen',
+    continueWith: /Weiter mit/,
+    go: /Los geht/,
+    flyHome: /Zu deinem Revier fliegen/,
+  },
+  en: {
+    demo: /Try the demo/,
+    birthdate: 'Date of birth',
+    next: 'Next',
+    manual: /Enter coordinates manually/,
+    lat: 'Latitude',
+    lon: 'Longitude',
+    useLocation: /Use this location/,
+    searchBeer: 'Search beers',
+    continueWith: /Continue with/,
+    go: /Let.s go/,
+    flyHome: /Fly to your turf/,
+  },
+} as const;
+
+/**
+ * Walk through the demo onboarding (manual coordinates, default beer).
+ * `lang` must match the language the app starts in (browser locale).
+ */
+export async function startDemo(page: Page, opts: { beer?: string; lang?: keyof typeof DEMO_LABELS } = {}): Promise<void> {
+  const l = DEMO_LABELS[opts.lang ?? 'de'];
   await page.goto('./');
-  await page.getByRole('button', { name: /Demo ansehen/ }).click();
+  await page.getByRole('button', { name: l.demo }).click();
   // The onboarding may re-mount once while auth settles: make sure the value sticks
-  const birthdate = page.getByLabel('Geburtsdatum');
+  const birthdate = page.getByLabel(l.birthdate);
   await expect(async () => {
     await birthdate.fill('1990-05-17');
     await expect(birthdate).toHaveValue('1990-05-17', { timeout: 1000 });
   }).toPass({ timeout: 15_000 });
   await page.locator('.ob-check .ob-check-box').click();
-  await page.getByRole('button', { name: 'Weiter', exact: true }).click();
-  await page.getByRole('button', { name: /Koordinaten selbst eingeben/ }).click();
-  await page.getByLabel('Breitengrad').fill(String(MARIENPLATZ.lat));
-  await page.getByLabel('Längengrad').fill(String(MARIENPLATZ.lon));
-  await page.getByRole('button', { name: /Diesen Standort nehmen/ }).click();
+  await page.getByRole('button', { name: l.next, exact: true }).click();
+  await page.getByRole('button', { name: l.manual }).click();
+  await page.getByLabel(l.lat).fill(String(MARIENPLATZ.lat));
+  await page.getByLabel(l.lon).fill(String(MARIENPLATZ.lon));
+  await page.getByRole('button', { name: l.useLocation }).click();
   if (opts.beer) {
-    await page.getByLabel('Bier suchen').fill(opts.beer);
+    await page.getByLabel(l.searchBeer).fill(opts.beer);
     await page.getByRole('radio', { name: new RegExp(opts.beer) }).first().click();
   }
-  await page.getByRole('button', { name: /Weiter mit/ }).click();
-  await page.getByRole('button', { name: /Los geht/ }).click();
-  await expect(page.getByRole('button', { name: /Zu deinem Revier fliegen/ })).toBeVisible();
+  await page.getByRole('button', { name: l.continueWith }).click();
+  await page.getByRole('button', { name: l.go }).click();
+  await expect(page.getByRole('button', { name: l.flyHome })).toBeVisible();
   await page.waitForFunction(() => !!(window as unknown as { __bcMap?: unknown }).__bcMap);
 }
 

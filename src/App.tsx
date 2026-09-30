@@ -24,7 +24,7 @@ import { TerritoryCard } from './ui/TerritoryCard';
 import { Leaderboard, type LeaderboardEntry } from './ui/Leaderboard';
 import { SimulationPanel } from './ui/SimulationPanel';
 import { VenueCard } from './ui/VenueCard';
-import { VENUE_KIND } from './ui/kit/venueKind';
+import { venueKindLabel } from './ui/kit/venueKind';
 import { PassportPanel } from './ui/PassportPanel';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { LegalLinks } from './legal/LegalPage';
@@ -60,6 +60,8 @@ import { useFeed } from './hooks/useFeed';
 import { usePresence } from './hooks/usePresence';
 import { useChatNotifications } from './hooks/useChatNotifications';
 import { isFirebaseConfigured } from './config/firebase';
+import { t, useLocale, setLocale, percentSuffix, intlLocale, LOCALES, LOCALE_NAMES, type Key } from './i18n';
+import { INFLUENCE } from './domain/influence';
 import {
   clearLegacyVotes,
   saveLegacyVote,
@@ -100,13 +102,15 @@ interface AppProps {
 
 export default function App({ store }: AppProps) {
   const { auth, updateUser, updateLastActive } = useAuth();
+  // Re-render the whole app when the language changes
+  useLocale();
 
   if (auth.status === 'loading') {
     return (
       <div className="boot-screen" aria-live="polite">
         <img src="./favicon.svg" alt="" width="72" height="72" className="boot-logo" />
-        <p className="boot-title">Brew Country</p>
-        <span className="spinner" role="status" aria-label="Lädt" />
+        <p className="boot-title">{t('common.brand')}</p>
+        <span className="spinner" role="status" aria-label={t('common.loading')} />
       </div>
     );
   }
@@ -148,11 +152,11 @@ interface DominanceState {
   spec: GridSpec;
 }
 
-const SHEET_TITLES: Record<TabId, string> = {
-  explore: 'Entdecken',
-  crew: 'Deine Crew',
-  quests: 'Quests',
-  profile: 'Profil',
+const SHEET_TITLES: Record<TabId, Key> = {
+  explore: 'sheet.explore',
+  crew: 'sheet.crew',
+  quests: 'sheet.quests',
+  profile: 'sheet.profile',
 };
 
 function winnerAt(state: DominanceState | null, lat: number, lon: number): CellResult | null {
@@ -249,7 +253,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     const onSyncError = () => {
       if (warned) return;
       warned = true;
-      showToast('📡', 'Verbindung zum Server unterbrochen. Lade die App neu, falls Daten fehlen.', 'error');
+      showToast('📡', t('toast.syncLost'), 'error');
     };
     window.addEventListener(SYNC_ERROR_EVENT, onSyncError);
     return () => window.removeEventListener(SYNC_ERROR_EVENT, onSyncError);
@@ -379,10 +383,10 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       setCelebration({
         id: Date.now(),
         beerId: pending.beerId,
-        title: 'Erobert!',
+        title: t('celebrate.conquered'),
         subtitle: pending.prevWinner
-          ? `${beerName(pending.beerId)} hat ${beerName(pending.prevWinner)} hier verdrängt.`
-          : `${beerName(pending.beerId)} hat hier jetzt das Sagen.`,
+          ? t('celebrate.conqueredFrom', { beer: beerName(pending.beerId), prev: beerName(pending.prevWinner) })
+          : t('celebrate.conqueredFree', { beer: beerName(pending.beerId) }),
         epic: true,
       });
     }
@@ -602,8 +606,8 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     setCelebration({
       id: Date.now(),
       beerId: vote.beerId,
-      title: 'Prost!',
-      subtitle: `Dein Check-in für ${beerName(vote.beerId)} zählt jetzt 24 Stunden.`,
+      title: t('celebrate.prost'),
+      subtitle: t('celebrate.drinkCheckIn', { beer: beerName(vote.beerId) }),
     });
     loadWeightedVotes().catch(() => {});
   }, [dominance, loadWeightedVotes]);
@@ -620,23 +624,23 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       setCelebration({
         id: Date.now(),
         beerId,
-        title: 'Übernommen!',
+        title: t('celebrate.takenOver'),
         subtitle: before.ownerBeerId
-          ? `${v.name} schenkt jetzt ${beerName(beerId)} aus. ${beerName(before.ownerBeerId)} ist raus.`
-          : `${v.name} gehört jetzt ${beerName(beerId)}.`,
+          ? t('celebrate.takeoverFrom', { venue: v.name, beer: beerName(beerId), prev: beerName(before.ownerBeerId) })
+          : t('celebrate.takeoverFree', { venue: v.name, beer: beerName(beerId) }),
         epic: true,
       });
     } else {
       const flip = after.ownerBeerId !== beerId && after.challengerBeerId === beerId && after.toFlip > 0
-        ? ` Noch ${pointsLabel(after.toFlip)} bis zur Übernahme.`
+        ? ` ${t('celebrate.toFlip', { points: pointsLabel(after.toFlip) })}`
         : '';
       setCelebration({
         id: Date.now(),
         beerId,
-        title: 'Prost!',
+        title: t('celebrate.prost'),
         subtitle: after.ownerBeerId === beerId
-          ? `Du verteidigst ${v.name} für ${beerName(beerId)}.`
-          : `+3 für ${beerName(beerId)} im ${v.name}.${flip}`,
+          ? t('celebrate.defend', { venue: v.name, beer: beerName(beerId) })
+          : t('celebrate.visit', { points: INFLUENCE.VISIT, beer: beerName(beerId), venue: v.name }) + flip,
       });
     }
   }, [selectedVenue, venueCheckIn]);
@@ -676,7 +680,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   const findVenueHere = useCallback(async () => {
     const r = await locateNearby();
     if (!r.ok || r.nearby.length === 0) {
-      showToast('🍺', 'Keine Kneipe in deiner Nähe gefunden.');
+      showToast('🍺', t('toast.noPubNearby'));
       return;
     }
     openVenue(r.nearby[0].venue);
@@ -689,7 +693,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     const inView = venueState.venues.filter((v) => !bounds
       || (v.lat >= bounds.south && v.lat <= bounds.north && v.lon >= bounds.west && v.lon <= bounds.east));
     if (inView.length === 0) {
-      showToast('🔍', `Zoom näher ran (bis Straßen sichtbar sind), dann laden die Kneipen.`);
+      showToast('🔍', t('toast.zoomCloser'));
       return;
     }
     const country = nearestCity(mapCenterRef.current.lat, mapCenterRef.current.lon).country;
@@ -717,7 +721,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     const demoStore = store as StorageInterface & { simulateVenueCrowd?: (v: VenueCheckin[]) => Promise<void> };
     await demoStore.simulateVenueCrowd?.(visits).catch(() => {});
     addCheckins(visits);
-    showToast('🍻', `${visits.length} Besuche in ${inView.length} Kneipen simuliert.`);
+    showToast('🍻', t('toast.simulated', { visits: visits.length, venues: inView.length }));
   }, [devTools, viewportBounds, venueState.venues, store, addCheckins, showToast]);
 
   const endCelebration = useCallback(() => setCelebration(null), []);
@@ -731,7 +735,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   let sheetTitle: string = '';
   let sheetBody: ReactNode = null;
   if (sheet?.kind === 'prost') {
-    sheetTitle = 'Prost! Einchecken';
+    sheetTitle = t('sheet.prost');
     sheetBody = !LEGACY_FEATURES ? (
       <PubFinder locate={locateNearby} standings={venueState.standings} onOpen={openVenue} />
     ) : (
@@ -745,7 +749,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     );
   } else if (sheet?.kind === 'venue') {
     const standing = selectedVenue ? venueState.standings.get(selectedVenue.id) : undefined;
-    sheetTitle = selectedVenue ? VENUE_KIND[selectedVenue.kind].label : 'Kneipe';
+    sheetTitle = selectedVenue ? venueKindLabel(selectedVenue.kind) : t('sheet.venue');
     sheetBody = selectedVenue && standing ? (
       <VenueCard
         key={selectedVenue.id}
@@ -757,10 +761,10 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         onCheckIn={handleVenueCheckIn}
       />
     ) : (
-      <div className="empty"><span className="spinner" /> Lädt…</div>
+      <div className="empty"><span className="spinner" /> {t('common.loadingDots')}</div>
     );
   } else if (sheet?.kind === 'brewery') {
-    sheetTitle = 'Für Brauereien';
+    sheetTitle = t('sheet.brewery');
     sheetBody = (
       <BreweryCockpit
         initialBeerId={user.beerId}
@@ -770,7 +774,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       />
     );
   } else if (sheet?.kind === 'territory') {
-    sheetTitle = selected.cell?.winnerBeerId ? 'Territorium' : 'Freies Land';
+    sheetTitle = selected.cell?.winnerBeerId ? t('sheet.territory') : t('sheet.freeLand');
     sheetBody = (
       <TerritoryCard
         cell={selected.cell}
@@ -783,7 +787,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       />
     );
   } else if (sheet?.kind === 'tab') {
-    sheetTitle = SHEET_TITLES[sheet.tab];
+    sheetTitle = t(SHEET_TITLES[sheet.tab]);
     switch (sheet.tab) {
       case 'explore':
         sheetBody = (
@@ -791,8 +795,8 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
             <button className="card cockpit-entry" onClick={() => setSheet({ kind: 'brewery' })}>
               <span className="cockpit-entry-icon" aria-hidden="true">🏭</span>
               <span className="cockpit-entry-text">
-                <strong>Brauerei-Cockpit</strong>
-                <span>Wo regiert welche Marke? Welche Kneipen kippen gerade?</span>
+                <strong>{t('explore.cockpitTitle')}</strong>
+                <span>{t('explore.cockpitSub')}</span>
               </span>
               <span className="cockpit-entry-go" aria-hidden="true">›</span>
             </button>
@@ -819,8 +823,8 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
           <>
             <div className="empty">
               <span className="empty-icon" aria-hidden="true">🍻</span>
-              <span className="empty-title">Crew gibt’s mit Konto</span>
-              <span>In der Demo spielst du allein. Mit Konto siehst du Freunde auf der Karte und chattest mit ihnen.</span>
+              <span className="empty-title">{t('explore.crewDemoTitle')}</span>
+              <span>{t('explore.crewDemoText')}</span>
             </div>
             {LEGACY_FEATURES && <TeamPanel user={user} store={store} />}
           </>
@@ -868,9 +872,9 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   // Small status pill: where are the pubs?
   let venueHint: ReactNode = null;
-  if (venueState.status === 'loading') venueHint = <><span className="spinner" /> Kneipen laden…</>;
-  else if (venueState.status === 'error') venueHint = <>Kneipen nicht erreichbar · <button onClick={venueState.reload}>Nochmal</button></>;
-  else if (venueState.status === 'zoom' && viewZoom >= VENUE_MIN_ZOOM - 2.5) venueHint = <>🍺 Näher ranzoomen: Kneipen erscheinen</>;
+  if (venueState.status === 'loading') venueHint = <><span className="spinner" /> {t('map.pubsLoading')}</>;
+  else if (venueState.status === 'error') venueHint = <>{t('map.pubsError')} · <button onClick={venueState.reload}>{t('common.again')}</button></>;
+  else if (venueState.status === 'zoom' && viewZoom >= VENUE_MIN_ZOOM - 2.5) venueHint = <>{t('map.zoomHint')}</>;
 
   const homeShare = homeCell && homeCell.totalCount > 0 && homeCell.winnerBeerId
     ? Math.round((homeCell.winnerCount / homeCell.totalCount) * 100)
@@ -899,41 +903,41 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         <button
           className="status-chip glass"
           onClick={() => mapRef.current?.flyTo(user.homeLat, user.homeLon, 12)}
-          aria-label="Zu deinem Revier fliegen"
+          aria-label={t('map.flyHome')}
         >
           <BeerBadge beerId={homeCell?.winnerBeerId ?? user.beerId} size="sm" />
-          {isDemo && <span className="status-chip-demo">Demo</span>}
+          {isDemo && <span className="status-chip-demo">{t('common.demo')}</span>}
           <span className="status-chip-text">
             <span className="status-chip-label">
-              Dein Revier
+              {t('map.yourTurf')}
               {homeCell?.winnerBeerId && homeCell.winnerBeerId !== user.beerId && (
-                <span className="status-chip-alert"> · bedroht</span>
+                <span className="status-chip-alert">{t('map.threatened')}</span>
               )}
             </span>
             <span className="status-chip-value">
               {homeCell?.winnerBeerId
                 ? <>{beerName(homeCell.winnerBeerId)}{homeShare !== null && (
-                  <span className="num status-chip-pct"> · <NumberFlow value={homeShare} suffix=" %" /></span>
+                  <span className="num status-chip-pct"> · <NumberFlow value={homeShare} locales={intlLocale()} suffix={percentSuffix()} /></span>
                 )}</>
-                : dominance ? 'Nicht im Bild · antippen' : 'Wird berechnet…'}
+                : dominance ? t('map.notInView') : t('map.computing')}
             </span>
           </span>
         </button>
 
         <div className="map-controls">
           {online && onlineCount > 0 && (
-            <span className="online-pill glass" role="status" aria-label={`${onlineCount} Spieler online`}>
+            <span className="online-pill glass" role="status" aria-label={t('map.playersOnline', { count: onlineCount })}>
               <span className="online-dot" /> <span className="num">{onlineCount}</span>
             </span>
           )}
-          {computing && <span className="computing glass" role="status" aria-label="Karte wird berechnet"><span className="spinner" aria-hidden="true" /></span>}
-          <button className="icon-btn glass" onClick={toggle3d} aria-pressed={is3d} aria-label="3D-Ansicht umschalten">
+          {computing && <span className="computing glass" role="status" aria-label={t('map.computingMap')}><span className="spinner" aria-hidden="true" /></span>}
+          <button className="icon-btn glass" onClick={toggle3d} aria-pressed={is3d} aria-label={t('map.toggle3d')}>
             <span className="ctrl-3d">{is3d ? '2D' : '3D'}</span>
           </button>
           <button
             className="icon-btn glass"
             onClick={() => mapRef.current?.flyTo(user.homeLat, user.homeLon, 12)}
-            aria-label="Zu deinem Zuhause"
+            aria-label={t('map.goHome')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" fill="currentColor" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
@@ -971,7 +975,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
       />
 
       {chatTarget && (
-        <div className="chat-screen" role="dialog" aria-modal="true" aria-label="Chat">
+        <div className="chat-screen" role="dialog" aria-modal="true" aria-label={t('map.chat')}>
           <ChatPanel
             user={user}
             friendshipId={chatTarget.friendshipId}
@@ -1001,6 +1005,7 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [password, setPassword] = useState('');
+  const locale = useLocale();
 
   const deleteAccount = async () => {
     setDeleting(true);
@@ -1013,30 +1018,49 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
         await deleteMyAccount(user.id);
         await deleteLocalData();
       }
-      showToast('👋', 'Dein Konto und alle Daten wurden gelöscht.', 'success');
+      showToast('👋', t('profile.deleted'), 'success');
       logout();
     } catch (e) {
       const code = (e as { code?: string }).code;
       showToast('⚠️', code === 'auth/wrong-password' || code === 'auth/invalid-credential'
-        ? 'Das Passwort stimmt nicht.'
+        ? t('profile.wrongPassword')
         : code === 'auth/requires-recent-login'
-          ? 'Bitte melde dich einmal neu an und lösche dann erneut.'
-          : 'Löschen hat nicht geklappt. Versuch es gleich nochmal.', 'error');
+          ? t('profile.recentLogin')
+          : t('profile.deleteFailed'), 'error');
       setDeleting(false);
     }
   };
   return (
     <section className="section">
-      <h2 className="section-title">Einstellungen</h2>
+      <h2 className="section-title">{t('profile.settings')}</h2>
       <div className="card settings-row">
         <span className="row-main">
-          <span className="row-title">Sounds</span>
-          <span className="row-sub">Anstoßen beim Check-in, Fanfare bei Eroberungen</span>
+          <span className="row-title" id="settings-language">{t('profile.language')}</span>
+          <span className="row-sub">{t('profile.languageSub')}</span>
+        </span>
+        <div className="segmented settings-language" role="group" aria-labelledby="settings-language">
+          {LOCALES.map((l) => (
+            <button
+              key={l}
+              type="button"
+              lang={l}
+              aria-pressed={locale === l}
+              onClick={() => { if (l !== locale) { setLocale(l); haptic('light'); } }}
+            >
+              {LOCALE_NAMES[l]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="card settings-row">
+        <span className="row-main">
+          <span className="row-title">{t('profile.sounds')}</span>
+          <span className="row-sub">{t('profile.soundsSub')}</span>
         </span>
         <button
           role="switch"
           aria-checked={sound}
-          aria-label="Sounds"
+          aria-label={t('profile.sounds')}
           className={`switch${sound ? ' on' : ''}`}
           onClick={() => { setSound(!sound); setSoundEnabled(!sound); haptic('light'); }}
         >
@@ -1044,30 +1068,30 @@ function LogoutSection({ isDemo, user }: { isDemo: boolean; user: User }) {
         </button>
       </div>
       <p className="muted settings-responsible">
-        Trink verantwortungsvoll und fahr nicht nach dem Bier. Hilfe und Infos:{' '}
+        {t('profile.responsible')}{' '}
         <a href={RESPONSIBLE_DRINKING_URL} target="_blank" rel="noopener noreferrer">kenn-dein-limit.de</a>
       </p>
       <button className="btn btn-secondary btn-block settings-logout" onClick={logout}>
-        {isDemo ? 'Demo beenden' : 'Abmelden'}
+        {isDemo ? t('profile.endDemo') : t('profile.logout')}
       </button>
       {!confirmDelete ? (
         <button className="btn btn-ghost btn-block settings-delete" onClick={() => setConfirmDelete(true)}>
-          Konto löschen
+          {t('profile.deleteAccount')}
         </button>
       ) : (
         <div className="card settings-danger" role="alert">
-          <p><strong>Wirklich löschen?</strong> Profil, Bierpass, Kneipenbesuche, Freundschaften, Chats und Vorschläge werden endgültig entfernt.</p>
+          <p><strong>{t('profile.deleteQuestion')}</strong> {t('profile.deleteText')}</p>
           {!isDemo && (
             <label className="field">
-              <span className="field-label">Zur Bestätigung dein Passwort</span>
+              <span className="field-label">{t('profile.passwordConfirm')}</span>
               <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
           )}
           <div className="settings-danger-actions">
             <button className="btn btn-danger" onClick={deleteAccount} disabled={deleting || (!isDemo && password.length === 0)}>
-              {deleting ? <><span className="spinner" aria-hidden="true" /> Lösche …</> : 'Ja, endgültig löschen'}
+              {deleting ? <><span className="spinner" aria-hidden="true" /> {t('profile.deleting')}</> : t('profile.deleteYes')}
             </button>
-            <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>Abbrechen</button>
+            <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t('common.cancel')}</button>
           </div>
         </div>
       )}

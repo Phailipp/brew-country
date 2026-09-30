@@ -5,6 +5,7 @@ import { evaluateEvent } from '../domain/questEngine';
 import { getQuestStateForUser, saveQuestStateForUser } from '../services/firestoreService';
 import { appEvents } from '../domain/events';
 import { useToast } from '../ui/toastContext';
+import { t, type Key } from '../i18n';
 
 export function useQuests(userId: string, overlaySettings: OverlaySettings) {
   const [questState, setQuestState] = useState<QuestState>({ progress: {} });
@@ -51,7 +52,7 @@ export function useQuests(userId: string, overlaySettings: OverlaySettings) {
 
       // Fire toasts for completed quests
       for (const quest of completions) {
-        showToast(quest.icon, `Quest geschafft: ${quest.title}`, 'success');
+        showToast(quest.icon, t('toast.questDone', { title: t(`quests.catalog.${quest.id}.title` as Key) }), 'success');
       }
   });
 

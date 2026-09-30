@@ -115,24 +115,27 @@ export function computeStanding(venue: Venue, checkins: VenueCheckin[], now: num
 }
 
 // ── Player progress ─────────────────────────────────────────────────
-export const REGULAR_TIERS = [
-  { min: 1, name: 'Gast' },
-  { min: 3, name: 'Stammgast' },
-  { min: 7, name: 'Stammtisch' },
-  { min: 15, name: 'Inventar' },
-] as const;
+/** Tiers of a regular (the UI names them: guest, regular, …). */
+export type RegularTierId = 'guest' | 'regular' | 'table' | 'fixture';
 
-/** Distinct visit days of a player at one venue → tier name + next goal. */
-export function regularTier(days: number): { name: string | null; next: { min: number; name: string } | null } {
-  let name: string | null = null;
-  let next: { min: number; name: string } | null = REGULAR_TIERS[0];
+export const REGULAR_TIERS: readonly { min: number; tier: RegularTierId }[] = [
+  { min: 1, tier: 'guest' },
+  { min: 3, tier: 'regular' },
+  { min: 7, tier: 'table' },
+  { min: 15, tier: 'fixture' },
+];
+
+/** Distinct visit days of a player at one venue → tier + next goal. */
+export function regularTier(days: number): { tier: RegularTierId | null; next: { min: number; tier: RegularTierId } | null } {
+  let tier: RegularTierId | null = null;
+  let next: { min: number; tier: RegularTierId } | null = REGULAR_TIERS[0];
   for (let i = 0; i < REGULAR_TIERS.length; i++) {
     if (days >= REGULAR_TIERS[i].min) {
-      name = REGULAR_TIERS[i].name;
+      tier = REGULAR_TIERS[i].tier;
       next = REGULAR_TIERS[i + 1] ?? null;
     }
   }
-  return { name, next };
+  return { tier, next };
 }
 
 /** ISO-like week index (Monday start, UTC) — used for weekly streaks. */

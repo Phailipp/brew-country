@@ -5,6 +5,7 @@ import { isFirebaseConfigured } from '../config/firebase';
 import { saveUserProfile } from '../services/firestoreService';
 import { haptic } from '../ui/kit/haptics';
 import { AuthBackdrop, AuthBrand, GpsProgress, type GpsPhase } from './AuthChrome';
+import { t } from '../i18n';
 import './Auth.css';
 
 interface GpsSample {
@@ -37,7 +38,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
 
   const handleGetLocation = useCallback(async () => {
     if (!navigator.geolocation) {
-      setError('Dein Browser kann deinen Standort leider nicht bestimmen.');
+      setError(t('onboarding.errNoGeo'));
       return;
     }
 
@@ -80,10 +81,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
           const avgLon = (s1.lon + s2.lon) / 2;
           const worstAccuracy = Math.max(s1.accuracy, s2.accuracy);
           setImpreciseCandidate({ lat: avgLat, lon: avgLon, accuracy: worstAccuracy });
-          setError(
-            `Dein GPS ist gerade ungenau (±${Math.round(s.accuracy)} m). ` +
-            `Geh am besten kurz nach draußen und versuch es nochmal.`
-          );
+          setError(t('onboarding.errImprecise', { accuracy: Math.round(s.accuracy) }));
           return;
         }
       }
@@ -93,10 +91,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       const dlon = (s2.lon - s1.lon) * 111320 * Math.cos(s1.lat * Math.PI / 180);
       const jumpMeters = Math.sqrt(dlat * dlat + dlon * dlon);
       if (jumpMeters > GAME.GPS_MAX_JUMP_METERS) {
-        setError(
-          `Du hast dich zwischen den Messungen bewegt (${Math.round(jumpMeters)} m). ` +
-          `Bleib kurz stehen und versuch es nochmal.`
-        );
+        setError(t('onboarding.errMoved', { distance: Math.round(jumpMeters) }));
         return;
       }
 
@@ -110,8 +105,8 @@ export function ResetLocation({ user, onLocationSet }: Props) {
     } catch (err) {
       setError(
         typeof GeolocationPositionError !== 'undefined' && err instanceof GeolocationPositionError && err.code === err.PERMISSION_DENIED
-          ? 'Wir dürfen deinen Standort nicht sehen. Erlaube den Zugriff in den Einstellungen und versuch es nochmal.'
-          : 'Dein Standort konnte nicht bestimmt werden. Versuch es nochmal.'
+          ? t('onboarding.errDenied')
+          : t('onboarding.errLocation')
       );
     } finally {
       setGpsPhase(null);
@@ -146,7 +141,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
       onLocationSet(updatedUser);
     } catch (e) {
       console.error('Failed to save location:', e);
-      setError('Speichern hat nicht geklappt. Prüf deine Verbindung und versuch es nochmal.');
+      setError(t('onboarding.errResetSave'));
       setSaving(false);
     }
   }, [location, user, onLocationSet]);
@@ -162,17 +157,14 @@ export function ResetLocation({ user, onLocationSet }: Props) {
         <div className="auth-card glass onboarding-card">
           <section className="ob-step">
             <div className="auth-hero-icon" aria-hidden="true">🧭</div>
-            <h1 className="ob-title">Wo ist dein Zuhause?</h1>
-            <p className="auth-instruction">
-              Dein Zuhause muss neu gesetzt werden, bevor es weitergeht. Dein Bier kämpft dann wieder
-              in {GAME.HOME_RADIUS_KM} km rund um diesen Ort – du musst dafür gerade vor Ort sein.
-            </p>
+            <h1 className="ob-title">{t('onboarding.locationTitle')}</h1>
+            <p className="auth-instruction">{t('onboarding.resetText', { radius: GAME.HOME_RADIUS_KM })}</p>
 
             {location ? (
               <>
                 <div className="ob-located">
                   <span aria-hidden="true">✅</span>
-                  <span>Standort gefunden <span className="muted num">({location.lat.toFixed(3)}, {location.lon.toFixed(3)})</span></span>
+                  <span>{t('onboarding.locationFound')} <span className="muted num">({location.lat.toFixed(3)}, {location.lon.toFixed(3)})</span></span>
                 </div>
                 <button
                   type="button"
@@ -181,7 +173,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
                   disabled={saving}
                   aria-busy={saving}
                 >
-                  {saving ? <><span className="spinner" aria-hidden="true" /> Speichere …</> : 'Hier ist mein Zuhause'}
+                  {saving ? <><span className="spinner" aria-hidden="true" /> {t('onboarding.savingSpaced')}</> : t('onboarding.resetConfirm')}
                 </button>
                 <button
                   type="button"
@@ -189,7 +181,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
                   onClick={() => { setLocation(null); setError(''); }}
                   disabled={saving}
                 >
-                  Nochmal messen
+                  {t('onboarding.remeasure')}
                 </button>
               </>
             ) : gpsPhase ? (
@@ -197,7 +189,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
             ) : (
               <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handleGetLocation}>
                 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor" /><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-                Standort per GPS bestimmen
+                {t('onboarding.gps')}
               </button>
             )}
 
@@ -208,7 +200,7 @@ export function ResetLocation({ user, onLocationSet }: Props) {
                 className="btn btn-secondary btn-block"
                 onClick={handleUseImpreciseLocation}
               >
-                Ungenauen Standort trotzdem nehmen
+                {t('onboarding.useImprecise')}
               </button>
             )}
           </section>

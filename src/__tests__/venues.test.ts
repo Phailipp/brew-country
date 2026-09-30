@@ -79,9 +79,10 @@ describe('venue standing', () => {
 
 describe('player progress', () => {
   it('names regular tiers', () => {
-    expect(regularTier(0)).toEqual({ name: null, next: { min: 1, name: 'Gast' } });
-    expect(regularTier(3).name).toBe('Stammgast');
-    expect(regularTier(20)).toEqual({ name: 'Inventar', next: null });
+    expect(regularTier(0)).toEqual({ tier: null, next: { min: 1, tier: 'guest' } });
+    expect(regularTier(3).tier).toBe('regular');
+    expect(regularTier(7)).toEqual({ tier: 'table', next: { min: 15, tier: 'fixture' } });
+    expect(regularTier(20)).toEqual({ tier: 'fixture', next: null });
   });
 
   it('counts weekly streaks and forgives a not-yet-played current week', () => {
@@ -152,8 +153,9 @@ describe('visit limits', () => {
   });
   it('allows one visit per venue and day and two per day', () => {
     expect(visitBlocker([], 'n1', NOW)).toBeNull();
-    expect(visitBlocker([mine('n1', 1)], 'n1', NOW)).toMatch(/schon hier/);
-    expect(visitBlocker([mine('n1', 1), mine('n2', 2)], 'n3', NOW)).toMatch(/Maximal 2/);
+    expect(visitBlocker([mine('n1', 1)], 'n1', NOW)).toBe('already-today');
+    expect(visitBlocker([mine('n1', 1), mine('n2', 2)], 'n3', NOW)).toBe('daily-limit');
+    expect(visitBlocker([mine('n1', 1), mine('n2', 2)], 'n1', NOW)).toBe('already-today');
     expect(visitBlocker([mine('n1', 30)], 'n1', NOW)).toBeNull();
   });
   it('picks the next free slot', () => {

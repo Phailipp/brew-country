@@ -14,15 +14,16 @@ import { BeerBadge } from '../ui/kit/BeerBadge';
 import { beerName, beerColor } from '../ui/kit/beer';
 import { haptic } from '../ui/kit/haptics';
 import { AuthBackdrop, AuthBrand, GpsProgress, type GpsPhase } from './AuthChrome';
+import { t, tr, type Key } from '../i18n';
 import './Auth.css';
 
 type OnboardingStep = 'age' | 'location' | 'beer' | 'confirm';
 const STEPS: OnboardingStep[] = ['age', 'location', 'beer', 'confirm'];
-const STEP_LABELS: Record<OnboardingStep, string> = {
-  age: 'Alter',
-  location: 'Zuhause',
-  beer: 'Bier',
-  confirm: 'Los',
+const STEP_LABELS: Record<OnboardingStep, Key> = {
+  age: 'onboarding.step.age',
+  location: 'onboarding.step.location',
+  beer: 'onboarding.step.beer',
+  confirm: 'onboarding.step.confirm',
 };
 
 interface GpsSample {
@@ -81,15 +82,15 @@ export function Onboarding() {
   const handleAgeNext = () => {
     const age = ageInYears(birthdate);
     if (age === null) {
-      setError('Bitte gib dein Geburtsdatum ein.');
+      setError(t('onboarding.errBirthdate'));
       return;
     }
     if (age < requiredAge) {
-      setError(`Brew Country ist nur für Erwachsene ab ${requiredAge} Jahren.`);
+      setError(t('onboarding.errTooYoung', { age: requiredAge }));
       return;
     }
     if (!accepted) {
-      setError('Bitte stimme den Nutzungsbedingungen zu.');
+      setError(t('onboarding.errConsent'));
       return;
     }
     haptic('light');
@@ -98,7 +99,7 @@ export function Onboarding() {
 
   const handleGetLocation = useCallback(async () => {
     if (!navigator.geolocation) {
-      setError('Dein Browser kann deinen Standort leider nicht bestimmen.');
+      setError(t('onboarding.errNoGeo'));
       return;
     }
 
@@ -138,10 +139,7 @@ export function Onboarding() {
           const avgLon = (s1.lon + s2.lon) / 2;
           const worstAccuracy = Math.max(s1.accuracy, s2.accuracy);
           setImpreciseCandidate({ lat: avgLat, lon: avgLon, accuracy: worstAccuracy });
-          setError(
-            `Dein GPS ist gerade ungenau (±${Math.round(s.accuracy)} m). ` +
-            `Geh am besten kurz nach draußen und versuch es nochmal.`
-          );
+          setError(t('onboarding.errImprecise', { accuracy: Math.round(s.accuracy) }));
           return;
         }
       }
@@ -150,10 +148,7 @@ export function Onboarding() {
       const dlon = (s2.lon - s1.lon) * 111320 * Math.cos(s1.lat * Math.PI / 180);
       const jumpMeters = Math.sqrt(dlat * dlat + dlon * dlon);
       if (jumpMeters > GAME.GPS_MAX_JUMP_METERS) {
-        setError(
-          `Du hast dich zwischen den Messungen bewegt (${Math.round(jumpMeters)} m). ` +
-          `Bleib kurz stehen und versuch es nochmal.`
-        );
+        setError(t('onboarding.errMoved', { distance: Math.round(jumpMeters) }));
         return;
       }
 
@@ -167,8 +162,8 @@ export function Onboarding() {
     } catch (err) {
       setError(
         typeof GeolocationPositionError !== 'undefined' && err instanceof GeolocationPositionError && err.code === err.PERMISSION_DENIED
-          ? 'Wir dürfen deinen Standort nicht sehen. Erlaube den Zugriff in den Einstellungen und versuch es nochmal.'
-          : 'Dein Standort konnte nicht bestimmt werden. Versuch es nochmal.'
+          ? t('onboarding.errDenied')
+          : t('onboarding.errLocation')
       );
     } finally {
       setGpsPhase(null);
@@ -186,7 +181,7 @@ export function Onboarding() {
     const lat = parseFloat(manualLat);
     const lon = parseFloat(manualLon);
     if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-      setError('Diese Koordinaten stimmen nicht. Beispiel: 48.1374 / 11.5755');
+      setError(t('onboarding.errCoords'));
       return;
     }
     setError('');
@@ -230,7 +225,7 @@ export function Onboarding() {
       }
     } catch (e) {
       console.error('completeOnboarding error:', e);
-      setError('Das Speichern hat nicht geklappt. Prüf deine Verbindung und versuch es nochmal.');
+      setError(t('onboarding.errSave'));
       setConfirming(false);
     }
   };
@@ -247,17 +242,17 @@ export function Onboarding() {
           {/* Progress */}
           <div className="ob-progress">
             <div className="ob-progress-head">
-              <span className="eyebrow">Schritt {stepIndex + 1} von {STEPS.length}</span>
-              <span className="eyebrow ob-progress-label">{STEP_LABELS[step]}</span>
+              <span className="eyebrow">{t('onboarding.stepOf', { n: stepIndex + 1, total: STEPS.length })}</span>
+              <span className="eyebrow ob-progress-label">{t(STEP_LABELS[step])}</span>
             </div>
-            <ol className="ob-dots" aria-label="Fortschritt">
+            <ol className="ob-dots" aria-label={t('onboarding.progress')}>
               {STEPS.map((s, i) => (
                 <li
                   key={s}
                   className={`ob-dot${i === stepIndex ? ' active' : ''}${i < stepIndex ? ' done' : ''}`}
                   aria-current={i === stepIndex ? 'step' : undefined}
                 >
-                  <span className="sr-only">{STEP_LABELS[s]}{i < stepIndex ? ' (erledigt)' : ''}</span>
+                  <span className="sr-only">{t(STEP_LABELS[s])}{i < stepIndex ? t('onboarding.stepDone') : ''}</span>
                 </li>
               ))}
             </ol>
@@ -266,13 +261,10 @@ export function Onboarding() {
           {step === 'age' && (
             <section className="ob-step" key="age">
               <div className="auth-hero-icon" aria-hidden="true">🔞</div>
-              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>Kurz vorab</h1>
-              <p className="auth-instruction">
-                Bei Brew Country dreht sich alles um Bier. Deshalb ist die App erst ab {requiredAge}.
-                Dein Geburtsdatum prüfen wir nur, gespeichert wird es nicht.
-              </p>
+              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>{t('onboarding.ageTitle')}</h1>
+              <p className="auth-instruction">{t('onboarding.ageText', { age: requiredAge })}</p>
               <label className="field">
-                <span className="field-label">Geburtsdatum</span>
+                <span className="field-label">{t('onboarding.birthdate')}</span>
                 <input
                   type="date"
                   value={birthdate}
@@ -291,16 +283,16 @@ export function Onboarding() {
                   <svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </span>
                 <span>
-                  Ich akzeptiere die <a href="#nutzungsbedingungen">Nutzungsbedingungen</a> und habe
-                  die <a href="#datenschutz">Datenschutzerklärung</a> gelesen.
+                  {tr('onboarding.consent', {
+                    terms: <a href="#nutzungsbedingungen">{t('onboarding.terms')}</a>,
+                    privacy: <a href="#datenschutz">{t('onboarding.privacy')}</a>,
+                  })}
                 </span>
               </label>
-              <p className="ob-responsible">
-                Trink verantwortungsvoll: Brew Country belohnt Besuche, nicht Mengen. Alkoholfrei zählt genauso.
-              </p>
+              <p className="ob-responsible">{t('onboarding.responsible')}</p>
               {errorBox}
               <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handleAgeNext}>
-                Weiter
+                {t('common.next')}
               </button>
             </section>
           )}
@@ -308,20 +300,17 @@ export function Onboarding() {
           {step === 'location' && (
             <section className="ob-step" key="location">
               <div className="auth-hero-icon" aria-hidden="true">📍</div>
-              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>Wo ist dein Zuhause?</h1>
-              <p className="auth-instruction">
-                Dein Bier kämpft in {GAME.HOME_RADIUS_KM} km rund um dein Zuhause um die Vorherrschaft.
-                Du musst dafür gerade vor Ort sein.
-              </p>
+              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>{t('onboarding.locationTitle')}</h1>
+              <p className="auth-instruction">{t('onboarding.locationText', { radius: GAME.HOME_RADIUS_KM })}</p>
 
               {location ? (
                 <>
                   <div className="ob-located">
                     <span aria-hidden="true">✅</span>
-                    <span>Standort gespeichert <span className="muted num">({location.lat.toFixed(3)}, {location.lon.toFixed(3)})</span></span>
+                    <span>{t('onboarding.locationSaved')} <span className="muted num">({location.lat.toFixed(3)}, {location.lon.toFixed(3)})</span></span>
                   </div>
                   <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => goTo('beer')}>
-                    Weiter
+                    {t('common.next')}
                   </button>
                 </>
               ) : gpsPhase ? (
@@ -329,7 +318,7 @@ export function Onboarding() {
               ) : (
                 <button type="button" className="btn btn-primary btn-lg btn-block" onClick={handleGetLocation}>
                   <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5" fill="currentColor" /><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-                  Standort per GPS bestimmen
+                  {t('onboarding.gps')}
                 </button>
               )}
 
@@ -337,7 +326,7 @@ export function Onboarding() {
 
               {impreciseCandidate && !location && !gpsLoading && (
                 <button type="button" className="btn btn-secondary btn-block" onClick={handleUseImpreciseLocation}>
-                  Ungenauen Standort trotzdem nehmen
+                  {t('onboarding.useImprecise')}
                 </button>
               )}
 
@@ -350,22 +339,22 @@ export function Onboarding() {
                     aria-controls="ob-manual-fields"
                     onClick={() => setShowManual((v) => !v)}
                   >
-                    {showManual ? 'Manuelle Eingabe ausblenden' : 'Koordinaten selbst eingeben'}
+                    {showManual ? t('onboarding.hideManual') : t('onboarding.showManual')}
                   </button>
                   {showManual && (
                     <div className="ob-manual-fields fade-in" id="ob-manual-fields">
                       <div className="ob-manual-grid">
                         <div className="field">
-                          <label className="field-label" htmlFor="ob-lat">Breitengrad</label>
+                          <label className="field-label" htmlFor="ob-lat">{t('onboarding.lat')}</label>
                           <input id="ob-lat" type="number" inputMode="decimal" step="0.0001" value={manualLat} onChange={(e) => setManualLat(e.target.value)} />
                         </div>
                         <div className="field">
-                          <label className="field-label" htmlFor="ob-lon">Längengrad</label>
+                          <label className="field-label" htmlFor="ob-lon">{t('onboarding.lon')}</label>
                           <input id="ob-lon" type="number" inputMode="decimal" step="0.0001" value={manualLon} onChange={(e) => setManualLon(e.target.value)} />
                         </div>
                       </div>
                       <button type="button" className="btn btn-secondary btn-block" onClick={handleManualLocation}>
-                        Diesen Standort nehmen
+                        {t('onboarding.useThis')}
                       </button>
                     </div>
                   )}
@@ -374,7 +363,7 @@ export function Onboarding() {
 
               {!gpsLoading && (
                 <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo('age')}>
-                  Zurück
+                  {t('common.back')}
                 </button>
               )}
             </section>
@@ -382,8 +371,8 @@ export function Onboarding() {
 
           {step === 'beer' && (
             <section className="ob-step" key="beer">
-              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>Wähl dein Bier</h1>
-              <p className="auth-instruction">Welches Bier ist deins? Du kannst bei jedem Check-in ein anderes wählen.</p>
+              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>{t('onboarding.beerTitle')}</h1>
+              <p className="auth-instruction">{t('onboarding.beerText')}</p>
               <BeerPicker
                 value={selectedBeerId}
                 onChange={(id) => { beerTouchedRef.current = true; setSelectedBeerId(id); }}
@@ -393,10 +382,10 @@ export function Onboarding() {
               />
               <div className="ob-sticky-cta">
                 <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => goTo('confirm')}>
-                  Weiter mit {beerName(selectedBeerId)}
+                  {t('onboarding.beerNext', { beer: beerName(selectedBeerId) })}
                 </button>
                 <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo('location')}>
-                  Zurück
+                  {t('common.back')}
                 </button>
               </div>
             </section>
@@ -404,7 +393,7 @@ export function Onboarding() {
 
           {step === 'confirm' && (
             <section className="ob-step" key="confirm">
-              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>Bereit zum Anstoßen?</h1>
+              <h1 className="ob-title" ref={headingRef} tabIndex={-1}>{t('onboarding.confirmTitle')}</h1>
               <div
                 className="ob-summary"
                 style={{ '--tile-color': beerColor(selectedBeerId) } as CSSProperties}
@@ -412,11 +401,11 @@ export function Onboarding() {
                 <BeerBadge beerId={selectedBeerId} size="xl" />
                 <p className="ob-summary-beer">{beerName(selectedBeerId)}</p>
                 <p className="ob-summary-sub">
-                  regiert ab jetzt {GAME.HOME_RADIUS_KM} km rund um dein Zuhause – wenn du es verteidigst.
+                  {t('onboarding.confirmSub', { radius: GAME.HOME_RADIUS_KM })}
                 </p>
                 <ul className="ob-summary-chips">
-                  <li className="chip chip-accent">×{GAME.HOME_BOOST_MAX} Startbonus</li>
-                  <li className="chip">📍 Zuhause gesetzt</li>
+                  <li className="chip chip-accent">{t('onboarding.bonus', { boost: GAME.HOME_BOOST_MAX })}</li>
+                  <li className="chip">{t('onboarding.homeSet')}</li>
                 </ul>
               </div>
               {errorBox}
@@ -427,10 +416,10 @@ export function Onboarding() {
                 disabled={confirming}
                 aria-busy={confirming}
               >
-                {confirming ? <><span className="spinner" aria-hidden="true" /> Zapfe dein Revier …</> : 'Los geht’s! 🍻'}
+                {confirming ? <><span className="spinner" aria-hidden="true" /> {t('onboarding.tapping')}</> : t('onboarding.go')}
               </button>
               <button type="button" className="btn btn-ghost btn-block" onClick={() => goTo('beer')} disabled={confirming}>
-                Zurück
+                {t('common.back')}
               </button>
             </section>
           )}

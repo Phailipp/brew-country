@@ -1,11 +1,12 @@
 import type { MyVisit } from './venues';
 import { dedupeVisits, weekIndex } from './influence';
 
+export type WeeklyChallengeId = 'tour' | 'new' | 'taste' | 'regular' | 'af';
+
+/** A challenge of the week. Title and description come from the UI by `id`. */
 export interface WeeklyChallenge {
-  id: string;
+  id: WeeklyChallengeId;
   icon: string;
-  title: string;
-  description: string;
   target: number;
   progress: number;
   done: boolean;
@@ -34,14 +35,14 @@ export function weeklyChallenges(visits: MyVisit[], now: number): WeeklyChalleng
   const af = week.filter((v) => v.alcoholFree).length;
   const days = new Set(week.map((v) => Math.floor(v.createdAt / DAY_MS))).size;
 
-  const make = (id: string, icon: string, title: string, description: string, target: number, progress: number): WeeklyChallenge =>
-    ({ id, icon, title, description, target, progress: Math.min(progress, target), done: progress >= target });
+  const make = (id: WeeklyChallengeId, icon: string, target: number, progress: number): WeeklyChallenge =>
+    ({ id, icon, target, progress: Math.min(progress, target), done: progress >= target });
 
   return [
-    make('tour', '🍻', 'Kneipentour', 'Check in 3 verschiedenen Kneipen ein.', 3, venues),
-    make('new', '🧭', 'Neuland', 'Besuch eine Kneipe, in der du noch nie warst.', 1, fresh),
-    make('taste', '🌍', 'Querbeet', 'Trink 3 verschiedene Biere.', 3, beers),
-    make('regular', '📅', 'Treue Seele', 'Sei an 3 verschiedenen Tagen unterwegs.', 3, days),
-    make('af', '💧', 'Klarer Kopf', 'Ein alkoholfreier Check-in zählt genauso.', 1, af),
+    make('tour', '🍻', 3, venues),
+    make('new', '🧭', 1, fresh),
+    make('taste', '🌍', 3, beers),
+    make('regular', '📅', 3, days),
+    make('af', '💧', 1, af),
   ];
 }

@@ -37,6 +37,7 @@ describe('validateDrinkVote', () => {
     const result = validateDrinkVote([], '48.1368_11.5751', 'beer1', 100);
     expect(result.ok).toBe(false);
     expect(result.errorCode).toBe('gps_accuracy');
+    expect(result.params).toEqual({ accuracy: 100, max: 75 });
   });
 
   it('rejects when GPS accuracy exactly at limit', () => {
@@ -57,6 +58,7 @@ describe('validateDrinkVote', () => {
     const result = validateDrinkVote([recent], '99.0000_99.0000', 'beer2', 20);
     expect(result.ok).toBe(false);
     expect(result.errorCode).toBe('cooldown');
+    expect(result.params).toEqual({ minutes: 10 });
   });
 
   it('allows after cooldown period', () => {

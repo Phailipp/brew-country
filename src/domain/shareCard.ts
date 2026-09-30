@@ -1,10 +1,17 @@
 import type { SharePayload } from './types';
 import { BEER_MAP } from './beers';
 
+/** Texts on the card, already in the UI language. */
+export interface ShareCardText {
+  subtitle: string;
+  stats: string;
+  rival: string | null;
+}
+
 /**
  * Generate a 1200x630 share card as a PNG data URL.
  */
-export function generateShareCard(payload: SharePayload): string {
+export function generateShareCard(payload: SharePayload, text: ShareCardText): string {
   const W = 1200;
   const H = 630;
   const canvas = document.createElement('canvas');
@@ -40,7 +47,7 @@ export function generateShareCard(payload: SharePayload): string {
   // Subtitle
   ctx.fillStyle = '#94a3b8';
   ctx.font = '24px system-ui, -apple-system, sans-serif';
-  ctx.fillText('Bier-Dominanz-Karte \u2022 M\u00FCnchen', 60, 120);
+  ctx.fillText(text.subtitle, 60, 120);
 
   // Beer name
   ctx.fillStyle = color;
@@ -50,15 +57,13 @@ export function generateShareCard(payload: SharePayload): string {
   // Stats
   ctx.fillStyle = '#e2e8f0';
   ctx.font = '32px system-ui, -apple-system, sans-serif';
-  const marginPct = Math.round(payload.avgMargin * 100);
-  const statsLine = `${payload.cellCount} Zellen \u2022 ${payload.totalVotes} Votes \u2022 ${marginPct}% Vorsprung`;
-  ctx.fillText(statsLine, 60, 310);
+  ctx.fillText(text.stats, 60, 310);
 
   // Runner-up info
-  if (payload.runnerUpName) {
+  if (text.rival) {
     ctx.fillStyle = '#94a3b8';
     ctx.font = '28px system-ui, -apple-system, sans-serif';
-    ctx.fillText(`Gr\u00F6\u00DFter Rival: ${payload.runnerUpName}`, 60, 370);
+    ctx.fillText(text.rival, 60, 370);
   }
 
   // Coordinates
@@ -82,8 +87,8 @@ export function generateShareCard(payload: SharePayload): string {
 /**
  * Download the share card as a file.
  */
-export function downloadShareCard(payload: SharePayload): void {
-  const dataUrl = generateShareCard(payload);
+export function downloadShareCard(payload: SharePayload, text: ShareCardText): void {
+  const dataUrl = generateShareCard(payload, text);
   const a = document.createElement('a');
   a.href = dataUrl;
   a.download = `brewcountry-${payload.beerId}.png`;

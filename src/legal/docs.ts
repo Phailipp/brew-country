@@ -1,13 +1,14 @@
+import { t } from '../i18n';
+
+/** Legal pages; the ids are also their URL hashes (#impressum, …) and stay German. */
 export type LegalDoc = 'impressum' | 'datenschutz' | 'nutzungsbedingungen' | 'credits';
 
-export const LEGAL_TITLES: Record<LegalDoc, string> = {
-  impressum: 'Impressum',
-  datenschutz: 'Datenschutzerklärung',
-  nutzungsbedingungen: 'Nutzungsbedingungen',
-  credits: 'Quellen & Lizenzen',
-};
+export const LEGAL_DOCS: LegalDoc[] = ['impressum', 'datenschutz', 'nutzungsbedingungen', 'credits'];
 
-export const LEGAL_DOCS = Object.keys(LEGAL_TITLES) as LegalDoc[];
+/** Page title in the UI language. */
+export function legalTitle(doc: LegalDoc): string {
+  return t(`legalLinks.${doc}`);
+}
 
 export function legalDocFromHash(hash: string): LegalDoc | null {
   const id = hash.replace(/^#/, '');

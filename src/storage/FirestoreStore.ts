@@ -31,7 +31,7 @@ import { getFirebaseAuth } from '../config/firebaseAuth';
 import { CHECKIN_STEPS, PUBLIC_HOME_STEPS, snapToLattice } from '../domain/privacy';
 import { GAME } from '../config/constants';
 import type { StorageInterface } from './StorageInterface';
-import { MAX_VISITS_PER_DAY, nextVisitSlot, utcDay, visitBlocker, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
+import { MAX_VISITS_PER_DAY, nextVisitSlot, utcDay, visitBlocker, visitBlockedError, type MyVisit, type Venue, type VenueCheckin } from '../domain/venues';
 import { hourFloor, newVisitSalt, PUBLIC_VISIT_TTL_MS, utcWeek, visitDocId, venuePlayerId } from '../domain/visitIds';
 
 const COLLECTIONS = {
@@ -310,7 +310,7 @@ export class FirestoreStore implements StorageInterface {
     const now = Date.now();
     const mine = await this.getMyVisits(userId);
     const blocked = visitBlocker(mine, venue.id, now);
-    if (blocked) throw new Error(blocked);
+    if (blocked) throw visitBlockedError(blocked);
 
     const day = utcDay(now);
     const salt = await this.visitSalt(userId);
@@ -334,7 +334,7 @@ export class FirestoreStore implements StorageInterface {
         if ((e as { code?: string }).code !== 'permission-denied') throw e;
       }
     }
-    throw new Error(`Maximal ${MAX_VISITS_PER_DAY} Kneipen pro Tag. Morgen geht’s weiter!`);
+    throw visitBlockedError('daily-limit');
   }
 
   private saltCache = new Map<string, string>();
@@ -357,7 +357,7 @@ export class FirestoreStore implements StorageInterface {
       } catch {
         // another device created it first (set-once rule): use theirs
         salt = await read();
-        if (!salt) throw new Error('Pseudonym konnte nicht angelegt werden.');
+        if (!salt) throw Object.assign(new Error('visit salt unavailable'), { code: 'salt-unavailable' });
       }
     }
     this.saltCache.set(userId, salt);

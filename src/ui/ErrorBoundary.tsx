@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { t } from '../i18n';
 
 interface Props {
   children: ReactNode;
@@ -39,17 +40,17 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="empty" role="alert">
           <span className="empty-icon" aria-hidden="true">🫗</span>
-          <span className="empty-title">Hier ist etwas schiefgelaufen</span>
-          <span>Der Rest der App läuft weiter.</span>
-          <button className="btn btn-secondary" onClick={() => this.setState({ error: null })}>Nochmal versuchen</button>
+          <span className="empty-title">{t('errors.panelTitle')}</span>
+          <span>{t('errors.panelText')}</span>
+          <button className="btn btn-secondary" onClick={() => this.setState({ error: null })}>{t('common.retry')}</button>
         </div>
       );
     }
     return (
       <div className="boot-screen" role="alert">
-        <p className="boot-title">Da ist uns das Glas umgekippt.</p>
-        <p className="muted">Brew Country ist auf einen Fehler gestoßen.</p>
-        <button className="btn btn-primary" onClick={() => window.location.reload()}>Neu laden</button>
+        <p className="boot-title">{t('errors.appTitle')}</p>
+        <p className="muted">{t('errors.appText')}</p>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>{t('errors.reload')}</button>
       </div>
     );
   }

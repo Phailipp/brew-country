@@ -5,6 +5,7 @@ import { searchBeers } from '../domain/beers';
 import { BeerBadge } from './kit/BeerBadge';
 import { useBeerCatalog } from './kit/useBeerCatalog';
 import { haptic } from './kit/haptics';
+import { t } from '../i18n';
 import './BeerPicker.css';
 
 interface Props {
@@ -22,7 +23,7 @@ interface Props {
 }
 
 
-export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSuggest, disabled, label = 'Bier auswählen', country }: Props) {
+export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSuggest, disabled, label = t('picker.label'), country }: Props) {
   const catalogVersion = useBeerCatalog();
   const [query, setQuery] = useState('');
 
@@ -45,8 +46,8 @@ export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSu
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Bier, Brauerei oder Stadt suchen"
-          aria-label="Bier suchen"
+          placeholder={t('picker.placeholder')}
+          aria-label={t('picker.search')}
           disabled={disabled}
         />
       </div>
@@ -76,14 +77,14 @@ export function BeerPicker({ value, onChange, layout = 'grid', pinned = [], onSu
         })}
         {beers.length === 0 && (
           <div className="bp-empty">
-            <span>Kein Treffer für „{query}“.</span>
+            <span>{t('picker.noMatch', { query })}</span>
           </div>
         )}
       </div>
 
       {onSuggest && (
         <button type="button" className="bp-suggest" onClick={onSuggest}>
-          <span aria-hidden="true">＋</span> Dein Bier fehlt? Jetzt vorschlagen
+          <span aria-hidden="true">＋</span> {t('picker.suggest')}
         </button>
       )}
     </div>

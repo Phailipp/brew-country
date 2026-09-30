@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { OPERATOR, RESPONSIBLE_DRINKING_URL } from '../config/legal';
 
 import type { LegalDoc } from './docs';
+import { useLocale, type Locale } from '../i18n';
 
 const A = ({ href, children }: { href: string; children: ReactNode }) => (
   <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
@@ -143,14 +144,178 @@ function Credits() {
   );
 }
 
-const CONTENT: Record<LegalDoc, () => ReactNode> = {
-  impressum: Impressum,
-  datenschutz: Datenschutz,
-  nutzungsbedingungen: Nutzungsbedingungen,
-  credits: Credits,
+// ── English versions ────────────────────────────────────────────────
+// Convenience translations of the German originals above. Keep them in sync
+// when the German text changes; the German version stays legally binding.
+
+function ImpressumEn() {
+  return (
+    <>
+      <h2>Information pursuant to § 5 DDG (German Digital Services Act)</h2>
+      <p>{OPERATOR.name}<br />{OPERATOR.address}</p>
+      <h2>Contact</h2>
+      <p>Email: {OPERATOR.email}</p>
+      {OPERATOR.vatId && <p>{OPERATOR.vatId}</p>}
+      <h2>Responsible for content pursuant to § 18(2) MStV (German Interstate Media Treaty)</h2>
+      <p>{OPERATOR.responsible}</p>
+      <h2>No affiliation with breweries</h2>
+      <p>
+        Brew Country is an independent game. The beer brands mentioned belong to their owners. A mention does
+        not imply any partnership or endorsement unless expressly stated.
+      </p>
+      <h2>Consumer dispute resolution</h2>
+      <p>We are neither willing nor obliged to take part in dispute resolution proceedings before a consumer arbitration board.</p>
+    </>
+  );
+}
+
+function DatenschutzEn() {
+  return (
+    <>
+      <p>
+        We process as little data as possible. There is no tracking, no advertising and no analytics tools.
+      </p>
+
+      <h2>1. Controller</h2>
+      <p>{OPERATOR.name}, {OPERATOR.address}, {OPERATOR.email}</p>
+
+      <h2>2. What data we process</h2>
+      <ul>
+        <li><strong>Account:</strong> email address, nickname, password (stored only as a hash by the login service).</li>
+        <li><strong>Profile:</strong> favourite beer and home location. Your exact home location is visible only to you; other players see it rounded to about 2 km.</li>
+        <li>
+          <strong>Pub visits:</strong> your beer passport (pub, beer, time, alcohol-free yes/no) is private.
+          For scoring, each visit is additionally stored <em>without your name or account ID</em>:
+          with a pseudonym derived from a random value only you know, and with the time rounded to the hour.
+          Others cannot tell from this who you are or which other pubs you have visited.
+        </li>
+        <li><strong>Location:</strong> only at the moment you share it (onboarding, check-in), to verify that you are on site. We never track you in the background.</li>
+        <li><strong>Friends & chat:</strong> friendships and messages, visible only to the people involved.</li>
+        <li><strong>Beer suggestions:</strong> name, brewery, town, country, optionally website and note.</li>
+        <li><strong>On your device:</strong> login status, settings and a cache of pub data (technically necessary, § 25(2) TDDDG).</li>
+      </ul>
+      <p>Your date of birth is only checked, never stored.</p>
+
+      <h2>3. Purposes and legal bases</h2>
+      <ul>
+        <li>Providing the game (Art. 6(1)(b) GDPR).</li>
+        <li>Location check at check-in based on your consent (Art. 6(1)(a) GDPR), which you can withdraw at any time in your device settings.</li>
+        <li>Protection against abuse and fraud (Art. 6(1)(f) GDPR).</li>
+      </ul>
+
+      <h2>4. Recipients and services</h2>
+      <ul>
+        <li><strong>Google Firebase</strong> (Google Ireland Ltd.): login and database. Storage location: {OPERATOR.dataRegion}. Data processing agreement pursuant to Art. 28 GDPR.</li>
+        <li><strong>OpenFreeMap</strong>: map tiles. Your IP address is transmitted in the process.</li>
+        <li><strong>Overpass API</strong> (overpass-api.de, overpass.kumi.systems): pub data from OpenStreetMap for the visible map area. Your IP address and the map area are transmitted in the process.</li>
+        <li><strong>Amazon Web Services</strong> (terrain data for the relief, servers possibly in the USA; EU-US Data Privacy Framework).</li>
+        <li><strong>GitHub Pages</strong> (GitHub Inc., USA; EU-US Data Privacy Framework): delivery of the web app.</li>
+      </ul>
+
+      <h2>5. Retention period</h2>
+      <p>
+        We store account, profile and game data until you delete your account. Visits only count towards scoring
+        for 30 days. Under <em>Profile → Delete account</em> you can remove all your data at any time: profile,
+        beer passport, visits, friendships, chats and suggestions.
+      </p>
+
+      <h2>6. Your rights</h2>
+      <p>
+        You have the right of access, rectification, erasure, restriction of processing, data portability and
+        objection (Art. 15–21 GDPR), as well as the right to lodge a complaint with a data protection supervisory
+        authority. To exercise them, write to us at {OPERATOR.email}.
+      </p>
+
+      <h2>7. Minors</h2>
+      <p>Brew Country is for adults only (18, or older in countries with a higher legal drinking age).</p>
+    </>
+  );
+}
+
+function NutzungsbedingungenEn() {
+  return (
+    <>
+      <h2>1. Who may play</h2>
+      <p>Only adults who are allowed to drink alcohol in their country (at least 18 years old).</p>
+
+      <h2>2. Drink responsibly</h2>
+      <ul>
+        <li>Brew Country rewards visits, not volume. Alcohol-free drinks count just the same.</li>
+        <li>You never have to drink anything to play.</li>
+        <li>Don’t drive after drinking. Info and help: <A href={RESPONSIBLE_DRINKING_URL}>kenn-dein-limit.de</A>.</li>
+      </ul>
+
+      <h2>3. Fair play</h2>
+      <p>
+        Not allowed: faking your location, multiple accounts, automated check-ins, offensive nicknames or
+        messages. We may correct scores and suspend accounts that break these rules.
+      </p>
+
+      <h2>4. Content</h2>
+      <p>You are responsible for your messages and suggestions. Pub data comes from OpenStreetMap and may be incomplete.</p>
+
+      <h2>5. Trademarks</h2>
+      <p>Beer brands and logos belong to their owners. Brew Country is not affiliated with them unless expressly stated.</p>
+
+      <h2>6. Liability and availability</h2>
+      <p>
+        The game is provided without any guarantee of constant availability. We are liable without limitation for
+        intent and gross negligence, and otherwise only in accordance with the statutory provisions.
+      </p>
+
+      <h2>7. Termination</h2>
+      <p>You can delete your account in the app at any time.</p>
+    </>
+  );
+}
+
+function CreditsEn() {
+  return (
+    <>
+      <ul>
+        <li>Pub and map data: <A href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</A>, available under the Open Database License (ODbL).</li>
+        <li>Map tiles: <A href="https://openfreemap.org">OpenFreeMap</A> and <A href="https://openmaptiles.org">© OpenMapTiles</A>.</li>
+        <li>Map rendering: <A href="https://maplibre.org">MapLibre GL JS</A> (BSD-3-Clause).</li>
+        <li>Terrain data: Terrain Tiles (Mapzen, AWS Open Data) from sources including SRTM, GMTED2010 and ETOPO1.</li>
+        <li>Fonts: Inter and Bricolage Grotesque (SIL Open Font License 1.1).</li>
+        <li>Brewery logos are only shown with the brand owners’ permission.</li>
+      </ul>
+    </>
+  );
+}
+
+/** Shown above every English legal text. */
+function TranslationNote() {
+  return (
+    <p className="legal-translation" role="note" lang="en">
+      This translation is for convenience; the German version is legally binding.
+    </p>
+  );
+}
+
+const CONTENT: Record<Locale, Record<LegalDoc, () => ReactNode>> = {
+  de: {
+    impressum: Impressum,
+    datenschutz: Datenschutz,
+    nutzungsbedingungen: Nutzungsbedingungen,
+    credits: Credits,
+  },
+  en: {
+    impressum: ImpressumEn,
+    datenschutz: DatenschutzEn,
+    nutzungsbedingungen: NutzungsbedingungenEn,
+    credits: CreditsEn,
+  },
 };
 
+/** The legal text in the UI language (German original, English convenience translation). */
 export function LegalContent({ doc }: { doc: LegalDoc }) {
-  const Doc = CONTENT[doc];
-  return <Doc />;
+  const locale = useLocale();
+  const Doc = CONTENT[locale][doc];
+  return (
+    <>
+      {locale !== 'de' && <TranslationNote />}
+      <Doc />
+    </>
+  );
 }

@@ -14,6 +14,7 @@ import {
 import { BeerBadge } from './kit/BeerBadge';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
+import { t } from '../i18n';
 import './FriendsPanel.css';
 
 interface Props {
@@ -29,11 +30,10 @@ interface Props {
 
 function formatLastActive(lastSeen: number): string {
   const diff = Date.now() - lastSeen;
-  if (diff < 60_000) return 'Gerade aktiv';
-  if (diff < 3600_000) return `Vor ${Math.floor(diff / 60_000)} Min. aktiv`;
-  if (diff < 86400_000) return `Vor ${Math.floor(diff / 3600_000)} Std. aktiv`;
-  const days = Math.floor(diff / 86400_000);
-  return `Vor ${days} ${days === 1 ? 'Tag' : 'Tagen'} aktiv`;
+  if (diff < 60_000) return t('friends.activeNow');
+  if (diff < 3600_000) return t('friends.activeMinutes', { count: Math.floor(diff / 60_000) });
+  if (diff < 86400_000) return t('friends.activeHours', { count: Math.floor(diff / 3600_000) });
+  return t('friends.activeDays', { count: Math.floor(diff / 86400_000) });
 }
 
 const Icon = {
@@ -119,21 +119,21 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
     setSuccess(null);
 
     if (!friendId) {
-      setError('Gib die Freundes-ID deines Kumpels ein.');
+      setError(t('friends.errEmpty'));
       return;
     }
     if (friendId === user.id) {
-      setError('Das bist du selbst – such dir lieber Trinkkumpanen. 😉');
+      setError(t('friends.errSelf'));
       return;
     }
     if (friendships.length >= GAME.MAX_FRIENDS) {
-      setError(`Deine Crew ist voll (max. ${GAME.MAX_FRIENDS}).`);
+      setError(t('friends.errFull', { max: GAME.MAX_FRIENDS }));
       return;
     }
 
     const existingId = makeFriendshipId(user.id, friendId);
     if (friendships.some(f => f.id === existingId)) {
-      setError('Mit dieser Person bist du schon verbunden oder hast angefragt.');
+      setError(t('friends.errExists'));
       return;
     }
 
@@ -142,10 +142,10 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
       const friendship = await addFriend(user.id, friendId);
       appEvents.emit({ type: 'friend:added', friendship });
       setAddInput('');
-      setSuccess('Anfrage verschickt! 🍻');
+      setSuccess(t('friends.sent'));
       haptic('success');
     } catch (e) {
-      setError('Anfrage konnte nicht gesendet werden. Stimmt die ID?');
+      setError(t('friends.errSend'));
       console.error('addFriend error:', e);
     } finally {
       setAdding(false);
@@ -169,11 +169,11 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
   const handleAccept = useCallback((friendId: string) => runAction(friendId, async () => {
     await acceptFriend(user.id, friendId);
     haptic('success');
-  }, 'Annehmen hat nicht geklappt. Versuch es nochmal.'), [user.id, runAction]);
+  }, t('friends.errAccept')), [user.id, runAction]);
 
   const handleDecline = useCallback((friendId: string) => runAction(friendId, async () => {
     await declineFriend(user.id, friendId);
-  }, 'Das hat nicht geklappt. Versuch es nochmal.'), [user.id, runAction]);
+  }, t('common.tryAgain')), [user.id, runAction]);
 
   const handleRemove = useCallback((friendId: string) => runAction(friendId, async () => {
     await removeFriend(user.id, friendId);
@@ -181,7 +181,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
     appEvents.emit({ type: 'friend:removed', friendshipId });
     setConfirmRemove(null);
     haptic('medium');
-  }, 'Entfernen hat nicht geklappt. Versuch es nochmal.'), [user.id, runAction]);
+  }, t('friends.errRemove')), [user.id, runAction]);
 
   const handleOpenChat = useCallback((friendId: string) => {
     const friendUser = friendUsers.get(friendId);
@@ -203,7 +203,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
   const displayName = (friendId: string) => {
     const fu = friendUsers.get(friendId);
     if (!fu) return `${friendId.slice(0, 8)}…`;
-    return fu.nickname || `${beerName(fu.beerId)}-Fan`;
+    return fu.nickname || t('friends.fan', { beer: beerName(fu.beerId) });
   };
 
   const hasAnything = friendships.length > 0;
@@ -212,7 +212,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
     <>
       <section className="section friends" aria-labelledby="friends-title">
         <h2 className="section-title" id="friends-title">
-          Deine Crew
+          {t('friends.title')}
           <small className="num">{acceptedFriends.length}/{GAME.MAX_FRIENDS}</small>
         </h2>
 
@@ -220,12 +220,12 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
           className="friends-add"
           onSubmit={(e) => { e.preventDefault(); handleAdd(); }}
         >
-          <label htmlFor="friends-add-input" className="sr-only">Freundes-ID</label>
+          <label htmlFor="friends-add-input" className="sr-only">{t('friends.idLabel')}</label>
           <input
             id="friends-add-input"
             type="text"
             className="friends-add-input"
-            placeholder="Freundes-ID einfügen"
+            placeholder={t('friends.idPlaceholder')}
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
@@ -237,7 +237,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
             type="submit"
             className="btn btn-primary friends-add-btn"
             disabled={adding || !addInput.trim()}
-            aria-label="Freund hinzufügen"
+            aria-label={t('friends.add')}
           >
             {adding ? <span className="spinner" aria-hidden="true" /> : Icon.add}
           </button>
@@ -251,7 +251,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
       {incomingRequests.length > 0 && (
         <section className="section" aria-labelledby="friends-req-title">
           <h2 className="section-title" id="friends-req-title">
-            Anfragen <span className="chip chip-accent num">{incomingRequests.length}</span>
+            {t('friends.requests')} <span className="chip chip-accent num">{incomingRequests.length}</span>
           </h2>
           <ul className="friends-list">
             {incomingRequests.map((fs) => {
@@ -263,7 +263,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                   <BeerBadge beerId={fu?.beerId} />
                   <div className="row-main">
                     <div className="row-title">{displayName(friendId)}</div>
-                    <div className="row-sub">möchte in deine Crew</div>
+                    <div className="row-sub">{t('friends.wantsIn')}</div>
                   </div>
                   <button
                     type="button"
@@ -271,14 +271,14 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                     onClick={() => handleAccept(friendId)}
                     disabled={busy}
                   >
-                    Annehmen
+                    {t('friends.accept')}
                   </button>
                   <button
                     type="button"
                     className="icon-btn"
                     onClick={() => handleDecline(friendId)}
                     disabled={busy}
-                    aria-label={`Anfrage von ${displayName(friendId)} ablehnen`}
+                    aria-label={t('friends.decline', { name: displayName(friendId) })}
                   >
                     {Icon.remove}
                   </button>
@@ -292,9 +292,9 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
       {acceptedFriends.length > 0 && (
         <section className="section" aria-labelledby="friends-list-title">
           {(incomingRequests.length > 0 || sentRequests.length > 0) && (
-            <h2 className="section-title" id="friends-list-title">Freunde</h2>
+            <h2 className="section-title" id="friends-list-title">{t('friends.friends')}</h2>
           )}
-          <ul className="friends-list stagger" aria-label="Freunde">
+          <ul className="friends-list stagger" aria-label={t('friends.friends')}>
             {acceptedFriends.map((fs) => {
               const friendId = getFriendId(fs);
               const friendUser = friendUsers.get(friendId);
@@ -307,16 +307,16 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
 
               if (confirming) {
                 return (
-                  <li key={fs.id} className="row friends-confirm" role="group" aria-label={`${name} entfernen?`}>
+                  <li key={fs.id} className="row friends-confirm" role="group" aria-label={t('friends.removeQuestion', { name })}>
                     <div className="row-main">
-                      <div className="row-title">{name} entfernen?</div>
-                      <div className="row-sub">Ihr seht euch dann nicht mehr auf der Karte.</div>
+                      <div className="row-title">{t('friends.removeQuestion', { name })}</div>
+                      <div className="row-sub">{t('friends.removeText')}</div>
                     </div>
                     <button type="button" className="btn btn-sm btn-ghost" onClick={() => setConfirmRemove(null)} disabled={busy}>
-                      Abbrechen
+                      {t('common.cancel')}
                     </button>
                     <button type="button" className="btn btn-sm btn-danger" onClick={() => handleRemove(friendId)} disabled={busy}>
-                      Entfernen
+                      {t('friends.remove')}
                     </button>
                   </li>
                 );
@@ -329,7 +329,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                     className="friends-who"
                     onClick={() => handleOpenChat(friendId)}
                     disabled={!friendUser}
-                    aria-label={`Chat mit ${name} öffnen`}
+                    aria-label={t('friends.openChat', { name })}
                   >
                     <span className="friends-avatar">
                       <BeerBadge beerId={friendUser?.beerId} />
@@ -338,7 +338,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                     <span className="row-main">
                       <span className="row-title">{name}</span>
                       <span className={`row-sub${online ? ' friends-online' : ''}`}>
-                        {online ? 'Online' : presence ? formatLastActive(presence.lastSeen) : friendUser ? beerName(friendUser.beerId) : '…'}
+                        {online ? t('common.online') : presence ? formatLastActive(presence.lastSeen) : friendUser ? beerName(friendUser.beerId) : '…'}
                       </span>
                     </span>
                   </button>
@@ -348,7 +348,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                       className="icon-btn friends-chat"
                       onClick={() => handleOpenChat(friendId)}
                       disabled={!friendUser}
-                      aria-label={unread > 0 ? `Chat mit ${name}, ${unread} ungelesen` : `Chat mit ${name}`}
+                      aria-label={unread > 0 ? t('friends.chatUnread', { name, count: unread }) : t('friends.chatWith', { name })}
                     >
                       {Icon.chat}
                       {unread > 0 && <span className="friends-unread num" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
@@ -358,7 +358,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                         type="button"
                         className="icon-btn"
                         onClick={() => { haptic('light'); onLocateFriend(friendUser.homeLat, friendUser.homeLon); }}
-                        aria-label={`${name} auf der Karte zeigen`}
+                        aria-label={t('friends.showOnMap', { name })}
                       >
                         {Icon.pin}
                       </button>
@@ -367,7 +367,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                       type="button"
                       className="icon-btn friends-remove"
                       onClick={() => setConfirmRemove(friendId)}
-                      aria-label={`${name} entfernen`}
+                      aria-label={t('friends.removeLabel', { name })}
                     >
                       {Icon.remove}
                     </button>
@@ -381,7 +381,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
 
       {sentRequests.length > 0 && (
         <section className="section" aria-labelledby="friends-sent-title">
-          <h2 className="section-title" id="friends-sent-title">Gesendet</h2>
+          <h2 className="section-title" id="friends-sent-title">{t('friends.sentTitle')}</h2>
           <ul className="friends-list">
             {sentRequests.map((fs) => {
               const friendId = getFriendId(fs);
@@ -391,7 +391,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                   <BeerBadge beerId={fu?.beerId} />
                   <div className="row-main">
                     <div className="row-title">{displayName(friendId)}</div>
-                    <div className="row-sub">Wartet auf Antwort …</div>
+                    <div className="row-sub">{t('friends.waiting')}</div>
                   </div>
                   <button
                     type="button"
@@ -399,7 +399,7 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
                     onClick={() => handleDecline(friendId)}
                     disabled={busyId === friendId}
                   >
-                    Zurückziehen
+                    {t('friends.withdraw')}
                   </button>
                 </li>
               );
@@ -411,14 +411,14 @@ export function FriendsPanel({ user, store, friendships, onOpenChat, friendPrese
       {!hasAnything && (
         <div className="empty friends-empty">
           <span className="empty-icon" aria-hidden="true">🍻</span>
-          <span className="empty-title">Noch keine Crew</span>
-          <p>Teile deine Freundes-ID (findest du unter „Dein Revier“) oder füg oben die ID eines Kumpels ein.</p>
+          <span className="empty-title">{t('friends.emptyTitle')}</span>
+          <p>{t('friends.emptyText')}</p>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => document.getElementById('friends-add-input')?.focus()}
           >
-            ID eingeben
+            {t('friends.enterId')}
           </button>
         </div>
       )}
