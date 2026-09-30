@@ -73,8 +73,10 @@ export function Sheet({ open, title, onClose, leading, initialSnap = 'half', chi
     : undefined;
 
   return (
+    <>
+    <div className={`sheet-scrim${open && snap === 'full' ? ' visible' : ''}`} onClick={onClose} aria-hidden="true" />
     <section
-      className={`sheet sheet-${snap}${open ? ' open' : ''}`}
+      className={`sheet glass-panel sheet-${snap}${open ? ' open' : ''}`}
       style={style}
       aria-hidden={!open}
       inert={!open}
@@ -97,7 +99,7 @@ export function Sheet({ open, title, onClose, leading, initialSnap = 'half', chi
       </div>
       <header className="sheet-header">
         {leading}
-        <h2 className="sheet-title">{title}</h2>
+        <h2 key={contentKey} className="sheet-title sheet-enter">{title}</h2>
         <button className="icon-btn sheet-close" onClick={onClose} aria-label="Schließen">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" />
@@ -105,8 +107,12 @@ export function Sheet({ open, title, onClose, leading, initialSnap = 'half', chi
         </button>
       </header>
       <div className="sheet-scroll" ref={scrollRef}>
-        {children}
+        {/* Re-keyed per content: plays a cheap CSS enter animation (no full-page snapshot) */}
+        <div key={contentKey} className="sheet-body sheet-enter">
+          {children}
+        </div>
       </div>
     </section>
+    </>
   );
 }

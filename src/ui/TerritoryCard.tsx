@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import NumberFlow from '@number-flow/react';
 import type { CellResult, Region } from '../domain/types';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerColor, beerName } from './kit/beer';
@@ -67,7 +68,7 @@ export function TerritoryCard({ cell, region, isDemo, demoBeerId, onShare, onPro
                 <span className="territory-bar-track" aria-hidden="true">
                   <span style={{ width: `${pct}%`, background: beerColor(beerId) }} />
                 </span>
-                <span className="territory-bar-pct num">{pct}&nbsp;%</span>
+                <span className="territory-bar-pct num"><NumberFlow value={pct} suffix=" %" /></span>
               </li>
             );
           })}

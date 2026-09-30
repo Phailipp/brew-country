@@ -8,6 +8,9 @@ import { FirestoreStore } from './storage/FirestoreStore.ts'
 import { IndexedDBStore } from './storage/IndexedDBStore.ts'
 import { LOCAL_AUTH_KEY, isDemoUserId } from './auth/authContext.ts'
 import { ADMIN_ENABLED } from './config/env.ts'
+import { installGlobalLight } from './ui/kit/globalLight.ts'
+
+installGlobalLight()
 
 // Demo users (id starts with "dev_") play in a local IndexedDB sandbox — no Firebase writes
 const store = isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY))

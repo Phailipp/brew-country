@@ -11,6 +11,7 @@ import { appEvents } from '../domain/events';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerName } from './kit/beer';
 import { haptic } from './kit/haptics';
+import { clink, primeAudio } from './kit/sound';
 import './ProstPanel.css';
 
 interface Props {
@@ -46,6 +47,7 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation }: Props) {
     setError('');
     setPhase('locating');
     haptic('light');
+    primeAudio();
 
     try {
       const { lat, lon, accuracyM } = await acquireGpsSamples().catch((err) => {
@@ -81,6 +83,7 @@ export function ProstPanel({ user, store, onCheckedIn, demoLocation }: Props) {
       appEvents.emit({ type: 'drink:created', vote });
       setDailyCount(getDailyDrinkCount([...existing, vote]));
       haptic('success');
+      clink();
       onCheckedIn(vote);
     } catch (err) {
       setError(

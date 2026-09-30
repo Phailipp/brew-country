@@ -69,6 +69,13 @@
   /* ── Motion */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-soft:   cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ── Material: film grain (static SVG noise, rasterised once) */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .92 0 0 0 0 .82 0 0 0 .075 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* Global light position for specular highlights (updated from pointer) */
+  --lx: 30%;
+  --ly: 0%;
   --dur-1: 120ms;
   --dur-2: 220ms;
   --dur-3: 420ms;
@@ -230,12 +237,49 @@ button {
 .icon-btn:hover { background: rgba(255, 246, 232, 0.08); color: var(--c-text); }
 .icon-btn:active { transform: scale(0.92); }
 
-/* ── Surfaces */
-.glass {
-  background: var(--c-glass);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  box-shadow: inset 0 0 0 1px var(--c-line-strong), var(--inner-hl), var(--shadow-float);
+/* ── Surfaces: "liquid glass" (Linear-style stack, WKWebView-safe)
+   blur + saturation · layered edge light · specular highlight following
+   the global light · rim-light border via mask · film grain            */
+.glass,
+.glass-panel {
+  position: relative;
+  isolation: isolate;
+  background:
+    var(--grain),
+    linear-gradient(180deg, rgba(36, 30, 22, 0.6), rgba(12, 10, 8, 0.78));
+  background-size: 160px 160px, auto;
+  backdrop-filter: blur(24px) saturate(175%) brightness(1.04);
+  -webkit-backdrop-filter: blur(24px) saturate(175%) brightness(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 232, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 22px 50px -16px rgba(0, 0, 0, 0.8),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.glass::before,
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(140% 90% at var(--lx) var(--ly), rgba(255, 226, 180, 0.11), transparent 55%);
+  mix-blend-mode: plus-lighter;
+  transition: background-position var(--dur-3) var(--ease-out);
+}
+.glass::after,
+.glass-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(165deg, rgba(255, 244, 222, 0.42), rgba(255, 244, 222, 0.05) 38%, rgba(255, 244, 222, 0.02) 62%, rgba(255, 176, 32, 0.22));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
 
 .card {
@@ -439,6 +483,22 @@ input::placeholder, textarea::placeholder { color: var(--c-text-3); }
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
+
+/* Spring easings via linear() where supported (Safari 17.2+, Chrome 113+) */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+    --ease-soft: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001);
+  }
+}
+
+/* Rotating angle for conic-gradient rings */
+@property --ring-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ringSpin { to { --ring-angle: 360deg; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

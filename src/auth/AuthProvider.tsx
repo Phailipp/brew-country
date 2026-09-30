@@ -59,7 +59,8 @@ export function AuthProvider({ children, store }: Props) {
       const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (firebaseUser) => {
         clearTimeout(fallback);
         if (!firebaseUser) {
-          localStorage.removeItem(LOCAL_AUTH_KEY);
+          // Never clobber a demo session that was started in the meantime
+          if (!isDemoUserId(localStorage.getItem(LOCAL_AUTH_KEY))) localStorage.removeItem(LOCAL_AUTH_KEY);
           setAuth({ status: 'unauthenticated' });
           return;
         }

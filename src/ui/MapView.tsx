@@ -17,6 +17,8 @@ export interface MapViewHandle {
   /** Expanding colour wave, e.g. after a check-in. */
   pulseAt: (lat: number, lon: number, color: string) => void;
   toggle3d: () => boolean;
+  /** Tint the scene light (3D buildings) with the local ruler's colour. */
+  setAmbient: (color: string | null) => void;
 }
 
 export interface FriendMarker {
@@ -51,6 +53,17 @@ const beerColorExpr: ExpressionSpecification = [
   '#a39580',
 ] as unknown as ExpressionSpecification;
 
+function shouldPlayIntro(): boolean {
+  if (REDUCED_MOTION) return false;
+  try {
+    if (sessionStorage.getItem('bc_intro_played')) return false;
+    sessionStorage.setItem('bc_intro_played', '1');
+  } catch {
+    // storage unavailable: still play
+  }
+  return true;
+}
+
 function loadBeerIcons(map: MapLibreMap) {
   for (const beer of BEERS) {
     const id = `beer-${beer.id}`;
@@ -73,16 +86,36 @@ function addGameLayers(map: MapLibreMap) {
   map.addSource('pulse', { type: 'geojson', data: EMPTY });
   map.addSource('selected', { type: 'geojson', data: EMPTY });
 
+  // Territory = faint tint + light falling inward from the frontier (inner glow),
+  // instead of a flat choropleth. d3-contour rings are counter-clockwise in
+  // lon/lat space, so a negative line-offset points into the territory.
   map.addLayer({
     id: 'territory-fill',
     type: 'fill',
     source: 'territories',
     paint: {
       'fill-color': beerColorExpr,
-      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.46, 11, 0.3, 15, 0.18],
+      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 9, 0.2, 13, 0.14, 16, 0.12],
+      'fill-opacity-transition': { duration: 600 },
       'fill-antialias': true,
     },
   }, before);
+
+  const innerGlow = (id: string, offset: number, width: number, blur: number, opacity: number) => map.addLayer({
+    id,
+    type: 'line',
+    source: 'territories',
+    layout: { 'line-join': 'round' },
+    paint: {
+      'line-color': beerColorExpr,
+      'line-offset': ['interpolate', ['exponential', 1.6], ['zoom'], 6, offset * 0.4, 12, offset, 16, offset * 1.8],
+      'line-width': ['interpolate', ['exponential', 1.6], ['zoom'], 6, width * 0.4, 12, width, 16, width * 1.8],
+      'line-blur': ['interpolate', ['exponential', 1.6], ['zoom'], 6, blur * 0.4, 12, blur, 16, blur * 1.8],
+      'line-opacity': opacity,
+    },
+  }, before);
+  innerGlow('territory-glow-far', -22, 36, 28, 0.16);
+  innerGlow('territory-glow-mid', -9, 16, 12, 0.3);
 
   map.addLayer({
     id: 'hotspot-fill',
@@ -91,7 +124,7 @@ function addGameLayers(map: MapLibreMap) {
     paint: { 'fill-color': '#ff4d2e', 'fill-opacity': 0.14 },
   }, before);
 
-  // Borders go above roads so the frontlines read clearly
+  // Frontlines above roads: soft halo + crisp neon edge + hairline core
   map.addLayer({
     id: 'territory-glow',
     type: 'line',
@@ -99,9 +132,9 @@ function addGameLayers(map: MapLibreMap) {
     layout: { 'line-join': 'round' },
     paint: {
       'line-color': beerColorExpr,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 14, 10],
-      'line-blur': ['interpolate', ['linear'], ['zoom'], 5, 3, 14, 8],
-      'line-opacity': 0.45,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 5, 4, 14, 12],
+      'line-blur': ['interpolate', ['linear'], ['zoom'], 5, 4, 14, 10],
+      'line-opacity': 0.35,
     },
   });
   map.addLayer({
@@ -111,8 +144,19 @@ function addGameLayers(map: MapLibreMap) {
     layout: { 'line-join': 'round' },
     paint: {
       'line-color': beerColorExpr,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.8, 14, 2.2],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1, 14, 2.4],
       'line-opacity': 0.95,
+    },
+  });
+  map.addLayer({
+    id: 'territory-core',
+    type: 'line',
+    source: 'territories',
+    layout: { 'line-join': 'round' },
+    paint: {
+      'line-color': '#fff6e8',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.2, 14, 0.8],
+      'line-opacity': 0.55,
     },
   });
   map.addLayer({
@@ -122,8 +166,8 @@ function addGameLayers(map: MapLibreMap) {
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
       'line-color': '#ff6a3d',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.2, 14, 3],
-      'line-dasharray': [1.5, 1.5],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.4, 14, 3.2],
+      'line-dasharray': [0, 2, 2],
       'line-opacity': 0.9,
     },
   });
@@ -231,6 +275,8 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
   const tapRef = useRef(onMapTap);
   const viewportRef = useRef(onViewportChange);
   const pulseFrameRef = useRef<number | null>(null);
+  const hasHotspotsRef = useRef(false);
+  const introRef = useRef<boolean>(shouldPlayIntro());
 
   useEffect(() => {
     tapRef.current = onMapTap;
@@ -248,8 +294,8 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       const m = new MapLibreMap({
         container: containerRef.current,
         style,
-        center: [MUNICH_CENTER.lon, MUNICH_CENTER.lat],
-        zoom: 10,
+        center: introRef.current ? [9, 38] : [MUNICH_CENTER.lon, MUNICH_CENTER.lat],
+        zoom: introRef.current ? 1.4 : 10,
         minZoom: 4.5,
         maxZoom: 18,
         maxPitch: 65,
@@ -267,27 +313,48 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
         );
       };
 
-      m.on('load', () => {
+      m.once('style.load', () => {
         if (cancelled) return;
         loadBeerIcons(m);
         addGameLayers(m);
-        // Compact attribution starts collapsed (it is still one tap away)
-        containerRef.current?.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
+        // Compact attribution stays collapsed until tapped (MapLibre re-opens
+        // it whenever a source adds attribution text, e.g. the terrain DEM)
+        const attrib = containerRef.current?.querySelector('.maplibregl-ctrl-attrib');
+        let userOpened = false;
+        attrib?.addEventListener('click', () => { userOpened = true; }, { once: true });
+        const collapse = () => { if (!userOpened) attrib?.classList.remove('maplibregl-compact-show'); };
+        collapse();
+        m.on('sourcedata', collapse);
         setReady(true);
         emitViewport();
 
-        // Frontlines breathe: animate hotspot opacity + dash
+        // Frontlines breathe and march. Throttled to ~15 fps (every paint
+        // change forces a full map repaint, which costs battery on phones).
         if (!REDUCED_MOTION) {
+          const DASHES = [
+            [0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1], [2.5, 4, 0.5], [3, 4, 0],
+            [0, 0.5, 3, 3.5], [0, 1, 3, 3], [0, 1.5, 3, 2.5], [0, 2, 3, 2], [0, 2.5, 3, 1.5], [0, 3, 3, 1], [0, 3.5, 3, 0.5],
+          ];
           const start = performance.now();
+          let last = 0;
+          let step = 0;
           const tick = (t: number) => {
-            if (!m.getLayer('hotspot-fill')) return;
-            const phase = ((t - start) / 1600) % 1;
-            const wave = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2);
-            m.setPaintProperty('hotspot-fill', 'fill-opacity', 0.08 + wave * 0.16);
-            m.setPaintProperty('hotspot-line', 'line-opacity', 0.55 + wave * 0.45);
             hotspotFrame = requestAnimationFrame(tick);
+            if (t - last < 66 || !m.getLayer('hotspot-fill')) return;
+            last = t;
+            const src = m.getSource('hotspots') as GeoJSONSource | undefined;
+            if (!src || !hasHotspotsRef.current) return;
+            const wave = 0.5 - 0.5 * Math.cos((((t - start) / 1800) % 1) * Math.PI * 2);
+            m.setPaintProperty('hotspot-fill', 'fill-opacity', 0.06 + wave * 0.14);
+            step = (step + 1) % DASHES.length;
+            m.setPaintProperty('hotspot-line', 'line-dasharray', DASHES[step]);
           };
           hotspotFrame = requestAnimationFrame(tick);
+        }
+
+        // Cinematic entrance: from the globe down to Munich, once per session
+        if (introRef.current) {
+          m.flyTo({ center: [MUNICH_CENTER.lon, MUNICH_CENTER.lat], zoom: 10, duration: 4200, curve: 1.7, essential: true });
         }
       });
 
@@ -313,6 +380,7 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
     if (!ready || !map) return;
     (map.getSource('territories') as GeoJSONSource).setData(geometry?.territories ?? EMPTY);
     (map.getSource('hotspots') as GeoJSONSource).setData(geometry?.hotspots ?? EMPTY);
+    hasHotspotsRef.current = (geometry?.hotspots.features.length ?? 0) > 0;
     const labels: FeatureCollection<Point> = {
       type: 'FeatureCollection',
       features: (geometry?.labels.features ?? []).map((f) => ({
@@ -409,10 +477,23 @@ export const MapView = forwardRef<MapViewHandle, Props>(function MapView(
       };
       pulseFrameRef.current = requestAnimationFrame(frame);
     },
+    setAmbient(color) {
+      const map = mapRef.current;
+      if (!map || !map.isStyleLoaded()) return;
+      map.setLight({
+        anchor: 'map',
+        position: [1.3, 210, 55],
+        color: color ?? '#ffe2b8',
+        intensity: color ? 0.42 : 0.3,
+      });
+    },
     toggle3d() {
       const map = mapRef.current;
       if (!map) return false;
       const to3d = map.getPitch() < 10;
+      if (map.getSource('terrain-3d')) {
+        map.setTerrain(to3d ? { source: 'terrain-3d', exaggeration: 1.5 } : null);
+      }
       map.easeTo({
         pitch: to3d ? 55 : 0,
         bearing: to3d ? -18 : 0,

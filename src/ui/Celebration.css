@@ -7,9 +7,29 @@
   padding: var(--sp-6);
   background: radial-gradient(60% 45% at 50% 50%, color-mix(in oklab, var(--beer) 30%, transparent), rgba(11, 10, 8, 0.55) 70%);
   backdrop-filter: blur(3px);
+  overflow: hidden;
   animation: celebrateIn 260ms var(--ease-out) both;
 }
+.celebration-rays {
+  position: absolute;
+  width: 160vmax;
+  height: 160vmax;
+  left: 50%;
+  top: 50%;
+  translate: -50% -58%;
+  background: repeating-conic-gradient(from var(--ring-angle),
+    color-mix(in oklab, var(--beer) 26%, transparent) 0deg 6deg,
+    transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(closest-side, #000 8%, transparent 62%);
+  mask: radial-gradient(closest-side, #000 8%, transparent 62%);
+  animation: ringSpin 24s linear infinite, raysIn 700ms var(--ease-out) both;
+  pointer-events: none;
+}
+.celebration.epic .celebration-rays { animation-duration: 14s, 700ms; }
+@keyframes raysIn { from { opacity: 0; scale: 0.6; } }
+
 .celebration-card {
+  position: relative;
   display: grid;
   justify-items: center;
   gap: var(--sp-2);
@@ -41,6 +61,7 @@
 
 @keyframes celebrateIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes badgeSpin {
-  from { transform: scale(0.3) rotate(-200deg); opacity: 0; }
-  to   { transform: none; opacity: 1; }
+  from { transform: perspective(600px) rotateY(-540deg) scale(0.3); opacity: 0; }
+  60%  { opacity: 1; }
+  to   { transform: perspective(600px) rotateY(0) scale(1); opacity: 1; }
 }

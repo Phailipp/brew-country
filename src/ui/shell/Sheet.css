@@ -10,12 +10,13 @@
   flex-direction: column;
   height: calc(100dvh - 72px - var(--safe-top));
   border-radius: var(--r-xl) var(--r-xl) 0 0;
-  background: var(--c-glass-strong);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  box-shadow: inset 0 1px 0 var(--c-line-strong), 0 -20px 60px -10px rgba(0, 0, 0, 0.7);
+  position: fixed;
+  background:
+    var(--grain),
+    linear-gradient(180deg, rgba(40, 34, 26, 0.86), rgba(14, 12, 9, 0.94) 40%);
+  background-size: 160px 160px, auto;
   transform: translateY(var(--sheet-offset));
-  transition: transform 460ms var(--ease-spring);
+  transition: transform 560ms var(--ease-soft);
   will-change: transform;
 }
 .sheet.open.sheet-half { --sheet-offset: 30%; }
@@ -63,8 +64,23 @@
   padding: var(--sp-2) var(--sp-4) calc(140px + var(--safe-bottom));
 }
 
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(5, 4, 3, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms var(--ease-out);
+}
+.sheet-scrim.visible { opacity: 1; pointer-events: auto; }
+
+.sheet-title { font-size: var(--fs-xl); }
+@media (max-width: 420px) { .sheet-title { font-size: 1.6rem; } }
+
 /* ── Desktop: floating side panel */
 @media (min-width: 900px) {
+  .sheet-scrim { display: none; }
   .sheet {
     left: calc(16px + var(--safe-left));
     right: auto;
@@ -73,14 +89,19 @@
     width: 420px;
     height: auto;
     border-radius: var(--r-xl);
-    box-shadow: inset 0 0 0 1px var(--c-line-strong), var(--inner-hl), var(--shadow-float);
     transform: translateX(calc(-100% - 40px));
     opacity: 0;
-    transition: transform 460ms var(--ease-spring), opacity 220ms var(--ease-out);
+    transition: transform 560ms var(--ease-soft), opacity 220ms var(--ease-out);
   }
   .sheet.open.sheet-half,
   .sheet.open.sheet-full { transform: none; opacity: 1; }
   .sheet-grabber { display: none; }
   .sheet-header { padding-top: var(--sp-4); }
   .sheet-scroll { padding-bottom: var(--sp-6); }
+}
+
+.sheet-enter { animation: sheetContentIn 420ms var(--ease-soft) both; }
+.sheet-title.sheet-enter { animation-duration: 320ms; }
+@keyframes sheetContentIn {
+  from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
 }

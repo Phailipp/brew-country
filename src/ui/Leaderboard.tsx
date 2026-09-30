@@ -1,3 +1,4 @@
+import NumberFlow from '@number-flow/react';
 import { BeerBadge } from './kit/BeerBadge';
 import { beerColor, beerName } from './kit/beer';
 import './Leaderboard.css';
@@ -44,7 +45,7 @@ export function Leaderboard({ entries, ownBeerId, computing }: Props) {
                     <span style={{ width: `${Math.max(2, pct)}%`, background: beerColor(e.beerId) }} />
                   </span>
                 </span>
-                <span className="lb-pct num">{pct}&nbsp;%</span>
+                <span className="lb-pct num"><NumberFlow value={pct} suffix=" %" /></span>
               </li>
             );
           })}

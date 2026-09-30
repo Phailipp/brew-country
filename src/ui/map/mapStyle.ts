@@ -33,6 +33,42 @@ const PAINT_OVERRIDES: Record<string, Record<string, unknown>> = {
 const PLACE_TEXT = { 'text-color': '#a89a84', 'text-halo-color': 'rgba(11,10,8,0.85)', 'text-halo-width': 1.4 };
 const SUBURB_TEXT = { 'text-color': '#d9c9ae', 'text-halo-color': 'rgba(11,10,8,0.9)', 'text-halo-width': 1.6 };
 
+/** Keyless terrain (Mapzen Terrarium DEM on AWS Open Data). */
+const TERRAIN_SOURCE = {
+  type: 'raster-dem',
+  tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+  encoding: 'terrarium',
+  tileSize: 256,
+  maxzoom: 14,
+  attribution: 'Terrain: Mapzen / AWS Open Data',
+} as const;
+
+/** Night sky + warm horizon glow; the atmosphere fades out as you zoom into the city. */
+const SKY = {
+  'sky-color': '#07060a',
+  'horizon-color': '#3a2410',
+  'fog-color': '#0b0a08',
+  'sky-horizon-blend': 0.6,
+  'horizon-fog-blend': 0.5,
+  'fog-ground-blend': 0.6,
+  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 8, 0],
+};
+
+function hillshade(): LayerSpecification {
+  return {
+    id: 'hillshade',
+    type: 'hillshade',
+    source: 'terrain-dem',
+    paint: {
+      'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 5, 0.55, 10, 0.35, 13, 0.15],
+      'hillshade-shadow-color': 'rgba(0,0,0,0.55)',
+      'hillshade-highlight-color': 'rgba(255,196,120,0.10)',
+      'hillshade-accent-color': 'rgba(0,0,0,0.25)',
+      'hillshade-illumination-anchor': 'map',
+    },
+  } as LayerSpecification;
+}
+
 /** First layer id that territories should be inserted *below* (roads + labels stay on top). */
 export const TERRITORY_BEFORE_ID = 'highway_path';
 
@@ -44,10 +80,11 @@ function buildings3d(): LayerSpecification {
     'source-layer': 'building',
     minzoom: 14,
     paint: {
-      'fill-extrusion-color': '#1d1913',
+      'fill-extrusion-color': '#2a241c',
+      'fill-extrusion-vertical-gradient': true,
       'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15.5, ['coalesce', ['get', 'render_height'], 8]],
       'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-      'fill-extrusion-opacity': 0.85,
+      'fill-extrusion-opacity': 0.9,
     },
   };
 }
@@ -68,6 +105,8 @@ function customize(style: StyleSpecification): StyleSpecification {
     } else if (layer.id.startsWith('place_')) {
       Object.assign((layer.paint ??= {} as never), PLACE_TEXT);
     }
+    // Relief sits right above the land cover, below water and roads
+    if (layer.id === 'water') layers.push(hillshade());
     // Flat buildings are replaced by the 3D extrusion below
     if (layer.id === 'building') {
       layers.push({ ...layer, maxzoom: 14 } as LayerSpecification);
@@ -76,7 +115,18 @@ function customize(style: StyleSpecification): StyleSpecification {
     }
     layers.push(layer);
   }
-  return { ...style, layers };
+  return {
+    ...style,
+    sources: {
+      ...style.sources,
+      // Separate sources for relief shading and 3D terrain (better rendering quality)
+      'terrain-dem': TERRAIN_SOURCE as never,
+      'terrain-3d': TERRAIN_SOURCE as never,
+    },
+    projection: { type: 'globe' },
+    sky: SKY as never,
+    layers,
+  };
 }
 
 /** Minimal style used when the tile provider is unreachable: territories still render. */
@@ -85,6 +135,8 @@ export function fallbackStyle(): StyleSpecification {
     version: 8,
     glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
     sources: {},
+    projection: { type: 'globe' },
+    sky: SKY as never,
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#0b0a08' } },
       { id: TERRITORY_BEFORE_ID, type: 'background', paint: { 'background-opacity': 0 } },

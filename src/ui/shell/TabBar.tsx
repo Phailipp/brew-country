@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import './TabBar.css';
 
 export type TabId = 'explore' | 'crew' | 'quests' | 'profile';
@@ -37,6 +37,23 @@ interface Props {
 }
 
 export function TabBar({ active, onSelect, onProst, prostActive, unreadCrew, questsDone }: Props) {
+  const navRef = useRef<HTMLElement>(null);
+  const [indicator, setIndicator] = useState<{ x: number; w: number } | null>(null);
+
+  // Sliding "liquid" pill under the active tab
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const measure = () => {
+      const el = active ? nav.querySelector<HTMLElement>(`[data-tab="${active}"]`) : null;
+      setIndicator(el ? { x: el.offsetLeft, w: el.offsetWidth } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [active]);
+
   const tabs: Tab[] = [
     { id: 'explore', label: 'Entdecken', icon: ICONS.explore },
     { id: 'crew', label: 'Crew', icon: ICONS.crew, badge: unreadCrew },
@@ -47,6 +64,7 @@ export function TabBar({ active, onSelect, onProst, prostActive, unreadCrew, que
   const renderTab = (tab: Tab) => (
     <button
       key={tab.id}
+      data-tab={tab.id}
       role="tab"
       aria-selected={active === tab.id}
       className={`tab${active === tab.id ? ' active' : ''}`}
@@ -62,7 +80,12 @@ export function TabBar({ active, onSelect, onProst, prostActive, unreadCrew, que
   );
 
   return (
-    <nav className="tabbar glass" role="tablist" aria-label="Hauptnavigation">
+    <nav ref={navRef} className="tabbar glass" role="tablist" aria-label="Hauptnavigation">
+      <span
+        className={`tab-indicator${indicator ? ' visible' : ''}`}
+        style={indicator ? { transform: `translateX(${indicator.x}px)`, width: indicator.w } : undefined}
+        aria-hidden="true"
+      />
       {tabs.slice(0, 2).map(renderTab)}
       <button
         className={`prost-fab${prostActive ? ' active' : ''}`}
@@ -71,8 +94,12 @@ export function TabBar({ active, onSelect, onProst, prostActive, unreadCrew, que
         aria-pressed={prostActive}
       >
         <span className="prost-fab-glow" aria-hidden="true" />
+        <span className="prost-fab-ring" aria-hidden="true" />
         <span className="prost-fab-inner" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="30" height="30">
+          <span className="prost-fab-liquid">
+            <svg viewBox="0 0 160 20" preserveAspectRatio="none"><path d="M0 10 Q 20 0 40 10 T 80 10 T 120 10 T 160 10 V 20 H 0 Z" /></svg>
+          </span>
+          <svg className="prost-fab-mug" viewBox="0 0 32 32" width="30" height="30">
             <path d="M8 11h13v13a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3V11Z" fill="currentColor" />
             <path d="M21 14h2.5a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3H21" fill="none" stroke="currentColor" strokeWidth="2.4" />
             <path d="M6.5 11c0-3 2.4-4.8 4.8-4.2C12.6 4.4 17 4.3 18.3 6.9c2.5-.6 4.7 1.2 4.2 4.1Z" fill="#fff6e8" />

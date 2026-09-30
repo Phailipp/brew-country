@@ -17,6 +17,7 @@
     "@capacitor/core": "^8.5.2",
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.5.2",
+    "@number-flow/react": "^0.6.2",
     "canvas-confetti": "^1.9.4",
     "d3-contour": "^4.0.2",
     "dexie": "^4.4.6",

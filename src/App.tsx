@@ -35,6 +35,8 @@ import { ChatPanel } from './ui/ChatPanel';
 import { BeerBadge } from './ui/kit/BeerBadge';
 import { beerColor, beerName } from './ui/kit/beer';
 import { haptic } from './ui/kit/haptics';
+import { conquer, setSoundEnabled, soundEnabled } from './ui/kit/sound';
+import NumberFlow from '@number-flow/react';
 import { useToast } from './ui/toastContext';
 import { useQuests } from './hooks/useQuests';
 import { useFeed } from './hooks/useFeed';
@@ -317,6 +319,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
     pendingFlipRef.current = null;
     if (cell.winnerBeerId === pending.beerId && pending.prevWinner !== pending.beerId) {
       haptic('heavy');
+      conquer();
       mapRef.current?.pulseAt(pending.lat, pending.lon, beerColor(pending.beerId));
       setCelebration({
         id: Date.now(),
@@ -382,6 +385,14 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
   const homeCell = winnerAt(dominance, user.homeLat, user.homeLon);
 
+  // Scene light takes the colour of whoever rules the map centre
+  const centerWinner = viewportBounds
+    ? winnerAt(dominance, (viewportBounds.south + viewportBounds.north) / 2, (viewportBounds.west + viewportBounds.east) / 2)?.winnerBeerId ?? null
+    : null;
+  useEffect(() => {
+    mapRef.current?.setAmbient(centerWinner ? beerColor(centerWinner) : null);
+  }, [centerWinner]);
+
   const selected = useMemo(() => {
     if (!selectedPoint || !dominance) return { cell: null, region: null };
     const { data, regions: rs, labels } = dominance.result;
@@ -435,6 +446,7 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
   }, []);
 
   const handleMapTap = useCallback((lat: number, lon: number) => {
+    haptic('light');
     setSelectedPoint({ lat, lon });
     setSheet({ kind: 'territory' });
   }, []);
@@ -625,16 +637,19 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
           aria-label="Zu deinem Revier fliegen"
         >
           <BeerBadge beerId={homeCell?.winnerBeerId ?? user.beerId} size="sm" />
+          {isDemo && <span className="status-chip-demo">Demo</span>}
           <span className="status-chip-text">
             <span className="status-chip-label">
               Dein Revier
               {homeCell?.winnerBeerId && homeCell.winnerBeerId !== user.beerId && (
-                <span className="status-chip-alert"> · Unter Druck</span>
+                <span className="status-chip-alert"> · bedroht</span>
               )}
             </span>
             <span className="status-chip-value">
               {homeCell?.winnerBeerId
-                ? <>{beerName(homeCell.winnerBeerId)}{homeShare !== null && <span className="num"> · {homeShare}&nbsp;%</span>}</>
+                ? <>{beerName(homeCell.winnerBeerId)}{homeShare !== null && (
+                  <span className="num status-chip-pct"> · <NumberFlow value={homeShare} suffix=" %" /></span>
+                )}</>
                 : 'Wird berechnet…'}
             </span>
           </span>
@@ -662,7 +677,6 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
         </div>
       </header>
 
-      {isDemo && <div className="demo-ribbon" role="note">Demo-Modus</div>}
 
       <Sheet
         open={sheet !== null}
@@ -703,9 +717,26 @@ function GameApp({ user: initialUser, store, onActivity }: GameAppProps) {
 
 function LogoutSection({ isDemo }: { isDemo: boolean }) {
   const { logout } = useAuth();
+  const [sound, setSound] = useState(soundEnabled);
   return (
     <section className="section">
-      <button className="btn btn-secondary btn-block" onClick={logout}>
+      <h2 className="section-title">Einstellungen</h2>
+      <div className="card settings-row">
+        <span className="row-main">
+          <span className="row-title">Sounds</span>
+          <span className="row-sub">Anstoßen beim Check-in, Fanfare bei Eroberungen</span>
+        </span>
+        <button
+          role="switch"
+          aria-checked={sound}
+          aria-label="Sounds"
+          className={`switch${sound ? ' on' : ''}`}
+          onClick={() => { setSound(!sound); setSoundEnabled(!sound); haptic('light'); }}
+        >
+          <span />
+        </button>
+      </div>
+      <button className="btn btn-secondary btn-block settings-logout" onClick={logout}>
         {isDemo ? 'Demo beenden' : 'Abmelden'}
       </button>
     </section>

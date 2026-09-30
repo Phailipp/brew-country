@@ -46,6 +46,7 @@ export function Celebration({ data, onDone }: Props) {
       aria-live="assertive"
       onClick={onDone}
     >
+      <div className="celebration-rays" aria-hidden="true" />
       <div className="celebration-card">
         <div className="celebration-badge">
           <BeerBadge beerId={data.beerId} size="xl" />
